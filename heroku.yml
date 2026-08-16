@@ -15,10 +15,13 @@ release:
 run:
   web:
     image: web
-    command: /start
+    command:
+      - /start
   worker:
     image: web
-    command: /start-celeryworker
+    command:
+      - /start-celeryworker
   beat:
     image: web
-    command: /start-celerybeat
+    command:
+      - /start-celerybeat
