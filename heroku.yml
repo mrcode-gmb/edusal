@@ -13,6 +13,12 @@ release:
   command:
     - python manage.py migrate --noinput
 run:
-  web: /start
-  worker: /start-celeryworker
-  beat: /start-celerybeat
+  web:
+    image: web
+    command: /start
+  worker:
+    image: web
+    command: /start-celeryworker
+  beat:
+    image: web
+    command: /start-celerybeat
