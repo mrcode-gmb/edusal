@@ -43,9 +43,9 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Institution State
-  const [institutions, setInstitutions] = useState<InstitutionSummary[]>([]);
-  const [selectedInstId, setSelectedInstId] = useState<string>('');
+  // Institution State locked to the logged-in staff member's institution
+  const [institution, setInstitution] = useState<InstitutionSummary | null>(null);
+  const selectedInstId = currentUser?.staff_profile?.institution || '';
   const [activeTab, setActiveTab] = useState<'pulse' | 'tree' | 'kb' | 'staff'>('pulse');
 
   // Hierarchy & Governance Data
@@ -68,11 +68,6 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
     setCurrentUser(authData.user);
     localStorage.setItem('edusal_auth_token', authData.token);
     localStorage.setItem('edusal_auth_user', JSON.stringify(authData.user));
-
-    // If user belongs to an institution, default to that institution
-    if (authData.user.staff_profile?.institution) {
-      setSelectedInstId(authData.user.staff_profile.institution);
-    }
   };
 
   // Handle Logout
@@ -82,44 +77,31 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
     }
     setAuthToken(null);
     setCurrentUser(null);
+    setInstitution(null);
+    setTree(null);
+    setSummary(null);
+    setDocuments([]);
     localStorage.removeItem('edusal_auth_token');
     localStorage.removeItem('edusal_auth_user');
   };
 
-  // Fetch institutions list
-  useEffect(() => {
-    institutionApi
-      .getInstitutions()
-      .then((data) => {
-        setInstitutions(data);
-        if (data.length > 0) {
-          if (!selectedInstId) {
-            // Pick user institution if available, otherwise default to first
-            if (currentUser?.staff_profile?.institution) {
-              setSelectedInstId(currentUser.staff_profile.institution);
-            } else {
-              const futm = data.find((i) => i.slug === 'futminna') || data[0];
-              setSelectedInstId(futm.id);
-            }
-          }
-        }
-      })
-      .catch((err) => console.error('Failed to load institutions:', err));
-  }, [currentUser]);
-
-  // Fetch institution data when selected institution changes
+  // Load single institution data strictly matching current logged-in user
   const loadInstitutionData = async (instId: string) => {
     if (!instId) return;
     setLoading(true);
     try {
-      const [treeData, summaryData, docsData] = await Promise.all([
+      const [treeData, summaryData, docsData, instList] = await Promise.all([
         institutionApi.getInstitutionTree(instId),
         institutionApi.getGovernanceSummary(instId),
         institutionApi.getDocuments(instId),
+        institutionApi.getInstitutions({ id: instId }),
       ]);
       setTree(treeData);
       setSummary(summaryData);
       setDocuments(docsData);
+      if (instList && instList.length > 0) {
+        setInstitution(instList.find((i) => i.id === instId) || instList[0]);
+      }
     } catch (err) {
       console.error('Failed to fetch institution dashboard data:', err);
     } finally {
@@ -182,7 +164,26 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
     await loadInstitutionData(selectedInstId);
   };
 
-  const selectedInst = institutions.find((i) => i.id === selectedInstId);
+  const selectedInst = institution || (tree ? {
+    id: tree.id,
+    name: tree.name,
+    short_name: tree.short_name,
+    slug: tree.short_name.toLowerCase(),
+    institution_type: tree.institution_type,
+    institution_type_display: tree.institution_type,
+    ownership: 'FEDERAL',
+    regulator: tree.regulator,
+    regulator_display: `${tree.regulator} Regulated`,
+    tier_two_term: tree.tier_two_term,
+    state: 'Nigeria',
+    is_founding_partner: true,
+    status: 'ACTIVE',
+    divisions_count: tree.divisions_count,
+    departments_count: 0,
+    programs_count: 0,
+    documents_count: 0,
+    created_at: '',
+  } : null);
 
   return (
     <div className="institution-portal-layout">
@@ -198,22 +199,14 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
           </div>
         </div>
 
-        {/* User profile & Institution Switcher */}
+        {/* User profile & Locked Institutional Badge */}
         <div className="portal-nav-right">
-          {/* Active Institution Selector */}
-          <div className="inst-switcher-box">
-            <span className="switcher-label">Institution:</span>
-            <select
-              className="inst-select"
-              value={selectedInstId}
-              onChange={(e) => setSelectedInstId(e.target.value)}
-            >
-              {institutions.map((inst) => (
-                <option key={inst.id} value={inst.id}>
-                  {inst.name} ({inst.regulator})
-                </option>
-              ))}
-            </select>
+          {/* Locked Active Institution Pill */}
+          <div className="inst-locked-pill" title="Workspace scoped strictly to your authenticated institution">
+            <BuildingIcon size={15} color="#38bdf8" />
+            <span className="inst-locked-name">
+              {currentUser.staff_profile?.institution_name || selectedInst?.name || 'Assigned Institution'}
+            </span>
           </div>
 
           {/* Authenticated User Capsule */}
