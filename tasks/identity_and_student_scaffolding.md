@@ -1,75 +1,82 @@
-# Edusal Consult — Staff & Student Identity Scaffolding Plan
-## Dynamic Departmental Scoping, Hierarchical Student Identity & Pathway Foundation
+# Edusal Consult — Staff & Student Identity Implementation Plan
+## Dynamic Departmental Scoping & Program-Driven Dynamic Student Identity
 
-> **DOCUMENT ID**: `TASKS-ID-STUDENT-001`  
-> **STATUS**: ARCHITECTURAL SPECIFICATION & IMPLEMENTATION PLAN  
-> **SCOPE**: Staff Departmental Scoping (`StaffAssignment`), Student Identity anchored to Tier-4 (`StudentProfile`), Dynamic Pathway Resolution Scaffold, and Employability Scoring Engine Foundation.
+> **DOCUMENT ID**: `TASKS-ID-STUDENT-001-REV2`  
+> **STATUS**: REVISED ARCHITECTURAL PLAN  
+> **CORE SCOPE**: 
+> 1. Staff Departmental Scoping (`StaffAssignment`)
+> 2. Program-Driven Dynamic Student Identity (`StudentProfile`) with dynamic multi-year progression (4-yr B.Sc, 5-yr SLT/B.Tech, 2-yr ND/HND, 3-yr NCE, 6-yr Med)
+> 3. Scoped Caseload Filtering & REST APIs
+> 4. Seeders, Pytest Test Suite, and Frontend Scoped Management & Student Roster UI
+> 
+> *(Note: Pathways and Employability Scoring Engine are excluded from this implementation and reserved for subsequent phases).*
 
 ---
 
-## 1. Executive Overview & Problem Statement
+## 1. Executive Overview & Architectural Motivation
 
-### 1.1 The Context & The Flaw of Flat Roles
-In Nigerian tertiary institutions (Universities, Polytechnics, Colleges of Education), faculty and student operations are deeply departmentalized:
-1. **The Over-Permissioning Trap**: A Career Counsellor at UNILORIN or FUTMinna's *School of Engineering (SEET)* should **not** see or evaluate students from the *School of Agriculture* or *School of Environmental Tech* by default.
-2. **The Under-Permissioning Trap**: A single senior professor may serve as **HOD** in one department (e.g. Software Engineering) and simultaneously act as **SIWES Placement Supervisor** for another department (e.g. Computer Science).
-3. **The Disconnected Student Record**: A student cannot simply have an `institution_id`. In a NUC/NBTE/NCCE compliant institution, a student's degree option (`AcademicProgram`) deterministically dictates their:
-   - Specific **Curriculum Standards** (CCMAS / BMAS / NBTE syllabus)
-   - Departmental **SIWES / Industrial Attachment duration** (e.g., 6 months for B.Tech SWE vs. 0 months for B.A. vs. 4 months for ND)
-   - Assigned **Faculty Milestone Evaluators** & **Career Counsellor Roster**
-   - Active **Employability Pathway Template**
+### 1.1 The Context: Real-World Departmental & Academic Differences
+In Nigerian tertiary institutions (Universities, Polytechnics, Colleges of Education), institutions exhibit diverse departmental structures:
+1. **Departmental Scoping for Staff**:
+   - A Career Counsellor or Faculty Supervisor at UNILORIN / FUTMinna's *School of ICT* or *Faculty of Science* must only manage their assigned departments (e.g., Computer Science / Software Engineering) and cannot see or modify students in Agriculture or Environmental Tech.
+   - A single staff member can hold distinct roles in different units (e.g. HOD in Software Engineering, while simultaneously serving as SIWES Coordinator for Cyber Security).
+2. **Program-Driven Dynamic Student Levels**:
+   - Within the **same Faculty of Science**, *B.Sc. Biological Science* has a **4-year duration**, while *B.Tech. Science Laboratory Technology (SLT)* has a **5-year duration**.
+   - In Polytechnics, *National Diploma (ND)* is **2 years** (`ND I`, `ND II`), and *Higher National Diploma (HND)* is **2 years** (`HND I`, `HND II`).
+   - In Colleges of Education, *NCE* programs are **3 years** (`NCE I`, `NCE II`, `NCE III`).
+   - In Medical / Pharmaceutical schools, programs span **6 years** (`100` through `600 Level`).
+   - **Requirement**: Student level must **not** be a rigid, static enum. It must dynamically derive from the program's `duration_years`, the institution's archetype, and the student's entry mode (`UTME` starts at Year 1, `DIRECT_ENTRY` starts at Year 2).
 
 ```mermaid
 graph TD
     subgraph "Tier 1: Institution Root"
-        INST["Institution (e.g. FUTMinna / GSU / YabaTech)"]
+        INST["Institution (FUTMinna / GSU / YabaTech / FCE Zaria)"]
     end
 
     subgraph "Tier 2: Division"
-        DIV["AcademicDivision (e.g. SICT / Faculty of Science)"]
+        DIV["AcademicDivision (Faculty / School / College)"]
     end
 
     subgraph "Tier 3: Department"
-        DEPT["Department (e.g. Dept of Computer Science)"]
+        DEPT["Department (e.g. Dept of SLT vs. Dept of Biological Sciences)"]
     end
 
-    subgraph "Tier 4: Leaf Programme"
-        PROG["AcademicProgram (e.g. B.Tech Computer Science)"]
+    subgraph "Tier 4: Leaf Programme (Defines Duration)"
+        PROG_4YR["AcademicProgram: B.Sc. Bio Sci (duration_years = 4)"]
+        PROG_5YR["AcademicProgram: B.Tech SLT (duration_years = 5)"]
+        PROG_ND["AcademicProgram: ND Comp Sci (duration_years = 2)"]
+        PROG_NCE["AcademicProgram: NCE Math/CS (duration_years = 3)"]
     end
 
-    subgraph "Staff Identity (Dynamic Caseload Scoping)"
+    subgraph "Staff Scoped Assignment"
         USER_STAFF["User (Staff Identity)"]
-        ASSIGN["StaffAssignment (Dept / Faculty Scope + Role)"]
+        ASSIGN["StaffAssignment (Scoped to Dept or Division)"]
         USER_STAFF --> ASSIGN
-        ASSIGN -.->|Scoped To| DIV
-        ASSIGN -.->|Scoped To| DEPT
+        ASSIGN -.->|Scoped Access| DEPT
     end
 
-    subgraph "Student Identity (Hierarchically Anchored)"
+    subgraph "Student Identity (Dynamic Level Mapping)"
         USER_STUDENT["User (Student Identity)"]
-        STUDENT_PROF["StudentProfile (Matric No, Level, Entry Session)"]
+        STUDENT_PROF["StudentProfile (year_of_study, entry_mode, matric_number)"]
         USER_STUDENT --> STUDENT_PROF
-        STUDENT_PROF -->|Enrolled In| PROG
-    end
-
-    subgraph "Future Downstream Engines"
-        PATHWAY["PathwayTemplate (Resolved from Program)"]
-        SCORE["EmployabilityScore (0–100 Calculated Breakdown)"]
-        PROG -.->|Auto-Resolves| PATHWAY
-        STUDENT_PROF -.->|Feeds Ledger| SCORE
+        STUDENT_PROF -->|Enrolled In| PROG_5YR
+        STUDENT_PROF -.->|Auto-Computes| DYN_LEVEL["Dynamic Level: '500 Level (Final Year)'"]
     end
 
     INST --> DIV
     DIV --> DEPT
-    DEPT --> PROG
+    DEPT --> PROG_4YR
+    DEPT --> PROG_5YR
+    DEPT --> PROG_ND
+    DEPT --> PROG_NCE
 ```
 
 ---
 
-## 2. Core Architecture & Data Modeling
+## 2. Relational Data Models Specification
 
 ### 2.1 Staff Scoping Architecture: `StaffAssignment`
-Instead of overloading the `User` model with one-off department columns, staff roles are decoupled into a clean relational model `StaffAssignment`. This supports multi-department responsibilities, primary/secondary appointments, and fine-grained permissions.
+Staff roles and permissions are decoupled into `StaffAssignment`, linking a `User` to an `Institution`, optional `AcademicDivision`, and optional `Department`.
 
 ```python
 class StaffRoleAtUnit(models.TextChoices):
@@ -85,179 +92,106 @@ class StaffRoleAtUnit(models.TextChoices):
     SUPERADMIN = "SUPERADMIN", "Institution Superadmin"
 ```
 
-#### `StaffAssignment` Model Specification:
+#### Fields in `StaffAssignment`:
 - `id`: `UUIDField(primary_key=True, default=uuid.uuid4, editable=False)`
 - `user`: `ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="staff_assignments")`
 - `institution`: `ForeignKey(Institution, on_delete=models.CASCADE, related_name="staff_assignments")`
 - `division`: `ForeignKey(AcademicDivision, null=True, blank=True, on_delete=models.SET_NULL, related_name="staff_assignments")`
-  - *If set and `department` is null*: Scopes staff to the **entire Division / Faculty**.
 - `department`: `ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL, related_name="staff_assignments")`
-  - *If set*: Scopes staff to this **specific Department**.
 - `role_at_unit`: `CharField(max_length=40, choices=StaffRoleAtUnit.choices)`
-- `official_title`: `CharField(max_length=200, blank=True)` (e.g. *"Lead Technical Assessor — Cloud Track"*)
-- `assigned_levels`: `JSONField(default=list, blank=True)` (e.g. `[300, 400]` — allows advisers/counsellors to be assigned to specific cohorts).
-- `can_evaluate_milestones`: `BooleanField(default=True)` — Permission to sign off student practical evidence.
-- `can_manage_waivers`: `BooleanField(default=False)` — Permission to issue prerequisite waivers for SIWES placements.
-- `max_caseload`: `PositiveIntegerField(default=100)` — Caseload allocation quota.
-- `is_primary`: `BooleanField(default=True)` — Marks primary appointment.
+- `official_title`: `CharField(max_length=200, blank=True)` (e.g. *"Academic Adviser — 300L SLT Track"*)
+- `assigned_years_of_study`: `JSONField(default=list, blank=True)` (e.g. `[3, 4, 5]` — restricts counsellor/adviser to specific cohorts)
+- `can_evaluate_milestones`: `BooleanField(default=True)`
+- `can_manage_waivers`: `BooleanField(default=False)`
+- `max_caseload`: `PositiveIntegerField(default=150)`
+- `is_primary`: `BooleanField(default=True)`
 - `is_active`: `BooleanField(default=True)`
 - `created_at`, `updated_at`: `DateTimeField`
 
 ---
 
-### 2.2 Student Identity Architecture: `StudentProfile`
-A student profile is anchored directly to `AcademicProgram` (Tier 4). Because `AcademicProgram` links to `Department` $\rightarrow$ `AcademicDivision` $\rightarrow$ `Institution`, all hierarchical metadata is inherently verifiable and relational.
+### 2.2 Dynamic Program-Driven Student Identity: `StudentProfile`
+
+#### Core Program-Driven Level Logic
+Instead of a rigid enum that fails across 4-year vs 5-year vs 2-year programs, the student profile tracks:
+1. `year_of_study`: `PositiveSmallIntegerField(default=1)` (1, 2, 3, 4, 5, 6)
+2. `is_spillover`: `BooleanField(default=False)` (For students extending beyond standard duration)
+3. Dynamic computation methods on `StudentProfile`:
+   - `get_level_code()`: Returns string code (e.g. `"100"`, `"200"`, `"300"`, `"400"`, `"500"`, `"600"`, `"ND_I"`, `"ND_II"`, `"HND_I"`, `"HND_II"`, `"NCE_I"`, `"NCE_II"`, `"NCE_III"`).
+   - `get_level_display()`: Returns human label (e.g. `"500 Level (Final Year)"` for SLT/B.Tech, `"400 Level (Final Year)"` for Bio Sci, `"ND II (Final Year)"` for Polytechnic ND, `"NCE III (Final Year)"` for College of Ed).
+   - `is_final_year`: Returns `year_of_study >= program.duration_years`.
+   - `is_siwes_year`: Compares `year_of_study` with `program.siwes_target_year` (typically Year 3 in 4-yr, Year 4 in 5-yr, Year 1 in 2-yr ND).
 
 ```python
-class StudentLevel(models.TextChoices):
-    LEVEL_100 = "100", "100 Level (Year 1 / ND I)"
-    LEVEL_200 = "200", "200 Level (Year 2 / ND II / NCE I)"
-    LEVEL_300 = "300", "300 Level (Year 3 / HND I / NCE II)"
-    LEVEL_400 = "400", "400 Level (Year 4 / HND II / NCE III)"
-    LEVEL_500 = "500", "500 Level (Year 5 / Final Year Eng.)"
-    LEVEL_600 = "600", "600 Level (Year 6 / Medical)"
-    GRADUATED = "GRADUATED", "Graduated (Awaiting NYSC)"
-    ALUMNI = "ALUMNI", "Alumni / Post-NYSC"
-
 class EntryMode(models.TextChoices):
-    UTME = "UTME", "UTME (Unified Tertiary Matriculation Exam)"
-    DIRECT_ENTRY = "DIRECT_ENTRY", "Direct Entry (DE - 200L)"
-    TRANSFER = "TRANSFER", "Inter-University / Inter-Faculty Transfer"
+    UTME = "UTME", "UTME (Standard Entry - Year 1)"
+    DIRECT_ENTRY = "DIRECT_ENTRY", "Direct Entry (DE - Year 2)"
+    TRANSFER = "TRANSFER", "Inter-Faculty / University Transfer"
     CONVERSION = "CONVERSION", "HND to B.Sc. Conversion"
 
 class AcademicStanding(models.TextChoices):
     IN_GOOD_STANDING = "IN_GOOD_STANDING", "In Good Standing"
     PROBATION = "PROBATION", "Academic Warning / Probation"
     SIWES_SUSPENDED = "SIWES_SUSPENDED", "SIWES Clearance Suspended"
-    GRADUATED = "GRADUATED", "Graduated"
+    GRADUATED = "GRADUATED", "Graduated (Awaiting NYSC)"
+    ALUMNI = "ALUMNI", "Alumni / Post-NYSC"
     DEFERRED = "DEFERRED", "Session Deferred"
 
 class SIWESClearanceStatus(models.TextChoices):
-    NOT_ELIGIBLE = "NOT_ELIGIBLE", "Not Yet Eligible (Pre-SIWES Level)"
-    QUALIFYING = "QUALIFYING", "Qualifying (Completing Prerequisite Milestones)"
-    CLEARED = "CLEARED", "Cleared by HOD & Coordinator (Ready for Dispatch)"
+    NOT_ELIGIBLE = "NOT_ELIGIBLE", "Not Yet Eligible (Pre-SIWES Year)"
+    QUALIFYING = "QUALIFYING", "Qualifying (Prerequisites in Progress)"
+    CLEARED = "CLEARED", "Cleared by HOD & Coordinator (Ready for Placement)"
     ON_ATTACHMENT = "ON_ATTACHMENT", "Active On Attachment"
-    COMPLETED = "COMPLETED", "Logbook & Presentation Completed"
+    COMPLETED = "COMPLETED", "Attachment Logbook & Presentation Completed"
 ```
 
-#### `StudentProfile` Model Specification:
+#### Fields in `StudentProfile`:
 - `id`: `UUIDField(primary_key=True, default=uuid.uuid4, editable=False)`
 - `user`: `OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="student_profile")`
 - `institution`: `ForeignKey(Institution, on_delete=models.PROTECT, related_name="students")` (Indexed cache)
 - `program`: `ForeignKey(AcademicProgram, on_delete=models.PROTECT, related_name="enrolled_students")`
-- `matric_number`: `CharField(max_length=50, db_index=True)` (e.g. `2021/1/74892CS`)
+- `matric_number`: `CharField(max_length=50, db_index=True)` (e.g. `2021/1/74892CS` or `GSU/SCI/CSC/22/0104`)
 - `jamb_reg_number`: `CharField(max_length=50, blank=True, db_index=True)`
 - `entry_session`: `ForeignKey(AcademicSession, on_delete=models.PROTECT, related_name="matriculated_students")`
 - `entry_mode`: `CharField(max_length=20, choices=EntryMode.choices, default=EntryMode.UTME)`
-- `current_level`: `CharField(max_length=15, choices=StudentLevel.choices, default=StudentLevel.LEVEL_100)`
-- `cgpa`: `DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)` (e.g. `4.28`)
+- `year_of_study`: `PositiveSmallIntegerField(default=1)` (1 to 6)
+- `is_spillover`: `BooleanField(default=False)`
+- `cgpa`: `DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)`
 - `academic_standing`: `CharField(max_length=30, choices=AcademicStanding.choices, default=AcademicStanding.IN_GOOD_STANDING)`
 - `siwes_clearance_status`: `CharField(max_length=30, choices=SIWESClearanceStatus.choices, default=SIWESClearanceStatus.NOT_ELIGIBLE)`
 - `phone_number`: `CharField(max_length=30, blank=True)`
 - `state_of_origin`: `CharField(max_length=50, blank=True)`
 - `gender`: `CharField(max_length=15, blank=True)`
 - `bio`: `TextField(blank=True)`
-- `portfolio_url`: `URLField(blank=True)` (e.g. GitHub profile / Behance portfolio)
+- `portfolio_url`: `URLField(blank=True)`
 - `linkedin_url`: `URLField(blank=True)`
-- `is_verified_student`: `BooleanField(default=True)` (True when matched to institution admissions register)
+- `is_verified_student`: `BooleanField(default=True)`
 - `created_at`, `updated_at`: `DateTimeField`
 
-**Constraints & Indexes**:
+**Database Constraints & Indexes**:
 - `UniqueConstraint(fields=["institution", "matric_number"], name="unique_matric_per_institution")`
-- `models.Index(fields=["institution", "current_level"])`
-- `models.Index(fields=["program", "current_level"])`
+- `Index(fields=["institution", "year_of_study"])`
+- `Index(fields=["program", "year_of_study"])`
 
 ---
 
-## 3. Scaffolding for Downstream Engines (Pathways & EmployabilityScore)
+## 3. Dynamic Level Mapping Matrix Across Archetypes
 
-```mermaid
-classDiagram
-    class StudentProfile {
-        +UUID id
-        +User user
-        +AcademicProgram program
-        +String matric_number
-        +StudentLevel current_level
-        +Decimal cgpa
-        +SIWESClearanceStatus siwes_status
-        +get_division() AcademicDivision
-        +get_department() Department
-        +get_assigned_counsellors() List~User~
-    }
-
-    class PathwayTemplate {
-        +UUID id
-        +Institution institution
-        +AcademicProgram program
-        +String title
-        +Int version
-        +Boolean is_active
-    }
-
-    class PathwayMilestone {
-        +UUID id
-        +PathwayTemplate template
-        +String title
-        +MilestoneType milestone_type
-        +Int target_level
-        +Int weight_points
-        +Boolean requires_artifact
-    }
-
-    class StudentMilestoneProgress {
-        +UUID id
-        +StudentProfile student
-        +PathwayMilestone milestone
-        +MilestoneState state
-        +String artifact_url
-        +User signed_by
-        +DateTime signed_at
-        +Int score_awarded
-    }
-
-    class EmployabilityScoreEngine {
-        +UUID student_id
-        +Int diagnostic_points (max 20)
-        +Int milestone_points (max 45)
-        +Int artifact_points (max 20)
-        +Int endorsement_points (max 15)
-        +Int total_score (0..100)
-        +calculate_score(student) Int
-    }
-
-    StudentProfile "1" --> "1" PathwayTemplate : auto-resolves via Program
-    PathwayTemplate "1" --> "*" PathwayMilestone : contains
-    StudentProfile "1" --> "*" StudentMilestoneProgress : logs
-    PathwayMilestone "1" --> "*" StudentMilestoneProgress : tracks
-    StudentProfile "1" --> "1" EmployabilityScoreEngine : calculated from
-```
-
-### 3.1 Dynamic Pathway Template Auto-Resolution
-When a student is created or navigates to their pathway, the system resolves their active `PathwayTemplate` in cascading priority:
-1. **Program-Specific Template**: Template explicitly attached to `student.program` (e.g. *B.Tech Software Engineering Track*).
-2. **Departmental Template**: Fallback template attached to `student.program.department` (e.g. *Department of Computer Science Core Track*).
-3. **Division Baseline**: Fallback template attached to `student.program.department.division` (e.g. *School of ICT General Technical Baseline*).
-
-### 3.2 The 100-Point Mathematical Scoring Engine Scaffold
-The student identity architecture includes explicit methods to calculate their auditable Employability Score in real-time:
-
-$$\text{Total Score (100 pts)} = S_{\text{diag}} (20) + S_{\text{milestones}} (45) + S_{\text{artifacts}} (20) + S_{\text{endorsements}} (15)$$
-
-| Component | Max Points | Verifiable Data Source | Validation Standard |
-| :--- | :--- | :--- | :--- |
-| **Vocational Diagnostic ($S_{\text{diag}}$)** | **20 pts** | `VocationalDiagnosticRecord` | Holland RIASEC + Technical Aptitude test completed. |
-| **Faculty Milestones ($S_{\text{milestones}}$)** | **45 pts** | `StudentMilestoneProgress` | $\frac{\text{Signed Milestones}}{\text{Required Milestones}} \times 45$ signed by named staff. |
-| **Practical Artifacts ($S_{\text{artifacts}}$)** | **20 pts** | Evaluated Lab / Capstone Artifact | Code repo, lab design, or project report scored $\ge 70\%$. |
-| **Counsellor Endorsement ($S_{\text{endorsements}}$)** | **15 pts** | `CounsellorInterviewRecord` | Work readiness & interview clearance signed by staff. |
+| Program Type | Example Degree | `duration_years` | Year 1 | Year 2 | Year 3 | Year 4 | Year 5 | Year 6 |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **University 4-Year** | B.Sc. Biological Science | **4** | 100 Level | 200 Level | 300 Level *(SIWES)* | 400 Level *(Final)* | — | — |
+| **University 5-Year** | B.Tech SLT / Software Eng | **5** | 100 Level | 200 Level | 300 Level | 400 Level *(SIWES)* | 500 Level *(Final)* | — |
+| **University 6-Year** | MBBS / PharmD / DVM | **6** | 100 Level | 200 Level | 300 Level | 400 Level | 500 Level | 600 Level *(Final)* |
+| **Polytechnic ND** | ND Computer Science | **2** | ND I | ND II *(SIWES/Final)* | — | — | — | — |
+| **Polytechnic HND** | HND Software Engineering | **2** | HND I | HND II *(Final)* | — | — | — | — |
+| **College of Ed NCE** | NCE Math / CS Combination | **3** | NCE I | NCE II | NCE III *(TP/Final)* | — | — | — |
 
 ---
 
-## 4. QuerySet Scoping & Caseload Security Rules
+## 4. QuerySet Scoping & Departmental Caseload Rules
 
-To enforce departmental boundaries, Django QuerySet filters and DRF Permission classes will automatically filter records based on the user's `StaffAssignment`:
+To enforce departmental boundaries and prevent cross-faculty data exposure:
 
-### 4.1 Staff Caseload Scoping Rules
 ```python
 def get_staff_scoped_students(user, institution_id=None):
     """
@@ -271,7 +205,7 @@ def get_staff_scoped_students(user, institution_id=None):
     if not assignments.exists():
         return StudentProfile.objects.none()
 
-    # If user is Superadmin or Director of Career Services -> Full Institution Access
+    # Superadmin or Director of Career Services -> Full Institution Access
     if assignments.filter(role_at_unit__in=[
         StaffRoleAtUnit.SUPERADMIN, 
         StaffRoleAtUnit.DIRECTOR_CAREER_SERVICES
@@ -279,12 +213,17 @@ def get_staff_scoped_students(user, institution_id=None):
         inst_id = assignments.first().institution_id
         return StudentProfile.objects.filter(institution_id=inst_id)
 
-    # Compile scoped divisions and departments
+    # Scoped Divisions (e.g. Deans) and Scoped Departments (e.g. HODs, Counsellors)
     scoped_division_ids = assignments.filter(department__isnull=True).values_list("division_id", flat=True)
     scoped_department_ids = assignments.filter(department__isnull=False).values_list("department_id", flat=True)
 
     q_filter = Q(program__department_id__in=scoped_department_ids) | Q(program__department__division_id__in=scoped_division_ids)
-    return StudentProfile.objects.filter(q_filter).select_related("user", "program", "program__department", "institution")
+    
+    qs = StudentProfile.objects.filter(q_filter)
+    if institution_id:
+        qs = qs.filter(institution_id=institution_id)
+        
+    return qs.select_related("user", "program", "program__department", "program__department__division", "institution")
 ```
 
 ---
@@ -292,109 +231,71 @@ def get_staff_scoped_students(user, institution_id=None):
 ## 5. REST API Endpoints Specification
 
 ### 5.1 Staff Assignment Endpoints (`/api/staff-assignments/`)
-- `GET /api/staff-assignments/`: Lists staff assignments (filtered by `institution`, `division`, `department`, or `role`).
-- `POST /api/staff-assignments/`: Assigns a staff member to a department/division with roles and evaluation permissions.
-- `GET /api/staff-assignments/my-caseload/`: Returns currently logged-in staff member's assigned departments, student count, and pending milestone reviews.
+- `GET /api/staff-assignments/`: Lists staff assignments filtered by institution.
+- `POST /api/staff-assignments/`: Creates a staff assignment with unit scope and roles.
+- `GET /api/staff-assignments/my-caseload/`: Returns currently logged-in staff member's assigned units, student count, and SIWES candidates.
 
 ### 5.2 Student Profile Endpoints (`/api/students/`)
 - `GET /api/students/`: Lists students (scoped strictly to staff member's assigned departments).
-- `POST /api/students/`: Creates a student account & profile anchored to `AcademicProgram`.
-- `GET /api/students/{id}/`: Detailed student view with program hierarchy, level, and academic standing.
-- `GET /api/students/me/`: Returns current logged-in student's complete profile, program tree, and milestone progress.
-- `GET /api/students/{id}/employability-score/`: Returns the 0–100 score with full explainability breakdown.
+- `POST /api/students/`: Creates a student account & profile with automatic level computation from `AcademicProgram`.
+- `GET /api/students/{id}/`: Detailed student view with program hierarchy, year of study, dynamic level display, and SIWES status.
+- `GET /api/students/me/`: Returns current logged-in student's full profile and program tree.
 
 ---
 
-## 6. Seed Accounts & Test Cohort Matrix
+## 6. Seed Accounts & Test Scenarios
 
-All accounts will use the standardized test password: **`1234!@#$`**
+All accounts use the standard test password: **`1234!@#$`**
 
 ### 6.1 Scoped Staff Seed Accounts:
 1. **Dean SICT (FUTMinna)**: `dean.sict@futminna.edu.ng` (Scoped to SICT division — sees SWE & CSC students).
 2. **HOD Software Engineering (FUTMinna)**: `hod.swe@futminna.edu.ng` (Scoped strictly to SWE department).
-3. **Counsellor (YabaTech)**: `counsellor.tech@yabatech.edu.ng` (Scoped to Computer Technology department).
-4. **HOD Math/CS (FCE Zaria)**: `hod.maths@fcezaria.edu.ng` (Scoped strictly to Mathematics Education).
+3. **Counsellor (GSU)**: `counsellor.sci@gsu.edu.ng` (Scoped to Faculty of Science).
+4. **HOD Computer Technology (YabaTech)**: `hod.ct@yabatech.edu.ng` (Scoped strictly to Computer Technology department).
+5. **HOD Math Education (FCE Zaria)**: `hod.maths@fcezaria.edu.ng` (Scoped strictly to Mathematics Education).
 
-### 6.2 Archetypal Student Seed Accounts:
-1. **Chidinma Okafor (FUTMinna)**:
+### 6.2 Diverse Program Duration Student Seed Accounts:
+1. **Amina Bello (FUTMinna - 5-Year SLT/B.Tech)**:
    - Email: `student.swe@futminna.edu.ng`
-   - Program: *B.Tech Software Engineering* (Tier 4)
-   - Dept: *Software Engineering* (Tier 3) $\rightarrow$ Div: *School of ICT* (Tier 2)
-   - Level: 300 Level · Entry: 2023/2024 · CGPA: 4.35 · SIWES Status: Qualifying
-2. **Ibrahim Danladi (GSU)**:
+   - Program: *B.Tech Software Engineering* (`duration_years = 5`)
+   - `year_of_study = 4` $\rightarrow$ Dynamic Level: **`400 Level (SIWES Qualifying)`**
+2. **Chinedu Eze (GSU - 4-Year B.Sc)**:
    - Email: `student.cs@gsu.edu.ng`
-   - Program: *B.Sc. Computer Science* (Tier 4)
-   - Dept: *Computer Science* (Tier 3) $\rightarrow$ Div: *Faculty of Science* (Tier 2)
-   - Level: 200 Level · Entry: 2024/2025 · CGPA: 3.80
-3. **Babatunde Adeleke (YabaTech)**:
+   - Program: *B.Sc. Computer Science* (`duration_years = 4`)
+   - `year_of_study = 4` $\rightarrow$ Dynamic Level: **`400 Level (Final Year)`**
+3. **Babatunde Adeleke (YabaTech - 2-Year ND)**:
    - Email: `student.nd@yabatech.edu.ng`
-   - Program: *National Diploma (ND) Computer Science* (Tier 4)
-   - Dept: *Computer Technology* (Tier 3) $\rightarrow$ Div: *School of Technology* (Tier 2)
-   - Level: 200 Level (ND II) · SIWES Status: Qualifying (4 Months attachment)
-4. **Fatima Garba (FCE Zaria)**:
+   - Program: *National Diploma (ND) Computer Science* (`duration_years = 2`)
+   - `year_of_study = 2` $\rightarrow$ Dynamic Level: **`ND II (Final Year / SIWES)`**
+4. **Fatima Garba (FCE Zaria - 3-Year NCE)**:
    - Email: `student.nce@fcezaria.edu.ng`
-   - Program: *NCE Mathematics / Computer Science Combination* (Tier 4)
-   - Dept: *Mathematics Education* (Tier 3) $\rightarrow$ Div: *School of Sciences* (Tier 2)
-   - Level: 300 Level (NCE III) · Teaching Practice Eligible
+   - Program: *NCE Mathematics / Computer Science* (`duration_years = 3`)
+   - `year_of_study = 3` $\rightarrow$ Dynamic Level: **`NCE III (Final Year / Teaching Practice)`**
 
 ---
 
-## 7. Phased Implementation Roadmap
+## 7. Phased Implementation Steps
 
-```mermaid
-gantt
-    title Student & Scoped Staff Identity Implementation
-    dateFormat  YYYY-MM-DD
-    section Phase 1: Data Models
-    StaffAssignment & StudentProfile Models       :p1_1, 2026-08-16, 1d
-    PostgreSQL Migrations & Constraints           :p1_2, after p1_1, 1d
-    section Phase 2: REST APIs & Scoping
-    DRF Serializers & Scoped QuerySet Filters     :p2_1, after p1_2, 1d
-    Student ME View & Score Calculator Scaffold   :p2_2, after p2_1, 1d
-    section Phase 3: Seeder & Automated Tests
-    Seed Scoped Staff & Archetypal Students       :p3_1, after p2_2, 1d
-    Pytest Integration Test Suite (8+ tests)      :p3_2, after p3_1, 1d
-    section Phase 4: Frontend UI
-    Student Profile & Scoped Staff Directory UI   :p4_1, after p3_2, 1d
-    Frontend Build & Verification                 :p4_2, after p4_1, 1d
-```
+### Phase 1: Backend Data Models & Migrations
+- Implement `StaffAssignment` and `StudentProfile` in `backend/edusal/institutions/models.py`.
+- Add dynamic level calculation methods (`get_level_code()`, `get_level_display()`, `is_final_year`).
+- Run Django migrations.
 
-### Step-by-Step Execution Plan:
+### Phase 2: REST APIs & Scoping Logic
+- Create `StaffAssignmentSerializer`, `StudentProfileSerializer`, `StudentCreateSerializer`.
+- Implement `StaffAssignmentViewSet` and `StudentProfileViewSet` with `get_staff_scoped_students()` filter.
+- Register routes in `config/api_router.py`.
 
-1. **Step 1: Backend Models (`backend/edusal/institutions/models.py` or new `identity` app)**:
-   - Create `StaffAssignment` model with unit scoping (`division`, `department`, `role_at_unit`, `assigned_levels`).
-   - Create `StudentProfile` model anchored to `AcademicProgram` with matric number uniqueness constraint.
-   - Run `python manage.py makemigrations` and `python manage.py migrate`.
+### Phase 3: Seeder Expansion & Pytest Test Suite
+- Expand `seed_institutions.py` to seed scoped staff and diverse multi-year duration students.
+- Write tests in `backend/edusal/institutions/tests/test_student_identity.py` covering:
+  - Dynamic level resolution (4-yr vs 5-yr vs 2-yr ND vs 3-yr NCE).
+  - Departmental scoping security (SEET staff cannot query Agric or Arts students).
+  - Matric number uniqueness per institution.
+  - Student creation and retrieve endpoints.
 
-2. **Step 2: Scoped QuerySets & DRF Serializers**:
-   - Create `StaffAssignmentSerializer` and `StudentProfileSerializer` (with full hierarchy expansion: Program $\rightarrow$ Dept $\rightarrow$ Division $\rightarrow$ Institution).
-   - Create `StaffAssignmentViewSet` and `StudentProfileViewSet`.
-   - Implement `get_queryset()` scoping logic so counsellors/HODs only receive students in their assigned unit.
-
-3. **Step 3: Seeder Expansion**:
-   - Update `seed_institutions.py` to seed both scoped staff and realistic students across all 4 archetypes (FUTMinna, GSU, YabaTech, FCE Zaria) with password `'1234!@#$'`.
-
-4. **Step 4: Pytest Test Suite**:
-   - Write comprehensive tests in `backend/edusal/institutions/tests/test_student_identity.py`:
-     - Test student creation linked to `AcademicProgram`.
-     - Test matric number uniqueness per institution.
-     - Test counsellor scoping (engineering counsellor cannot query agriculture students).
-     - Test student `/api/students/me/` endpoint.
-
-5. **Step 5: Frontend UI & TypeScript Types**:
-   - Update `frontend/src/types/` with `StudentProfile`, `StaffAssignment`, `StudentLevel`.
-   - Add student roster tab in the Institutional Dashboard (filtered by active staff unit).
-   - Add Student Identity Card & Program Path breadcrumb component.
-   - Run `npm run build` and push to GitHub.
-
----
-
-## 8. Verification & Acceptance Criteria
-
-| Checkpoint | Target Standard | Verification Command |
-| :--- | :--- | :--- |
-| **1. Program Anchoring** | Student links directly to Tier-4 `AcademicProgram` | `student.program.department.division.institution` resolves cleanly |
-| **2. Scoped Security** | Engineering staff cannot query Agric students | Pytest test case `test_departmental_scoping_isolation` passes |
-| **3. Matric Uniqueness** | Same matric number rejected in same institution | DB `UniqueConstraint` verified with IntegrityError test |
-| **4. Zero Emojis** | Pure SVG icons from `icons/index.tsx` | Grep emoji scanner confirms 0 emojis |
-| **5. Build & Tests** | Pytest 100% pass & Frontend 0 TypeScript errors | `pytest` + `npm run build` exit code 0 |
+### Phase 4: Frontend Scoped Staff Directory & Student Roster
+- Add TypeScript interfaces (`StudentProfile`, `StaffAssignment`) in `frontend/src/types/institution.ts`.
+- Add `StudentRoster.tsx` component in the Institutional Dashboard (showing matric number, program, dynamic level tag, entry mode, SIWES status, with modal to register student).
+- Add 5th tab to `InstitutionDashboard.tsx` ("Student Directory & Roster").
+- Run `npm run build` and push to GitHub.
