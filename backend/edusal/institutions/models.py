@@ -1056,4 +1056,341 @@ class StudentMilestoneSubmission(models.Model):
         return f"{self.student.matric_number} — {self.milestone.title} ({self.status})"
 
 
+# =============================================================================
+# Diagnostic Assessments & Psychometric Models
+# =============================================================================
+
+class AssessmentType(models.TextChoices):
+    BIG_FIVE = "BIG_FIVE", "Big Five Personality Inventory (OCEAN)"
+    HOLLAND_RIASEC = "HOLLAND_RIASEC", "Holland RIASEC Vocational Interests"
+    NUMERICAL_REASONING = "NUMERICAL_REASONING", "Numerical & Logical Reasoning"
+    DIGITAL_SKILLS = "DIGITAL_SKILLS", "Digital & Technical Skill Diagnostic"
+
+
+class DiagnosticAssessment(models.Model):
+    """Catalog of available diagnostic, psychometric, and cognitive skill tests."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    institution = models.ForeignKey(
+        Institution,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="custom_assessments",
+        help_text="Null for national standard assessments; set for institution-customized tests.",
+    )
+    assessment_type = models.CharField(max_length=40, choices=AssessmentType.choices)
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True)
+    description = models.TextField()
+    instructions = models.TextField(blank=True, default="")
+    estimated_minutes = models.PositiveIntegerField(default=10)
+    total_questions = models.PositiveIntegerField(default=20)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["assessment_type", "title"]
+        verbose_name = "Diagnostic Assessment"
+        verbose_name_plural = "Diagnostic Assessments"
+
+    def __str__(self) -> str:
+        return f"{self.title} ({self.get_assessment_type_display()})"
+
+
+class DiagnosticQuestion(models.Model):
+    """Individual item in a diagnostic assessment question bank."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    assessment = models.ForeignKey(
+        DiagnosticAssessment,
+        on_delete=models.CASCADE,
+        related_name="questions",
+    )
+    order_index = models.PositiveIntegerField(default=0)
+    prompt = models.TextField(help_text="Question text or psychometric statement")
+    dimension = models.CharField(
+        max_length=50,
+        help_text="Subscale/Trait code (e.g. 'OPENNESS', 'CONSCIENTIOUSNESS', 'REALISTIC', 'INVESTIGATIVE', 'LOGIC')",
+    )
+    is_reverse_scored = models.BooleanField(
+        default=False,
+        help_text="True if Likert scale must be inverted (6 - score)",
+    )
+    question_type = models.CharField(
+        max_length=30,
+        choices=[
+            ("LIKERT_5", "5-Point Likert Scale (1-5)"),
+            ("MULTIPLE_CHOICE", "Multiple Choice Single Answer"),
+        ],
+        default="LIKERT_5",
+    )
+    options = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="For multiple-choice items: [{id: 'A', text: '...', is_correct: True, points: 10}]",
+    )
+    explanation = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["assessment", "order_index"]
+        verbose_name = "Diagnostic Question"
+        verbose_name_plural = "Diagnostic Questions"
+
+    def __str__(self) -> str:
+        return f"{self.assessment.title} - Q{self.order_index + 1}: {self.dimension}"
+
+
+class StudentAssessmentSession(models.Model):
+    """Recorded student assessment attempt with calculated psychometric profile."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(
+        StudentProfile,
+        on_delete=models.CASCADE,
+        related_name="assessment_sessions",
+    )
+    assessment = models.ForeignKey(
+        DiagnosticAssessment,
+        on_delete=models.CASCADE,
+        related_name="sessions",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=[
+            ("IN_PROGRESS", "In Progress"),
+            ("COMPLETED", "Completed"),
+            ("ABANDONED", "Abandoned"),
+        ],
+        default="IN_PROGRESS",
+    )
+    raw_responses = models.JSONField(
+        default=dict,
+        help_text="Dict of {question_id: selected_value}",
+    )
+    dimension_scores = models.JSONField(
+        default=dict,
+        help_text="Computed subscale scores: {'OPENNESS': 82.5, 'CONSCIENTIOUSNESS': 90.0, ...}",
+    )
+    summary_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="e.g. Holland 3-letter code 'IRC' or Big Five summary",
+    )
+    percentile_rank = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    summary_report = models.TextField(blank=True, default="")
+    career_recommendations = models.JSONField(default=list, blank=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-completed_at", "-started_at"]
+        verbose_name = "Student Assessment Session"
+        verbose_name_plural = "Student Assessment Sessions"
+
+    def __str__(self) -> str:
+        return f"{self.student.matric_number} - {self.assessment.title} ({self.status})"
+
+
+# =============================================================================
+# 24/7 AI Career Coach Models
+# =============================================================================
+
+class AICoachConversation(models.Model):
+    """Multi-turn conversation thread between student and 24/7 AI Career Coach."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(
+        StudentProfile,
+        on_delete=models.CASCADE,
+        related_name="ai_conversations",
+    )
+    title = models.CharField(max_length=200, default="Career & SIWES Advisory Session")
+    is_active = models.BooleanField(default=True)
+    case_summary = models.TextField(
+        blank=True,
+        default="",
+        help_text="AI-synthesized 3-bullet summary of student questions for human counsellor handoff",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+        verbose_name = "AI Coach Conversation"
+        verbose_name_plural = "AI Coach Conversations"
+
+    def __str__(self) -> str:
+        return f"{self.student.matric_number}: {self.title} ({self.created_at.strftime('%Y-%m-%d')})"
+
+
+class AICoachMessage(models.Model):
+    """Individual message turn in an AI Coach conversation."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    conversation = models.ForeignKey(
+        AICoachConversation,
+        on_delete=models.CASCADE,
+        related_name="messages",
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=[
+            ("user", "Student"),
+            ("assistant", "AI Coach"),
+            ("system", "System Grounding"),
+        ],
+    )
+    content = models.TextField()
+    citations = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of grounded institutional document references with chunk IDs",
+    )
+    telemetry = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Latency, tokens, model name",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "AI Coach Message"
+        verbose_name_plural = "AI Coach Messages"
+
+    def __str__(self) -> str:
+        return f"[{self.role}] {self.content[:50]}..."
+
+
+# =============================================================================
+# Seamless Counsellor Handoff & Booking Models
+# =============================================================================
+
+class CounsellingTopic(models.TextChoices):
+    PATHWAY_ALIGNMENT = "PATHWAY_ALIGNMENT", "Career Pathway & Milestone Planning"
+    SIWES_CLEARANCE = "SIWES_CLEARANCE", "SIWES Placement, Logbook & Clearance"
+    ASSESSMENT_DEBRIEF = "ASSESSMENT_DEBRIEF", "Psychometric & Skills Diagnostic Debrief"
+    RESUME_CV_REVIEW = "RESUME_CV_REVIEW", "Resume, Portfolio & Cover Letter Review"
+    EMPLOYER_PLACEMENT = "EMPLOYER_PLACEMENT", "Graduate Job Placement & Internship Advisory"
+    ACADEMIC_STANDING = "ACADEMIC_STANDING", "Academic Standing & CGPA Improvement"
+
+
+class CounsellingSessionStatus(models.TextChoices):
+    REQUESTED = "REQUESTED", "Session Requested"
+    CONFIRMED = "CONFIRMED", "Confirmed / Scheduled"
+    COMPLETED = "COMPLETED", "Completed"
+    RESCHEDULED = "RESCHEDULED", "Rescheduled"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class CounsellingSession(models.Model):
+    """Scheduled 1-on-1 career counselling appointment."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(
+        StudentProfile,
+        on_delete=models.CASCADE,
+        related_name="counselling_sessions",
+    )
+    counsellor = models.ForeignKey(
+        InstitutionStaff,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_sessions",
+    )
+    topic = models.CharField(max_length=40, choices=CounsellingTopic.choices)
+    student_notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Student description of guidance needed",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=CounsellingSessionStatus.choices,
+        default=CounsellingSessionStatus.REQUESTED,
+    )
+    preferred_date = models.DateField()
+    preferred_time_slot = models.CharField(
+        max_length=50,
+        help_text="e.g. '10:00 AM - 10:45 AM' or '2:00 PM - 2:45 PM'",
+    )
+    scheduled_datetime = models.DateTimeField(null=True, blank=True)
+    meeting_mode = models.CharField(
+        max_length=30,
+        choices=[
+            ("IN_PERSON", "In-Person (Department Office)"),
+            ("VIRTUAL_CALL", "Virtual Video / Voice Call"),
+        ],
+        default="IN_PERSON",
+    )
+    meeting_location = models.CharField(
+        max_length=200,
+        blank=True,
+        default="Departmental Career & SIWES Office",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-preferred_date", "-created_at"]
+        verbose_name = "Counselling Session"
+        verbose_name_plural = "Counselling Sessions"
+
+    def __str__(self) -> str:
+        return f"{self.student.matric_number} - {self.get_topic_display()} ({self.status})"
+
+
+class CounsellingCaseNote(models.Model):
+    """Confidential case note documented by staff regarding a student's career session."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    session = models.ForeignKey(
+        CounsellingSession,
+        on_delete=models.CASCADE,
+        related_name="case_notes",
+        null=True,
+        blank=True,
+    )
+    student = models.ForeignKey(
+        StudentProfile,
+        on_delete=models.CASCADE,
+        related_name="counsellor_case_notes",
+    )
+    author = models.ForeignKey(
+        InstitutionStaff,
+        on_delete=models.CASCADE,
+        related_name="authored_notes",
+    )
+    summary = models.TextField(help_text="Key takeaways, obstacles identified, and advice given")
+    action_items = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of [{task: '...', due_date: '...', done: False}]",
+    )
+    is_confidential = models.BooleanField(
+        default=True,
+        help_text="Visible only to assigned faculty counsellors and HOD",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Counselling Case Note"
+        verbose_name_plural = "Counselling Case Notes"
+
+    def __str__(self) -> str:
+        return f"Case Note for {self.student.matric_number} by {self.author.user.name} ({self.created_at.strftime('%Y-%m-%d')})"
+
+
+
 

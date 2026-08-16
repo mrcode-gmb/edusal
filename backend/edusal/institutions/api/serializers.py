@@ -14,6 +14,13 @@ from edusal.institutions.models import (
     PathwayMilestone,
     StudentMilestoneSubmission,
     SubmissionStatus,
+    DiagnosticAssessment,
+    DiagnosticQuestion,
+    StudentAssessmentSession,
+    AICoachConversation,
+    AICoachMessage,
+    CounsellingSession,
+    CounsellingCaseNote,
 )
 
 
@@ -712,6 +719,262 @@ class StudentDashboardDataSerializer(serializers.Serializer):
     active_pathway = PathwayDetailSerializer(allow_null=True)
     submissions = StudentMilestoneSubmissionSerializer(many=True)
     employability_summary = serializers.DictField()
+
+
+# =============================================================================
+# Diagnostic Assessments Serializers
+# =============================================================================
+
+class DiagnosticQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DiagnosticQuestion
+        fields = [
+            "id",
+            "order_index",
+            "prompt",
+            "dimension",
+            "is_reverse_scored",
+            "question_type",
+            "options",
+            "explanation",
+        ]
+
+
+class DiagnosticAssessmentListSerializer(serializers.ModelSerializer):
+    assessment_type_display = serializers.CharField(source="get_assessment_type_display", read_only=True)
+    questions_count = serializers.IntegerField(source="questions.count", read_only=True)
+
+    class Meta:
+        model = DiagnosticAssessment
+        fields = [
+            "id",
+            "institution",
+            "assessment_type",
+            "assessment_type_display",
+            "title",
+            "slug",
+            "description",
+            "instructions",
+            "estimated_minutes",
+            "total_questions",
+            "questions_count",
+            "is_active",
+            "created_at",
+        ]
+
+
+class DiagnosticAssessmentDetailSerializer(serializers.ModelSerializer):
+    assessment_type_display = serializers.CharField(source="get_assessment_type_display", read_only=True)
+    questions = DiagnosticQuestionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = DiagnosticAssessment
+        fields = [
+            "id",
+            "institution",
+            "assessment_type",
+            "assessment_type_display",
+            "title",
+            "slug",
+            "description",
+            "instructions",
+            "estimated_minutes",
+            "total_questions",
+            "questions",
+            "is_active",
+            "created_at",
+        ]
+
+
+class StudentAssessmentSubmitSerializer(serializers.Serializer):
+    assessment_id = serializers.UUIDField(required=True)
+    raw_responses = serializers.DictField(required=True)
+
+
+class StudentAssessmentSessionSerializer(serializers.ModelSerializer):
+    assessment_title = serializers.CharField(source="assessment.title", read_only=True)
+    assessment_type = serializers.CharField(source="assessment.assessment_type", read_only=True)
+    assessment_type_display = serializers.CharField(source="assessment.get_assessment_type_display", read_only=True)
+    student_matric = serializers.CharField(source="student.matric_number", read_only=True)
+    student_name = serializers.CharField(source="student.user.name", read_only=True)
+
+    class Meta:
+        model = StudentAssessmentSession
+        fields = [
+            "id",
+            "student",
+            "student_matric",
+            "student_name",
+            "assessment",
+            "assessment_title",
+            "assessment_type",
+            "assessment_type_display",
+            "status",
+            "raw_responses",
+            "dimension_scores",
+            "summary_code",
+            "percentile_rank",
+            "summary_report",
+            "career_recommendations",
+            "started_at",
+            "completed_at",
+        ]
+
+
+# =============================================================================
+# 24/7 AI Career Coach Serializers
+# =============================================================================
+
+class AICoachMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AICoachMessage
+        fields = [
+            "id",
+            "conversation",
+            "role",
+            "content",
+            "citations",
+            "telemetry",
+            "created_at",
+        ]
+
+
+class AICoachConversationSerializer(serializers.ModelSerializer):
+    messages = AICoachMessageSerializer(many=True, read_only=True)
+    messages_count = serializers.IntegerField(source="messages.count", read_only=True)
+    last_message = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AICoachConversation
+        fields = [
+            "id",
+            "student",
+            "title",
+            "is_active",
+            "case_summary",
+            "messages_count",
+            "last_message",
+            "messages",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_last_message(self, obj):
+        last = obj.messages.order_by("-created_at").first()
+        if last:
+            return AICoachMessageSerializer(last).data
+        return None
+
+
+class AICoachChatPayloadSerializer(serializers.Serializer):
+    message = serializers.CharField(required=True, max_length=2000)
+
+
+# =============================================================================
+# Counselling Sessions & Case Notes Serializers
+# =============================================================================
+
+class CounsellingCaseNoteSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source="author.user.name", read_only=True)
+    author_title = serializers.CharField(source="author.title", read_only=True)
+    student_matric = serializers.CharField(source="student.matric_number", read_only=True)
+
+    class Meta:
+        model = CounsellingCaseNote
+        fields = [
+            "id",
+            "session",
+            "student",
+            "student_matric",
+            "author",
+            "author_name",
+            "author_title",
+            "summary",
+            "action_items",
+            "is_confidential",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "author", "created_at", "updated_at"]
+
+
+class CounsellingSessionSerializer(serializers.ModelSerializer):
+    topic_display = serializers.CharField(source="get_topic_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    meeting_mode_display = serializers.CharField(source="get_meeting_mode_display", read_only=True)
+    student_matric = serializers.CharField(source="student.matric_number", read_only=True)
+    student_name = serializers.CharField(source="student.user.name", read_only=True)
+    student_program = serializers.CharField(source="student.program.name", read_only=True)
+    student_level = serializers.CharField(source="student.get_level_display", read_only=True)
+    counsellor_name = serializers.CharField(source="counsellor.user.name", read_only=True, default=None)
+    counsellor_title = serializers.CharField(source="counsellor.title", read_only=True, default=None)
+    case_notes = CounsellingCaseNoteSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CounsellingSession
+        fields = [
+            "id",
+            "student",
+            "student_matric",
+            "student_name",
+            "student_program",
+            "student_level",
+            "counsellor",
+            "counsellor_name",
+            "counsellor_title",
+            "topic",
+            "topic_display",
+            "student_notes",
+            "status",
+            "status_display",
+            "preferred_date",
+            "preferred_time_slot",
+            "scheduled_datetime",
+            "meeting_mode",
+            "meeting_mode_display",
+            "meeting_location",
+            "case_notes",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "status", "created_at", "updated_at"]
+
+
+class CounsellingSessionCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CounsellingSession
+        fields = [
+            "counsellor",
+            "topic",
+            "student_notes",
+            "preferred_date",
+            "preferred_time_slot",
+            "meeting_mode",
+            "meeting_location",
+        ]
+
+
+class CounsellingSessionConfirmSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(
+        choices=["CONFIRMED", "COMPLETED", "RESCHEDULED", "CANCELLED"],
+        default="CONFIRMED",
+    )
+    scheduled_datetime = serializers.DateTimeField(required=False, allow_null=True)
+    meeting_location = serializers.CharField(required=False, allow_blank=True)
+
+
+class StudentDossierSerializer(serializers.Serializer):
+    """Complete 360° student dossier presented to departmental counsellors and HODs."""
+
+    profile = StudentProfileSerializer()
+    active_pathway = PathwayDetailSerializer(allow_null=True)
+    submissions = StudentMilestoneSubmissionSerializer(many=True)
+    assessments = StudentAssessmentSessionSerializer(many=True)
+    counselling_sessions = CounsellingSessionSerializer(many=True)
+    case_notes = CounsellingCaseNoteSerializer(many=True)
+    ai_coach_summary = serializers.CharField(allow_blank=True)
+    employability_summary = serializers.DictField()
+
 
 
 

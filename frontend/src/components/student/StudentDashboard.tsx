@@ -1,33 +1,42 @@
 import { useState, useEffect, type FC } from 'react';
-import type { StudentDashboardData, AuthUser } from '../../types/institution';
+import type { AuthUser, StudentDashboardData } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
 import { EmployabilityGaugeCard } from './EmployabilityGaugeCard';
 import { StudentRoadmapTimeline } from './StudentRoadmapTimeline';
+import { AssessmentCatalog } from './AssessmentCatalog';
+import { AICareerCoachChat } from './AICareerCoachChat';
+import { CounsellingSessionsTab } from './CounsellingSessionsTab';
 import {
   GraduationCapIcon,
   LogOutIcon,
   RefreshCwIcon,
+  AlertCircleIcon,
+  BrainIcon,
+  SparklesIcon,
+  UserCheckIcon,
   CompassIcon,
 } from '../icons';
 
 interface StudentDashboardProps {
-  currentUser?: AuthUser;
+  currentUser: AuthUser;
   authToken: string;
   onLogout: () => void;
 }
 
 export const StudentDashboard: FC<StudentDashboardProps> = ({
+  currentUser: _currentUser,
   authToken,
   onLogout,
 }) => {
   const [data, setData] = useState<StudentDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'roadmap' | 'diagnostics' | 'ai_coach' | 'counselling'>('roadmap');
 
   const loadDashboard = async () => {
-    setLoading(true);
-    setError(null);
     try {
+      setLoading(true);
+      setError(null);
       const res = await institutionApi.getStudentDashboard(authToken);
       setData(res);
     } catch (err: unknown) {
@@ -43,19 +52,20 @@ export const StudentDashboard: FC<StudentDashboardProps> = ({
 
   if (loading) {
     return (
-      <div className="student-loading-container">
-        <div className="loading-spinner" />
-        <p>Loading your career pathway dashboard...</p>
+      <div className="student-portal-loading">
+        <div className="spinner"></div>
+        <p>Loading your accredited student career portal & roadmap...</p>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="student-error-container">
-        <h3>Unable to Load Dashboard</h3>
-        <p>{error || 'Student profile data could not be retrieved.'}</p>
-        <button type="button" className="btn btn-primary-sm" onClick={loadDashboard}>
+      <div className="student-portal-error">
+        <AlertCircleIcon size={32} color="#dc2626" />
+        <h3>Failed to Load Student Portal</h3>
+        <p>{error || 'An unexpected error occurred while loading your profile.'}</p>
+        <button type="button" className="btn btn-primary" onClick={loadDashboard}>
           Retry
         </button>
       </div>
@@ -129,27 +139,96 @@ export const StudentDashboard: FC<StudentDashboardProps> = ({
           </div>
         </div>
 
-        {/* Employability Score Gauge Card */}
-        <EmployabilityGaugeCard
-          summary={employability_summary}
-          profile={profile}
-        />
-
-        {/* Career Pathway Roadmap */}
-        {active_pathway ? (
-          <StudentRoadmapTimeline
-            pathway={active_pathway}
-            submissions={submissions}
-            studentYearOfStudy={profile.year_of_study}
-            authToken={authToken}
-            onRefresh={loadDashboard}
-          />
-        ) : (
-          <div className="no-enrolled-pathway-card">
-            <CompassIcon size={36} color="#94a3b8" />
-            <h4>No Career Pathway Assigned Yet</h4>
-            <p>Your departmental counsellor will assign a career pathway blueprint to your degree program shortly.</p>
+        {/* 4 Primary Student Workspace Tabs */}
+        <div className="student-workspace-tabs-container">
+          <div className="student-workspace-tabs">
+            <button
+              type="button"
+              className={`student-tab-btn ${activeTab === 'roadmap' ? 'active' : ''}`}
+              onClick={() => setActiveTab('roadmap')}
+            >
+              <CompassIcon size={16} />
+              <span>1. Milestone Roadmap & Score</span>
+            </button>
+            <button
+              type="button"
+              className={`student-tab-btn ${activeTab === 'diagnostics' ? 'active' : ''}`}
+              onClick={() => setActiveTab('diagnostics')}
+            >
+              <BrainIcon size={16} />
+              <span>2. Diagnostic Assessments</span>
+            </button>
+            <button
+              type="button"
+              className={`student-tab-btn ${activeTab === 'ai_coach' ? 'active' : ''}`}
+              onClick={() => setActiveTab('ai_coach')}
+            >
+              <SparklesIcon size={16} />
+              <span>3. 24/7 AI Career Coach</span>
+            </button>
+            <button
+              type="button"
+              className={`student-tab-btn ${activeTab === 'counselling' ? 'active' : ''}`}
+              onClick={() => setActiveTab('counselling')}
+            >
+              <UserCheckIcon size={16} />
+              <span>4. Counsellor Sessions</span>
+            </button>
           </div>
+        </div>
+
+        {/* Tab 1: Roadmap & Employability Score */}
+        {activeTab === 'roadmap' && (
+          <div className="tab-content-roadmap">
+            <EmployabilityGaugeCard
+              summary={employability_summary}
+              profile={profile}
+            />
+
+            {active_pathway ? (
+              <StudentRoadmapTimeline
+                pathway={active_pathway}
+                submissions={submissions}
+                studentYearOfStudy={profile.year_of_study}
+                authToken={authToken}
+                onRefresh={loadDashboard}
+              />
+            ) : (
+              <div className="no-pathway-enrolled-card">
+                <AlertCircleIcon size={32} color="#f59e0b" />
+                <h3>No Active Career Pathway Enrolled</h3>
+                <p>
+                  Your department has not assigned an active career pathway template to your profile yet.
+                  Please consult your HOD or departmental counsellor to enroll in your degree milestones.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Diagnostic Assessments */}
+        {activeTab === 'diagnostics' && (
+          <AssessmentCatalog
+            studentId={profile.id}
+            authToken={authToken}
+          />
+        )}
+
+        {/* Tab 3: 24/7 AI Career Coach */}
+        {activeTab === 'ai_coach' && (
+          <AICareerCoachChat
+            studentProfile={profile}
+            activePathway={active_pathway}
+            authToken={authToken}
+          />
+        )}
+
+        {/* Tab 4: Counsellor Sessions */}
+        {activeTab === 'counselling' && (
+          <CounsellingSessionsTab
+            studentProfile={profile}
+            authToken={authToken}
+          />
         )}
       </main>
     </div>

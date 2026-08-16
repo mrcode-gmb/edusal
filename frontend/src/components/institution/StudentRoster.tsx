@@ -3,6 +3,7 @@ import type { StudentProfile, InstitutionHierarchyTree, AcademicSession } from '
 import { institutionApi } from '../../services/institutionApi';
 import { AddStudentModal } from './AddStudentModal';
 import { GenerateCredentialModal } from './GenerateCredentialModal';
+import { CounsellorDossierModal } from './CounsellorDossierModal';
 import {
   GraduationCapIcon,
   PlusIcon,
@@ -12,6 +13,7 @@ import {
   BookOpenIcon,
   BriefcaseIcon,
   KeyIcon,
+  BrainIcon,
 } from '../icons';
 
 interface StudentRosterProps {
@@ -36,6 +38,7 @@ export const StudentRoster: FC<StudentRosterProps> = ({
   const [selectedYear, setSelectedYear] = useState<number | 'ALL'>('ALL');
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedStudentForCreds, setSelectedStudentForCreds] = useState<StudentProfile | null>(null);
+  const [selectedStudentForDossier, setSelectedStudentForDossier] = useState<string | null>(null);
 
 
   const loadStudents = async () => {
@@ -336,14 +339,24 @@ export const StudentRoster: FC<StudentRosterProps> = ({
                     </td>
 
                     <td>
-                      <button
-                        type="button"
-                        className="btn btn-outline-xs btn-cred-action"
-                        onClick={() => setSelectedStudentForCreds(std)}
-                        title="Generate password and email credentials"
-                      >
-                        <KeyIcon size={12} /> Email Password
-                      </button>
+                      <div className="roster-actions-group">
+                        <button
+                          type="button"
+                          className="btn btn-outline-xs btn-dossier-action"
+                          onClick={() => setSelectedStudentForDossier(std.id)}
+                          title="View 360° student dossier, psychometric radar, and case notes"
+                        >
+                          <BrainIcon size={12} /> 360° Dossier
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline-xs btn-cred-action"
+                          onClick={() => setSelectedStudentForCreds(std)}
+                          title="Generate password and email credentials"
+                        >
+                          <KeyIcon size={12} /> Password
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -372,6 +385,15 @@ export const StudentRoster: FC<StudentRosterProps> = ({
           student={selectedStudentForCreds}
           authToken={authToken}
           onSuccess={loadStudents}
+        />
+      )}
+
+      {/* 360 Student Dossier Modal */}
+      {selectedStudentForDossier && (
+        <CounsellorDossierModal
+          studentId={selectedStudentForDossier}
+          authToken={authToken || undefined}
+          onClose={() => setSelectedStudentForDossier(null)}
         />
       )}
     </div>
