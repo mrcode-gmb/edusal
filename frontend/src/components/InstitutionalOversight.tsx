@@ -1,4 +1,5 @@
 import type { FC } from 'react';
+import { BuildingIcon, CheckIcon } from './icons';
 
 export const InstitutionalOversight: FC = () => {
   const taxonomyItems = [
@@ -43,7 +44,7 @@ export const InstitutionalOversight: FC = () => {
               <h3 className="oversight-title">{item.title}</h3>
               <p className="oversight-desc">{item.desc}</p>
               <div className="oversight-detail-box">
-                <span className="detail-check">✓</span>
+                <CheckIcon size={14} color="#059669" />
                 <span className="detail-text">{item.details}</span>
               </div>
             </div>
@@ -53,7 +54,9 @@ export const InstitutionalOversight: FC = () => {
         {/* Regulator Compliance Banner */}
         <div className="regulator-alignment-card">
           <div className="reg-badge-col">
-            <span className="reg-seal">🏛️</span>
+            <span className="reg-seal">
+              <BuildingIcon size={24} color="#0052cc" />
+            </span>
             <div>
               <h4>Standardized for Nigerian Regulatory Compliance</h4>
               <p>Designed to support institutional self-study reports, accreditation audits, and senate oversight portfolios.</p>
@@ -70,3 +73,4 @@ export const InstitutionalOversight: FC = () => {
     </section>
   );
 };
+

@@ -7,6 +7,7 @@ from edusal.institutions.models import (
     AcademicSession,
     InstitutionalDocument,
     InstitutionalDocumentChunk,
+    InstitutionStaff,
 )
 
 
@@ -233,3 +234,55 @@ class DocumentSearchQuerySerializer(serializers.Serializer):
     query = serializers.CharField(required=True, max_length=500)
     top_k = serializers.IntegerField(required=False, default=5, min_value=1, max_value=20)
     doc_type = serializers.CharField(required=False, allow_blank=True)
+
+
+class InstitutionStaffSerializer(serializers.ModelSerializer):
+    user_email = serializers.CharField(source="user.email", read_only=True)
+    user_name = serializers.CharField(source="user.name", read_only=True)
+    role_display = serializers.CharField(source="get_role_display", read_only=True)
+    institution_name = serializers.CharField(source="institution.name", read_only=True)
+    institution_short_name = serializers.CharField(source="institution.short_name", read_only=True)
+    division_name = serializers.CharField(source="division.name", read_only=True)
+    department_name = serializers.CharField(source="department.name", read_only=True)
+
+    class Meta:
+        model = InstitutionStaff
+        fields = [
+            "id",
+            "user",
+            "user_email",
+            "user_name",
+            "institution",
+            "institution_name",
+            "institution_short_name",
+            "division",
+            "division_name",
+            "department",
+            "department_name",
+            "role",
+            "role_display",
+            "title",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class AuthLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True, write_only=True)
+
+
+class AuthUserSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    email = serializers.EmailField()
+    name = serializers.CharField()
+    staff_profile = serializers.SerializerMethodField()
+
+    def get_staff_profile(self, obj):
+        staff = obj.institution_staff_profiles.filter(is_active=True).select_related("institution", "division", "department").first()
+        if staff:
+            return InstitutionStaffSerializer(staff).data
+        return None
+

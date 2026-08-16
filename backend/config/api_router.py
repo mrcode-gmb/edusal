@@ -10,6 +10,7 @@ from edusal.institutions.api.views import (
     AcademicProgramViewSet,
     AcademicSessionViewSet,
     InstitutionalDocumentViewSet,
+    InstitutionStaffViewSet,
 )
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
@@ -21,6 +22,7 @@ router.register("departments", DepartmentViewSet, basename="department")
 router.register("programs", AcademicProgramViewSet, basename="program")
 router.register("sessions", AcademicSessionViewSet, basename="session")
 router.register("documents", InstitutionalDocumentViewSet, basename="document")
+router.register("staff", InstitutionStaffViewSet, basename="staff")
 
 app_name = "api"
 urlpatterns = router.urls

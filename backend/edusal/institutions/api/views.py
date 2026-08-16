@@ -1,10 +1,13 @@
 import hashlib
+from django.contrib.auth import authenticate, get_user_model
 from django.db import transaction
 from django.db.models import Count, Q
 from rest_framework import status, viewsets
+from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from edusal.institutions.models import (
     Institution,
@@ -14,6 +17,7 @@ from edusal.institutions.models import (
     AcademicSession,
     InstitutionalDocument,
     InstitutionalDocumentChunk,
+    InstitutionStaff,
     EmbeddingStatus,
 )
 from .serializers import (
@@ -26,7 +30,12 @@ from .serializers import (
     InstitutionalDocumentSerializer,
     InstitutionalDocumentChunkSerializer,
     DocumentSearchQuerySerializer,
+    InstitutionStaffSerializer,
+    AuthLoginSerializer,
+    AuthUserSerializer,
 )
+
+User = get_user_model()
 
 
 class InstitutionViewSet(viewsets.ModelViewSet):
@@ -363,3 +372,121 @@ class InstitutionalDocumentViewSet(viewsets.ModelViewSet):
             "message": f"Successfully ingested and indexed {len(created_chunks)} chunks.",
             "document": InstitutionalDocumentSerializer(doc).data,
         })
+
+
+class InstitutionStaffViewSet(viewsets.ModelViewSet):
+    """CRUD ViewSet for managing institutional staff, deans, and evaluators."""
+
+    queryset = InstitutionStaff.objects.all().select_related("user", "institution", "division", "department")
+    serializer_class = InstitutionStaffSerializer
+    permission_classes = [AllowAny]
+    lookup_field = "id"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        inst_id = self.request.query_params.get("institution")
+        role = self.request.query_params.get("role")
+        if inst_id:
+            qs = qs.filter(institution_id=inst_id)
+        if role:
+            qs = qs.filter(role=role.upper())
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        email = request.data.get("email")
+        name = request.data.get("name", "")
+        institution_id = request.data.get("institution")
+        role = request.data.get("role", "COUNSELLOR")
+        title = request.data.get("title", "")
+        division_id = request.data.get("division")
+        department_id = request.data.get("department")
+
+        if not email or not institution_id:
+            return Response(
+                {"error": "Email and institution are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with transaction.atomic():
+            user, created = User.objects.get_or_create(
+                email=email.lower().strip(),
+                defaults={"name": name, "is_active": True},
+            )
+            if created:
+                user.set_password("1234!@#$")
+                user.save()
+            elif name and not user.name:
+                user.name = name
+                user.save(update_fields=["name"])
+
+            staff, _ = InstitutionStaff.objects.update_or_create(
+                user=user,
+                institution_id=institution_id,
+                defaults={
+                    "role": role,
+                    "title": title,
+                    "division_id": division_id if division_id else None,
+                    "department_id": department_id if department_id else None,
+                    "is_active": True,
+                },
+            )
+
+        serializer = self.get_serializer(staff)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AuthLoginView(APIView):
+    """Authenticates institutional user and returns DRF Token + profile."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = AuthLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].lower().strip()
+        password = serializer.validated_data["password"]
+
+        user = authenticate(request, username=email, password=password)
+        if not user:
+            # Fallback if username wasn't checked by default backend
+            try:
+                found_user = User.objects.get(email=email)
+                if found_user.check_password(password):
+                    user = found_user
+            except User.DoesNotExist:
+                pass
+
+        if not user:
+            return Response(
+                {"error": "Invalid email or password. Use test password '1234!@#$'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        token, _ = Token.objects.get_or_create(user=user)
+        user_data = AuthUserSerializer(user).data
+
+        return Response({
+            "token": token.key,
+            "user": user_data,
+        })
+
+
+class AuthMeView(APIView):
+    """Returns current authenticated user profile."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_data = AuthUserSerializer(request.user).data
+        return Response(user_data)
+
+
+class AuthLogoutView(APIView):
+    """Invalidates the auth token on logout."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        Token.objects.filter(user=request.user).delete()
+        return Response({"status": "ok", "message": "Successfully logged out."})
+

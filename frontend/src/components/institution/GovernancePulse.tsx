@@ -1,5 +1,15 @@
 import type { FC } from 'react';
 import type { GovernanceSummary } from '../../types/institution';
+import {
+  BuildingIcon,
+  FolderTreeIcon,
+  GraduationCapIcon,
+  DatabaseIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  FileTextIcon,
+  ShieldCheckIcon,
+} from '../icons';
 
 interface GovernancePulseProps {
   summary: GovernanceSummary | null;
@@ -33,7 +43,9 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
       {/* Top Banner with Active Session & Audit Trigger */}
       <div className="governance-hero-card">
         <div className="governance-hero-info">
-          <span className="session-status-badge">🟢 Live Academic Governance</span>
+          <span className="session-status-badge">
+            <ShieldCheckIcon size={13} /> Active Institutional Governance
+          </span>
           <h3 className="governance-hero-title">
             Senate & Accreditation Health Pulse — {summary.institution.name}
           </h3>
@@ -43,14 +55,16 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
         </div>
 
         <button type="button" className="btn btn-primary" onClick={onGenerateReport}>
-          📄 Generate Senate Audit Pack
+          <FileTextIcon size={16} /> Generate Senate Audit Pack
         </button>
       </div>
 
       {/* 4 Metric Cards */}
       <div className="governance-kpi-grid">
         <div className="kpi-card">
-          <div className="kpi-icon-box">🏛️</div>
+          <div className="kpi-icon-box">
+            <BuildingIcon size={24} color="#0052cc" />
+          </div>
           <div className="kpi-content">
             <span className="kpi-label">Academic Divisions</span>
             <div className="kpi-value">{hierarchy_metrics.total_divisions}</div>
@@ -59,7 +73,9 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
         </div>
 
         <div className="kpi-card">
-          <div className="kpi-icon-box">🏢</div>
+          <div className="kpi-icon-box">
+            <FolderTreeIcon size={24} color="#0052cc" />
+          </div>
           <div className="kpi-content">
             <span className="kpi-label">Active Departments</span>
             <div className="kpi-value">{hierarchy_metrics.total_departments}</div>
@@ -70,7 +86,9 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
         </div>
 
         <div className="kpi-card">
-          <div className="kpi-icon-box">🎓</div>
+          <div className="kpi-icon-box">
+            <GraduationCapIcon size={24} color="#0052cc" />
+          </div>
           <div className="kpi-content">
             <span className="kpi-label">Degree Programmes</span>
             <div className="kpi-value">{hierarchy_metrics.total_programs}</div>
@@ -79,7 +97,9 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
         </div>
 
         <div className="kpi-card highlight-card">
-          <div className="kpi-icon-box">⚡</div>
+          <div className="kpi-icon-box">
+            <DatabaseIcon size={24} color="#0284c7" />
+          </div>
           <div className="kpi-content">
             <span className="kpi-label">Grounded Vector Chunks</span>
             <div className="kpi-value">{knowledge_base.total_indexed_chunks}</div>
@@ -97,12 +117,16 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
               Standardized against {accreditation_readiness.regulator} Institutional Guidelines
             </p>
           </div>
-          <span className="badge-verified">100% Audit Ready</span>
+          <span className="badge-verified">
+            <CheckCircleIcon size={14} color="#059669" /> 100% Audit Ready
+          </span>
         </div>
 
         <div className="compliance-grid">
           <div className="compliance-item">
-            <div className="compliance-status-icon check">✓</div>
+            <div className="compliance-status-icon check">
+              <CheckIcon size={16} color="#059669" />
+            </div>
             <div>
               <strong>Unified Outcome Taxonomy</strong>
               <p>Operational definitions standardized across all faculties</p>
@@ -110,7 +134,9 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
           </div>
 
           <div className="compliance-item">
-            <div className="compliance-status-icon check">✓</div>
+            <div className="compliance-status-icon check">
+              <CheckIcon size={16} color="#059669" />
+            </div>
             <div>
               <strong>4-Tier Hierarchy Integrity</strong>
               <p>Faculties, Departments, and Degree options strictly relational</p>
@@ -118,7 +144,9 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
           </div>
 
           <div className="compliance-item">
-            <div className="compliance-status-icon check">✓</div>
+            <div className="compliance-status-icon check">
+              <CheckIcon size={16} color="#059669" />
+            </div>
             <div>
               <strong>Document Grounding in pgvector</strong>
               <p>Handbooks and SIWES policies chunked with exact citations</p>
@@ -126,7 +154,9 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
           </div>
 
           <div className="compliance-item">
-            <div className="compliance-status-icon check">✓</div>
+            <div className="compliance-status-icon check">
+              <CheckIcon size={16} color="#059669" />
+            </div>
             <div>
               <strong>Zero Unbacked Claims Policy</strong>
               <p>Student milestone sign-offs locked to named faculty evaluators</p>

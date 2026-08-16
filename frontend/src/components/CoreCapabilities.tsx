@@ -1,4 +1,5 @@
 import { useState, type FC } from 'react';
+import { LockIcon } from './icons';
 
 export const CoreCapabilities: FC = () => {
   const [activePillar, setActivePillar] = useState<number>(0);
@@ -179,7 +180,7 @@ export const CoreCapabilities: FC = () => {
 
                 <div className="preview-card-footer">
                   <div className="footer-meta-item">
-                    <span className="meta-icon">🔒</span>
+                    <LockIcon size={12} />
                     <span>Audit Logged & Tamper-Evident</span>
                   </div>
                   <span className="meta-state">Real-time sync</span>

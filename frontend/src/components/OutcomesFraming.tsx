@@ -1,14 +1,27 @@
-import { useState, type FC } from 'react';
+import { useState, type FC, type ReactNode } from 'react';
+import { BriefcaseIcon, AwardIcon, ShieldCheckIcon } from './icons';
+
+interface Pillar {
+  title: string;
+  mechanism: string;
+  badge: string;
+  icon: ReactNode;
+  proofDetails: {
+    title: string;
+    exampleTitle: string;
+    items: { label: string; value: string }[];
+  };
+}
 
 export const OutcomesFraming: FC = () => {
   const [selectedColumn, setSelectedColumn] = useState<number>(0);
 
-  const pillars = [
+  const pillars: Pillar[] = [
     {
       title: 'Every placement',
       mechanism: 'Traced to a specific SIWES cycle or graduate role, not a self-reported check-box.',
       badge: 'Placement Verifiability',
-      icon: '🏢',
+      icon: <BriefcaseIcon size={28} color="#0052cc" />,
       proofDetails: {
         title: 'Verifiable Placement Audit',
         exampleTitle: 'SIWES 2026 Batch #04 Verification',
@@ -24,7 +37,7 @@ export const OutcomesFraming: FC = () => {
       title: 'Every skill',
       mechanism: 'Validated against a milestone with a named evaluator, not a resume claim.',
       badge: 'Skills Authenticity',
-      icon: '🎯',
+      icon: <AwardIcon size={28} color="#0052cc" />,
       proofDetails: {
         title: 'Evaluator-Backed Skill Ledger',
         exampleTitle: 'Milestone Signature Certificate',
@@ -40,7 +53,7 @@ export const OutcomesFraming: FC = () => {
       title: 'Every AI answer',
       mechanism: 'Cited to a specific institutional document, not generated from open-web guesswork.',
       badge: 'Institution Grounded AI',
-      icon: '🛡️',
+      icon: <ShieldCheckIcon size={28} color="#0052cc" />,
       proofDetails: {
         title: 'Document-Grounded RAG Engine',
         exampleTitle: 'Zero Hallucination Retrieval',

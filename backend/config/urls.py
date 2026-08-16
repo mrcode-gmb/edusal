@@ -27,11 +27,17 @@ urlpatterns = [
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]
 
+from edusal.institutions.api.views import AuthLoginView, AuthMeView, AuthLogoutView
+
 # API URLS
 urlpatterns += [
     # API base url
     path("api/", include("edusal.core.urls")),
     path("api/", include("config.api_router")),
+    # Institutional Authentication endpoints
+    path("api/auth/login/", AuthLoginView.as_view(), name="auth-login"),
+    path("api/auth/me/", AuthMeView.as_view(), name="auth-me"),
+    path("api/auth/logout/", AuthLogoutView.as_view(), name="auth-logout"),
     # DRF auth token
     path("api/auth-token/", obtain_auth_token, name="obtain_auth_token"),
     path("api/schema/", SpectacularAPIView.as_view(), name="api-schema"),

@@ -1,5 +1,6 @@
 import { useState, type FC } from 'react';
 import type { HealthResponse } from '../types';
+import { BuildingIcon } from './icons';
 
 interface NavbarProps {
   health: HealthResponse | null;
@@ -98,10 +99,10 @@ export const Navbar: FC<NavbarProps> = ({
 
           <button
             type="button"
-            className="btn btn-secondary-sm d-none-mobile"
+            className="btn btn-secondary-sm d-none-mobile nav-portal-btn"
             onClick={onOpenInstitutionPortal}
           >
-            🏛️ Institutional Portal
+            <BuildingIcon size={15} /> Institutional Portal
           </button>
 
           <button
@@ -153,7 +154,7 @@ export const Navbar: FC<NavbarProps> = ({
                 onOpenInstitutionPortal();
               }}
             >
-              🏛️ Open Institutional Governance Portal
+              <BuildingIcon size={16} /> Open Institutional Governance Portal
             </button>
             <button
               type="button"

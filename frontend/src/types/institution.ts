@@ -212,3 +212,43 @@ export interface DocumentSearchResponse {
   total_matches: number;
   results: DocumentSearchResultItem[];
 }
+
+export type InstitutionRole =
+  | 'SUPERADMIN'
+  | 'DIRECTOR_CAREER_SERVICES'
+  | 'DEAN'
+  | 'HOD'
+  | 'COUNSELLOR';
+
+export interface InstitutionStaff {
+  id: string;
+  user: number;
+  user_email: string;
+  user_name: string;
+  institution: string;
+  institution_name: string;
+  institution_short_name: string;
+  division?: string;
+  division_name?: string;
+  department?: string;
+  department_name?: string;
+  role: InstitutionRole;
+  role_display: string;
+  title?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  name: string;
+  staff_profile: InstitutionStaff | null;
+}
+
+export interface LoginResponse {
+  token: string;
+  user: AuthUser;
+}
+

@@ -7,6 +7,7 @@ from .models import (
     AcademicSession,
     InstitutionalDocument,
     InstitutionalDocumentChunk,
+    InstitutionStaff,
 )
 
 
@@ -87,3 +88,10 @@ class InstitutionalDocumentChunkAdmin(admin.ModelAdmin):
     list_display = ["document", "chunk_index", "page_number", "section_reference"]
     list_filter = ["document__institution", "document__doc_type"]
     search_fields = ["content", "section_reference", "document__title"]
+
+
+@admin.register(InstitutionStaff)
+class InstitutionStaffAdmin(admin.ModelAdmin):
+    list_display = ["user", "institution", "role", "title", "division", "department", "is_active"]
+    list_filter = ["role", "is_active", "institution"]
+    search_fields = ["user__email", "user__name", "title", "institution__name"]

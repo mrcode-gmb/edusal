@@ -172,4 +172,68 @@ export const institutionApi = {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: Ingestion failed`);
   },
+
+  // Authentication Endpoints
+  async login(email: string, password: string):Promise<import('../types/institution').LoginResponse> {
+    const res = await fetch(`${API_BASE}/api/auth/login/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Login failed (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async getMe(token: string): Promise<import('../types/institution').AuthUser> {
+    const res = await fetch(`${API_BASE}/api/auth/me/`, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Token ${token}`,
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to authenticate`);
+    return res.json();
+  },
+
+  async logout(token: string): Promise<void> {
+    await fetch(`${API_BASE}/api/auth/logout/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Token ${token}`,
+      },
+    }).catch(() => {});
+  },
+
+  // Staff & Faculty Directory
+  async getStaff(institutionId: string): Promise<import('../types/institution').InstitutionStaff[]> {
+    const res = await fetch(`${API_BASE}/api/staff/?institution=${institutionId}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch staff directory`);
+    return res.json();
+  },
+
+  async createStaff(data: {
+    institution: string;
+    email: string;
+    name: string;
+    role: string;
+    title?: string;
+    division?: string;
+    department?: string;
+  }): Promise<import('../types/institution').InstitutionStaff> {
+    const res = await fetch(`${API_BASE}/api/staff/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${res.status}: Failed to assign staff`);
+    }
+    return res.json();
+  },
 };
+

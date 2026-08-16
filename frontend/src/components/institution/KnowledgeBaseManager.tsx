@@ -4,6 +4,17 @@ import type {
   DocumentSearchResponse,
 } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
+import {
+  BookOpenIcon,
+  RefreshCwIcon,
+  PlusIcon,
+  SearchIcon,
+  ShieldCheckIcon,
+  DatabaseIcon,
+  CheckCircleIcon,
+  FileTextIcon,
+  SparklesIcon,
+} from '../icons';
 
 interface KnowledgeBaseManagerProps {
   institutionId: string;
@@ -77,12 +88,16 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
       <div className="kb-header-card">
         <div className="kb-header-info">
           <div className="kb-badge-row">
-            <span className="kb-tag">pgvector Semantic Knowledge Base</span>
-            <span className="kb-status-live">🟢 Vector Indexed</span>
+            <span className="kb-tag">
+              <DatabaseIcon size={13} /> pgvector Semantic Knowledge Base
+            </span>
+            <span className="kb-status-live">
+              <CheckCircleIcon size={13} /> Vector Indexed
+            </span>
           </div>
           <h3 className="kb-title">Grounded Document Repository & Citation Engine</h3>
           <p className="kb-sub">
-            Ingested handbooks, SIWES guidelines, and curriculum standards for <strong>{institutionName}</strong>.
+            Official handbooks, SIWES guidelines, and curriculum standards for <strong>{institutionName}</strong>.
             The AI Career Assistant strictly answers from these verified documents.
           </p>
         </div>
@@ -92,7 +107,7 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
           className="btn btn-primary-sm"
           onClick={() => setShowUploadModal(true)}
         >
-          + Ingest Institutional Document
+          <PlusIcon size={16} /> Ingest Institutional Document
         </button>
       </div>
 
@@ -101,8 +116,13 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
         <div className="kb-docs-column">
           <div className="column-header">
             <h4>Official Documents ({documents.length})</h4>
-            <button type="button" className="btn-icon-refresh" onClick={onRefresh} title="Refresh">
-              🔄
+            <button
+              type="button"
+              className="btn-icon-refresh"
+              onClick={onRefresh}
+              title="Refresh repository"
+            >
+              <RefreshCwIcon size={15} color="#64748b" />
             </button>
           </div>
 
@@ -110,7 +130,8 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
             <div className="kb-loading">Loading documents...</div>
           ) : documents.length === 0 ? (
             <div className="kb-empty">
-              <p>No documents uploaded yet.</p>
+              <BookOpenIcon size={32} color="#94a3b8" />
+              <p>No documents ingested yet.</p>
               <button
                 type="button"
                 className="btn btn-secondary-sm"
@@ -126,7 +147,13 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
                   <div className="doc-card-top">
                     <span className="doc-type-pill">{doc.doc_type_display}</span>
                     <span className={`doc-status-badge ${doc.embedding_status.toLowerCase()}`}>
-                      {doc.embedding_status === 'INDEXED' ? '✓ Indexed' : doc.embedding_status}
+                      {doc.embedding_status === 'INDEXED' ? (
+                        <>
+                          <CheckCircleIcon size={12} /> Indexed
+                        </>
+                      ) : (
+                        doc.embedding_status
+                      )}
                     </span>
                   </div>
 
@@ -135,13 +162,13 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
                   {doc.content_hash && (
                     <div className="doc-hash-row">
                       <span className="hash-label">Audit Hash:</span>
-                      <code className="doc-hash">{doc.content_hash.slice(0, 22)}...</code>
+                      <code className="doc-hash">{doc.content_hash.slice(0, 24)}...</code>
                     </div>
                   )}
 
                   <div className="doc-meta-footer">
                     <span className="doc-chunks-count">
-                      ⚡ <strong>{doc.chunk_count}</strong> pgvector Chunks
+                      <strong>{doc.chunk_count}</strong> pgvector Chunks
                     </span>
                     <span className="doc-date">
                       {new Date(doc.created_at).toLocaleDateString()}
@@ -157,7 +184,9 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
         <div className="kb-tester-column">
           <div className="tester-card">
             <div className="tester-header">
-              <span className="tester-badge">Interactive Test Bench</span>
+              <span className="tester-badge">
+                <SparklesIcon size={13} /> Interactive Test Bench
+              </span>
               <h4>Live Citation Retrieval Simulator</h4>
               <p className="tester-sub">
                 Test how the AI queries pgvector and retrieves exact page & section citations.
@@ -179,6 +208,7 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
                   className="btn btn-primary-sm"
                   disabled={isSearching}
                 >
+                  <SearchIcon size={15} />
                   {isSearching ? 'Searching...' : 'Test Retrieval'}
                 </button>
               </div>
@@ -217,7 +247,9 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
                     <span className="results-count">
                       Found <strong>{searchResults.total_matches}</strong> verified citation chunk(s)
                     </span>
-                    <span className="grounding-badge">100% Zero-Hallucination</span>
+                    <span className="grounding-badge">
+                      <ShieldCheckIcon size={13} /> 100% Zero-Hallucination
+                    </span>
                   </div>
 
                   {searchResults.results.length === 0 ? (
@@ -240,7 +272,9 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
 
                         <div className="citation-footer">
                           <span className="relevance-tag">Exact Match Score: {res.relevance_score}</span>
-                          <span className="verified-status">✓ Grounding Ready</span>
+                          <span className="verified-status">
+                            <CheckCircleIcon size={12} color="#059669" /> Grounding Ready
+                          </span>
                         </div>
                       </div>
                     ))
@@ -261,7 +295,10 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
         <div className="modal-overlay" onClick={() => setShowUploadModal(false)}>
           <div className="modal-content modal-md" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Ingest Institutional Document</h3>
+              <div className="modal-title-with-icon">
+                <FileTextIcon size={20} color="#0052cc" />
+                <h3>Ingest Institutional Document</h3>
+              </div>
               <button
                 type="button"
                 className="modal-close-btn"

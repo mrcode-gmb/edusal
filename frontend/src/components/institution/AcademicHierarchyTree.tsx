@@ -1,5 +1,15 @@
 import { useState, type FC } from 'react';
 import type { InstitutionHierarchyTree } from '../../types/institution';
+import {
+  FolderTreeIcon,
+  LayersIcon,
+  PlusIcon,
+  ClockIcon,
+  BriefcaseIcon,
+  BuildingIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+} from '../icons';
 
 interface AcademicHierarchyTreeProps {
   tree: InstitutionHierarchyTree | null;
@@ -46,7 +56,9 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
       <div className="tree-header-bar">
         <div className="tree-title-group">
           <div className="tree-badge-row">
-            <span className="tier-tag tier-1">Tier 1: Institutional Root</span>
+            <span className="tier-tag tier-1">
+              <BuildingIcon size={13} /> Tier 1: Institutional Root
+            </span>
             <span className="regulator-pill">{tree.regulator} Regulated</span>
             <span className="type-pill">{tree.institution_type}</span>
           </div>
@@ -57,7 +69,7 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
         </div>
 
         <button type="button" className="btn btn-primary-sm" onClick={onAddDivision}>
-          + Add {tree.tier_two_term === 'SCHOOL' ? 'School' : 'Faculty'}
+          <PlusIcon size={15} /> Add {tree.tier_two_term === 'SCHOOL' ? 'School' : 'Faculty'}
         </button>
       </div>
 
@@ -65,14 +77,15 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
       <div className="tree-body">
         {tree.divisions.length === 0 ? (
           <div className="tree-empty-divisions">
-            <p>No academic divisions created yet.</p>
+            <FolderTreeIcon size={32} color="#94a3b8" />
+            <p>No academic divisions configured yet.</p>
             <button type="button" className="btn btn-secondary-sm" onClick={onAddDivision}>
               Create First {tree.tier_two_term === 'SCHOOL' ? 'School' : 'Faculty'}
             </button>
           </div>
         ) : (
           <div className="divisions-tree-list">
-            {tree.divisions.map((div, dIdx) => {
+            {tree.divisions.map((div) => {
               const isDivCollapsed = collapsedDivisions[div.id] || false;
               return (
                 <div key={div.id} className="division-node">
@@ -84,11 +97,11 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
                       onClick={() => toggleDivision(div.id)}
                       aria-label="Toggle division details"
                     >
-                      {isDivCollapsed ? '▶' : '▼'}
+                      {isDivCollapsed ? <ChevronRightIcon size={16} /> : <ChevronDownIcon size={16} />}
                     </button>
 
                     <div className="node-icon-box division-icon">
-                      <span>0{dIdx + 1}</span>
+                      <LayersIcon size={16} color="#ffffff" />
                     </div>
 
                     <div className="node-info" onClick={() => toggleDivision(div.id)}>
@@ -114,7 +127,7 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
                           onAddDepartment(div.id);
                         }}
                       >
-                        + Add Dept
+                        <PlusIcon size={13} /> Add Dept
                       </button>
                     </div>
                   </div>
@@ -145,7 +158,11 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
                                   className="collapse-btn-sm"
                                   onClick={() => toggleDepartment(dept.id)}
                                 >
-                                  {isDeptCollapsed ? '▶' : '▼'}
+                                  {isDeptCollapsed ? (
+                                    <ChevronRightIcon size={14} />
+                                  ) : (
+                                    <ChevronDownIcon size={14} />
+                                  )}
                                 </button>
 
                                 <div className="dept-info" onClick={() => toggleDepartment(dept.id)}>
@@ -156,7 +173,7 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
                                     {dept.siwes_eligible ? (
                                       <span className="siwes-badge siwes-yes">SIWES Eligible</span>
                                     ) : (
-                                      <span className="siwes-badge siwes-no">Teaching / Non-SIWES</span>
+                                      <span className="siwes-badge siwes-no">Non-SIWES Track</span>
                                     )}
                                   </div>
                                   <span className="dept-hod">HOD: {dept.hod_name || 'Unassigned'}</span>
@@ -174,7 +191,7 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
                                       onAddProgram(dept.id);
                                     }}
                                   >
-                                    + Add Program
+                                    <PlusIcon size={12} /> Add Program
                                   </button>
                                 </div>
                               </div>
@@ -207,11 +224,11 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
                                           <div className="leaf-meta-row">
                                             <span className="award-pill">{prog.award_level_display}</span>
                                             <span className="duration-pill">
-                                              ⏱ {prog.duration_years} Years
+                                              <ClockIcon size={12} /> {prog.duration_years} Years
                                             </span>
                                             {prog.siwes_duration_months > 0 && (
                                               <span className="siwes-duration-pill">
-                                                🏢 {prog.siwes_duration_months} Months SIWES
+                                                <BriefcaseIcon size={12} /> {prog.siwes_duration_months} Months SIWES
                                               </span>
                                             )}
                                           </div>

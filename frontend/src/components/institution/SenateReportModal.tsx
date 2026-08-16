@@ -1,5 +1,10 @@
 import { useState, type FC } from 'react';
 import type { GovernanceSummary } from '../../types/institution';
+import {
+  ShieldCheckIcon,
+  DownloadIcon,
+  CheckCircleIcon,
+} from '../icons';
 
 interface SenateReportModalProps {
   isOpen: boolean;
@@ -36,7 +41,9 @@ export const SenateReportModal: FC<SenateReportModalProps> = ({
       <div className="modal-content modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div>
-            <span className="senate-modal-badge">Regulator & Senate Evidence Dossier</span>
+            <span className="senate-modal-badge">
+              <ShieldCheckIcon size={12} /> Regulator & Senate Evidence Dossier
+            </span>
             <h3>Institutional Outcome & Hierarchy Audit Pack</h3>
           </div>
           <button type="button" className="modal-close-btn" onClick={onClose}>
@@ -53,7 +60,9 @@ export const SenateReportModal: FC<SenateReportModalProps> = ({
               </p>
             </div>
             <div className="tamper-seal">
-              <span>🔒 Edusal Tamper-Evident Digest</span>
+              <span>
+                <ShieldCheckIcon size={13} color="#0052cc" /> Edusal Tamper-Evident Digest
+              </span>
               <code>sha256:8f4c...3e1a</code>
             </div>
           </div>
@@ -105,7 +114,11 @@ export const SenateReportModal: FC<SenateReportModalProps> = ({
                   </tr>
                   <tr>
                     <td>Taxonomy Audit Status</td>
-                    <td><span className="badge-pass">Passed Standard</span></td>
+                    <td>
+                      <span className="badge-pass">
+                        <CheckCircleIcon size={12} /> Passed Standard
+                      </span>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -130,7 +143,8 @@ export const SenateReportModal: FC<SenateReportModalProps> = ({
             onClick={handleDownload}
             disabled={downloading}
           >
-            {downloading ? 'Compiling PDF Dossier...' : '📥 Export Official Senate PDF Pack'}
+            <DownloadIcon size={16} />
+            {downloading ? 'Compiling PDF Dossier...' : 'Export Official Senate PDF Pack'}
           </button>
         </div>
       </div>

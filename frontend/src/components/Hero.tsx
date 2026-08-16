@@ -1,4 +1,13 @@
 import { useState, type FC } from 'react';
+import {
+  LockIcon,
+  ClockIcon,
+  FileTextIcon,
+  CheckIcon,
+  CheckCircleIcon,
+  SparklesIcon,
+  ArrowRightIcon,
+} from './icons';
 
 interface HeroProps {
   onOpenBooking: () => void;
@@ -35,7 +44,7 @@ export const Hero: FC<HeroProps> = ({ onOpenBooking, onOpenScoreModal }) => {
                 onClick={onOpenBooking}
               >
                 Book a Scoped Walkthrough
-                <span className="btn-icon">→</span>
+                <ArrowRightIcon size={16} />
               </button>
 
               <button
@@ -43,18 +52,18 @@ export const Hero: FC<HeroProps> = ({ onOpenBooking, onOpenScoreModal }) => {
                 className="btn btn-secondary-lg"
                 onClick={onOpenScoreModal}
               >
-                <span className="play-icon">✦</span>
+                <SparklesIcon size={16} />
                 See How the Employability Score Works
               </button>
             </div>
 
             <div className="hero-guarantee-strip">
               <div className="guarantee-item">
-                <span className="check-bullet">✓</span>
+                <CheckCircleIcon size={15} color="#059669" />
                 <span>Grounded on your handbooks & SIWES calendars</span>
               </div>
               <div className="guarantee-item">
-                <span className="check-bullet">✓</span>
+                <CheckCircleIcon size={15} color="#059669" />
                 <span>Named evaluator sign-offs, zero guesswork</span>
               </div>
             </div>
@@ -71,7 +80,7 @@ export const Hero: FC<HeroProps> = ({ onOpenBooking, onOpenScoreModal }) => {
                   <span className="dot dot-green"></span>
                 </div>
                 <div className="mockup-id-badge">
-                  <span className="lock-icon">🔒</span>
+                  <LockIcon size={12} />
                   <span>VERIFIED RECORD #FUTM-2024-3891</span>
                 </div>
                 <div className="mockup-nav-tabs">
@@ -105,7 +114,9 @@ export const Hero: FC<HeroProps> = ({ onOpenBooking, onOpenScoreModal }) => {
                 <div className="student-info">
                   <div className="student-name-row">
                     <h3>Chidinma Okafor</h3>
-                    <span className="verified-tag">✓ Verified Student</span>
+                    <span className="verified-tag">
+                      <CheckIcon size={12} /> Verified Student
+                    </span>
                   </div>
                   <p className="student-meta">
                     300L Software Engineering · School of Information & Comm. Tech (FUTMinna)
@@ -127,7 +138,9 @@ export const Hero: FC<HeroProps> = ({ onOpenBooking, onOpenScoreModal }) => {
                     </div>
 
                     <div className="evidence-item completed">
-                      <div className="item-status-icon">✓</div>
+                      <div className="item-status-icon">
+                        <CheckIcon size={12} />
+                      </div>
                       <div className="item-details">
                         <div className="item-title-row">
                           <span className="item-title">Core Python, Data Structures & REST APIs</span>
@@ -143,7 +156,9 @@ export const Hero: FC<HeroProps> = ({ onOpenBooking, onOpenScoreModal }) => {
                     </div>
 
                     <div className="evidence-item completed">
-                      <div className="item-status-icon">✓</div>
+                      <div className="item-status-icon">
+                        <CheckIcon size={12} />
+                      </div>
                       <div className="item-details">
                         <div className="item-title-row">
                           <span className="item-title">PostgreSQL Vector Search & Celery Workers</span>
@@ -159,7 +174,9 @@ export const Hero: FC<HeroProps> = ({ onOpenBooking, onOpenScoreModal }) => {
                     </div>
 
                     <div className="evidence-item in-progress">
-                      <div className="item-status-icon progress-icon">⏳</div>
+                      <div className="item-status-icon progress-icon">
+                        <ClockIcon size={12} />
+                      </div>
                       <div className="item-details">
                         <div className="item-title-row">
                           <span className="item-title">Enterprise Relational DB Performance Tuning</span>
@@ -176,7 +193,9 @@ export const Hero: FC<HeroProps> = ({ onOpenBooking, onOpenScoreModal }) => {
                 {activeTab === 'citation' && (
                   <div className="tab-pane-citation">
                     <div className="citation-header">
-                      <span className="citation-icon">📜</span>
+                      <span className="citation-icon">
+                        <FileTextIcon size={16} />
+                      </span>
                       <h4>Institutional Document Citation Trace</h4>
                     </div>
                     <div className="citation-box">

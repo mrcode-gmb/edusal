@@ -1,5 +1,12 @@
 import { useState, type FC, type FormEvent } from 'react';
 import type { BookingFormData, InstitutionType } from '../types';
+import {
+  BuildingIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  CheckCircleIcon,
+  LockIcon,
+} from './icons';
 
 export const WalkthroughBooking: FC = () => {
   const [formData, setFormData] = useState<BookingFormData>({
@@ -77,21 +84,27 @@ export const WalkthroughBooking: FC = () => {
             {/* Trust Strip */}
             <div className="booking-trust-strip">
               <div className="trust-item">
-                <span className="trust-flag">🇳🇬</span>
+                <span className="trust-flag">
+                  <BuildingIcon size={20} color="#059669" />
+                </span>
                 <div>
                   <strong>Hosted In-Region</strong>
                   <p>Data residency roadmap tailored for Nigeria</p>
                 </div>
               </div>
               <div className="trust-item">
-                <span className="trust-shield">🛡️</span>
+                <span className="trust-shield">
+                  <ShieldCheckIcon size={20} color="#0284c7" />
+                </span>
                 <div>
                   <strong>NDPR-Aligned Data Handling</strong>
                   <p>Comprehensive privacy and compliance program in progress</p>
                 </div>
               </div>
               <div className="trust-item">
-                <span className="trust-bolt">⚡</span>
+                <span className="trust-bolt">
+                  <SparklesIcon size={20} color="#0052cc" />
+                </span>
                 <div>
                   <strong>2–4 Week Onboarding</strong>
                   <p>Expedited provisioning for founding partner institutions</p>
@@ -105,7 +118,9 @@ export const WalkthroughBooking: FC = () => {
             <div className="booking-form-card">
               {isSubmitted ? (
                 <div className="booking-success-state">
-                  <div className="success-icon-badge">✓</div>
+                  <div className="success-icon-badge">
+                    <CheckCircleIcon size={32} color="#059669" />
+                  </div>
                   <h3>Walkthrough Request Received</h3>
                   <p>
                     Thank you, <strong>{formData.fullName}</strong>. Our institutional implementation team will contact you at <strong>{formData.workEmail}</strong> within 24 hours to coordinate the session with <strong>{formData.institutionName}</strong> leadership.
@@ -255,7 +270,7 @@ export const WalkthroughBooking: FC = () => {
                   </button>
 
                   <p className="form-disclaimer">
-                    🔒 Confidential. Information will only be used to tailor your walkthrough session.
+                    <LockIcon size={13} /> Confidential. Information will only be used to tailor your walkthrough session.
                   </p>
                 </form>
               )}

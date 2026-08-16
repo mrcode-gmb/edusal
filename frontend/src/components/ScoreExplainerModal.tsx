@@ -142,10 +142,10 @@ export const ScoreExplainerModal: FC<ScoreExplainerModalProps> = ({
                   <span className="verdict-label">Employer Verifiability:</span>
                   <p className="verdict-text">
                     {totalScore >= 80
-                      ? '✓ Fully Auditable — Shortlist Ready for Tier-1 Employers & SIWES Direct Dispatch'
+                      ? '[Verified] Fully Auditable — Shortlist Ready for Tier-1 Employers & SIWES Direct Dispatch'
                       : totalScore >= 50
-                      ? '⏳ Pathway In Progress — 2 Core Technical Milestones Outstanding'
-                      : '⚠️ Baseline Stage — Diagnostic calibration required'}
+                      ? '[In Progress] Pathway Active — Core Technical Milestones Outstanding'
+                      : '[Baseline Stage] Diagnostic calibration required'}
                   </p>
                 </div>
               </div>

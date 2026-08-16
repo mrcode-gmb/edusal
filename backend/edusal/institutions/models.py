@@ -1,6 +1,15 @@
 import uuid
+from django.conf import settings
 from django.db import models
 from pgvector.django import VectorField
+
+
+class InstitutionRole(models.TextChoices):
+    SUPERADMIN = "SUPERADMIN", "Institution Superadmin"
+    DIRECTOR_CAREER_SERVICES = "DIRECTOR_CAREER_SERVICES", "Director of Career Services"
+    DEAN = "DEAN", "Dean of Faculty / School"
+    HOD = "HOD", "Head of Department (HOD)"
+    COUNSELLOR = "COUNSELLOR", "Faculty Career Counsellor & Evaluator"
 
 
 class InstitutionType(models.TextChoices):
@@ -351,3 +360,55 @@ class InstitutionalDocumentChunk(models.Model):
 
     def __str__(self) -> str:
         return f"{self.document.title} [Chunk #{self.chunk_index}, p.{self.page_number}]"
+
+
+class InstitutionStaff(models.Model):
+    """Institutional staff member, dean, HOD, counsellor, or superadmin."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="institution_staff_profiles",
+    )
+    institution = models.ForeignKey(
+        Institution,
+        on_delete=models.CASCADE,
+        related_name="staff_members",
+    )
+    division = models.ForeignKey(
+        AcademicDivision,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="staff_members",
+    )
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="staff_members",
+    )
+    role = models.CharField(
+        max_length=40,
+        choices=InstitutionRole.choices,
+        default=InstitutionRole.SUPERADMIN,
+    )
+    title = models.CharField(
+        max_length=150,
+        blank=True,
+        help_text="e.g. Director of ICT / Dean of SICT / HOD Computer Science",
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["institution", "role", "user__name"]
+        unique_together = ("user", "institution")
+        verbose_name = "Institution Staff"
+        verbose_name_plural = "Institution Staff"
+
+    def __str__(self) -> str:
+        return f"{self.user.email} — {self.get_role_display()} ({self.institution.short_name})"

@@ -1,4 +1,10 @@
 import { useState, type FC } from 'react';
+import {
+  SparklesIcon,
+  FileTextIcon,
+  SearchIcon,
+  UsersIcon,
+} from './icons';
 
 export const AiAssistantDemo: FC = () => {
   const [activeCitation, setActiveCitation] = useState<boolean>(true);
@@ -40,7 +46,7 @@ export const AiAssistantDemo: FC = () => {
                   className={`citation-toggle-btn ${activeCitation ? 'active' : ''}`}
                   onClick={() => setActiveCitation(!activeCitation)}
                 >
-                  <span className="toggle-icon">📌</span>
+                  <SparklesIcon size={14} />
                   <span>{activeCitation ? 'Citations Visible' : 'Hide Citations'}</span>
                 </button>
               </div>
@@ -61,7 +67,7 @@ export const AiAssistantDemo: FC = () => {
                   {activeCitation && (
                     <div className="msg-grounding-box">
                       <div className="grounding-header">
-                        <span className="grounding-icon">📎</span>
+                        <FileTextIcon size={14} />
                         <span>Grounded on:</span>
                       </div>
                       <div className="grounding-tags">
@@ -101,7 +107,7 @@ export const AiAssistantDemo: FC = () => {
                     {activeCitation && (
                       <div className="msg-grounding-box citation-rule">
                         <div className="grounding-header">
-                          <span className="grounding-icon">🔍</span>
+                          <SearchIcon size={14} />
                           <span>Document Citation & Policy Match:</span>
                         </div>
                         <p className="citation-quote">
@@ -112,7 +118,9 @@ export const AiAssistantDemo: FC = () => {
 
                     {/* Human Handoff Ticket */}
                     <div className="handoff-alert-banner">
-                      <div className="handoff-icon">🤝</div>
+                      <div className="handoff-icon">
+                        <UsersIcon size={16} />
+                      </div>
                       <div className="handoff-info">
                         <strong>Next Step: Handed off to your counsellor</strong>
                         <p>Mr. Adeyemi has been notified with the full conversation history, student milestone records, and draft waiver guidance.</p>

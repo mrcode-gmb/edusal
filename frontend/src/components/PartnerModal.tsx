@@ -1,5 +1,6 @@
 import { useState, type FC, type FormEvent } from 'react';
 import type { InstitutionType } from '../types';
+import { CheckCircleIcon, CheckIcon } from './icons';
 
 interface PartnerModalProps {
   isOpen: boolean;
@@ -39,7 +40,9 @@ export const PartnerModal: FC<PartnerModalProps> = ({ isOpen, onClose }) => {
         <div className="modal-body">
           {submitted ? (
             <div className="partner-success-view">
-              <div className="success-icon-badge">✓</div>
+              <div className="success-icon-badge">
+                <CheckCircleIcon size={32} color="#059669" />
+              </div>
               <h3>Application Submitted</h3>
               <p>
                 Thank you, <strong>{contactName}</strong>. We have received the Founding Partner application for <strong>{instName}</strong>. Our director of institutional partnerships will reach out via <strong>{email}</strong> to schedule an onboarding consultation.
@@ -47,9 +50,15 @@ export const PartnerModal: FC<PartnerModalProps> = ({ isOpen, onClose }) => {
               <div className="partner-perks-box">
                 <h4>Founding Partner Inclusions:</h4>
                 <ul>
-                  <li>✓ Co-design customized pathway templates for your faculties</li>
-                  <li>✓ Dedicated technical onboarding & handbook grounding ingest</li>
-                  <li>✓ Preferred founding tier pricing locked for 3 academic sessions</li>
+                  <li>
+                    <CheckIcon size={14} color="#059669" /> Co-design customized pathway templates for your faculties
+                  </li>
+                  <li>
+                    <CheckIcon size={14} color="#059669" /> Dedicated technical onboarding & handbook grounding ingest
+                  </li>
+                  <li>
+                    <CheckIcon size={14} color="#059669" /> Preferred founding tier pricing locked for 3 academic sessions
+                  </li>
                 </ul>
               </div>
               <button

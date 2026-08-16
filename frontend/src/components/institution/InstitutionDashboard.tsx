@@ -4,24 +4,49 @@ import type {
   InstitutionHierarchyTree,
   GovernanceSummary,
   InstitutionalDocument,
+  LoginResponse,
+  AuthUser,
 } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
+import { InstitutionLogin } from './InstitutionLogin';
 import { GovernancePulse } from './GovernancePulse';
 import { AcademicHierarchyTree } from './AcademicHierarchyTree';
 import { KnowledgeBaseManager } from './KnowledgeBaseManager';
+import { StaffDirectory } from './StaffDirectory';
 import { AddDivisionModal } from './AddDivisionModal';
 import { AddDepartmentModal } from './AddDepartmentModal';
 import { AddProgramModal } from './AddProgramModal';
 import { SenateReportModal } from './SenateReportModal';
+import {
+  BuildingIcon,
+  BarChartIcon,
+  FolderTreeIcon,
+  DatabaseIcon,
+  UsersIcon,
+  LogOutIcon,
+  ArrowLeftIcon,
+  ShieldCheckIcon,
+  FileTextIcon,
+} from '../icons';
 
 interface InstitutionDashboardProps {
   onBackToLanding: () => void;
 }
 
 export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLanding }) => {
+  // Authentication State
+  const [authToken, setAuthToken] = useState<string | null>(() => {
+    return localStorage.getItem('edusal_auth_token') || null;
+  });
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    const saved = localStorage.getItem('edusal_auth_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  // Institution State
   const [institutions, setInstitutions] = useState<InstitutionSummary[]>([]);
   const [selectedInstId, setSelectedInstId] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'pulse' | 'tree' | 'kb'>('pulse');
+  const [activeTab, setActiveTab] = useState<'pulse' | 'tree' | 'kb' | 'staff'>('pulse');
 
   // Hierarchy & Governance Data
   const [tree, setTree] = useState<InstitutionHierarchyTree | null>(null);
@@ -37,20 +62,50 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
   const [selectedDeptForProg, setSelectedDeptForProg] = useState<string>('');
   const [showSenateModal, setShowSenateModal] = useState(false);
 
-  // Initial fetch of institutions list
+  // Handle Login Success
+  const handleLoginSuccess = (authData: LoginResponse) => {
+    setAuthToken(authData.token);
+    setCurrentUser(authData.user);
+    localStorage.setItem('edusal_auth_token', authData.token);
+    localStorage.setItem('edusal_auth_user', JSON.stringify(authData.user));
+
+    // If user belongs to an institution, default to that institution
+    if (authData.user.staff_profile?.institution) {
+      setSelectedInstId(authData.user.staff_profile.institution);
+    }
+  };
+
+  // Handle Logout
+  const handleLogout = async () => {
+    if (authToken) {
+      await institutionApi.logout(authToken).catch(() => {});
+    }
+    setAuthToken(null);
+    setCurrentUser(null);
+    localStorage.removeItem('edusal_auth_token');
+    localStorage.removeItem('edusal_auth_user');
+  };
+
+  // Fetch institutions list
   useEffect(() => {
     institutionApi
       .getInstitutions()
       .then((data) => {
         setInstitutions(data);
         if (data.length > 0) {
-          // Default to FUTMinna if present, or first
-          const futm = data.find((i) => i.slug === 'futminna') || data[0];
-          setSelectedInstId(futm.id);
+          if (!selectedInstId) {
+            // Pick user institution if available, otherwise default to first
+            if (currentUser?.staff_profile?.institution) {
+              setSelectedInstId(currentUser.staff_profile.institution);
+            } else {
+              const futm = data.find((i) => i.slug === 'futminna') || data[0];
+              setSelectedInstId(futm.id);
+            }
+          }
         }
       })
       .catch((err) => console.error('Failed to load institutions:', err));
-  }, []);
+  }, [currentUser]);
 
   // Fetch institution data when selected institution changes
   const loadInstitutionData = async (instId: string) => {
@@ -73,12 +128,22 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
   };
 
   useEffect(() => {
-    if (selectedInstId) {
+    if (selectedInstId && authToken) {
       loadInstitutionData(selectedInstId);
     }
-  }, [selectedInstId]);
+  }, [selectedInstId, authToken]);
 
-  // Add Division Handler
+  // If not logged in, render the login view
+  if (!authToken || !currentUser) {
+    return (
+      <InstitutionLogin
+        onLoginSuccess={handleLoginSuccess}
+        onBackToLanding={onBackToLanding}
+      />
+    );
+  }
+
+  // Handlers for adding division/department/program
   const handleAddDivision = async (data: {
     institution: string;
     name: string;
@@ -91,7 +156,6 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
     await loadInstitutionData(selectedInstId);
   };
 
-  // Add Department Handler
   const handleAddDepartment = async (data: {
     institution: string;
     division: string;
@@ -105,7 +169,6 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
     await loadInstitutionData(selectedInstId);
   };
 
-  // Add Program Handler
   const handleAddProgram = async (data: {
     institution: string;
     department: string;
@@ -127,18 +190,19 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
       <header className="portal-navbar">
         <div className="portal-nav-left">
           <button type="button" className="btn-back-link" onClick={onBackToLanding}>
-            ← Back to Landing
+            <ArrowLeftIcon size={14} /> Back to Landing
           </button>
           <div className="portal-brand-block">
-            <span className="brand-dot"></span>
+            <BuildingIcon size={20} color="#38bdf8" />
             <span className="portal-brand-title">Edusal Institutional Governance</span>
           </div>
         </div>
 
-        {/* Institution Switcher Dropdown */}
+        {/* User profile & Institution Switcher */}
         <div className="portal-nav-right">
+          {/* Active Institution Selector */}
           <div className="inst-switcher-box">
-            <span className="switcher-label">Active Institution:</span>
+            <span className="switcher-label">Institution:</span>
             <select
               className="inst-select"
               value={selectedInstId}
@@ -151,24 +215,61 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
               ))}
             </select>
           </div>
+
+          {/* Authenticated User Capsule */}
+          <div className="auth-user-capsule">
+            <div className="user-avatar-sm">
+              {(currentUser.name || currentUser.email).slice(0, 2).toUpperCase()}
+            </div>
+            <div className="user-info-sm">
+              <span className="user-name-sm">{currentUser.name || currentUser.email}</span>
+              <span className="user-role-sm">
+                {currentUser.staff_profile?.role_display || 'Institutional Staff'}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="btn-logout"
+              onClick={handleLogout}
+              title="Sign out of workspace"
+            >
+              <LogOutIcon size={16} />
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Container */}
       <main className="portal-main container-custom">
-        {/* Breadcrumb & Archetype Strip */}
+        {/* Institutional Scope Strip */}
         {selectedInst && (
           <div className="portal-institution-strip">
-            <div className="inst-meta-info">
-              <div className="inst-badge-stack">
-                <span className="inst-regulator-tag">{selectedInst.regulator} Regulated</span>
-                <span className="inst-type-tag">{selectedInst.institution_type_display}</span>
-                {selectedInst.is_founding_partner && (
-                  <span className="inst-partner-tag">★ Founding Charter Member</span>
-                )}
+            <div className="inst-strip-top">
+              <div className="inst-meta-info">
+                <div className="inst-badge-stack">
+                  <span className="inst-regulator-tag">
+                    <ShieldCheckIcon size={12} /> {selectedInst.regulator} Regulated
+                  </span>
+                  <span className="inst-type-tag">{selectedInst.institution_type_display}</span>
+                  {selectedInst.is_founding_partner && (
+                    <span className="inst-partner-tag">Founding Charter Member</span>
+                  )}
+                </div>
+                <h2 className="inst-heading">{selectedInst.name}</h2>
+                <span className="inst-location">
+                  {selectedInst.state} State, Nigeria · Native Tier-2: <strong>{selectedInst.tier_two_term}</strong>
+                </span>
               </div>
-              <h2 className="inst-heading">{selectedInst.name}</h2>
-              <span className="inst-location">📍 {selectedInst.state} State, Nigeria</span>
+
+              <div className="inst-strip-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary-sm"
+                  onClick={() => setShowSenateModal(true)}
+                >
+                  <FileTextIcon size={14} /> Senate Audit Pack
+                </button>
+              </div>
             </div>
 
             {/* View Tabs */}
@@ -178,21 +279,28 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
                 className={`portal-tab ${activeTab === 'pulse' ? 'active' : ''}`}
                 onClick={() => setActiveTab('pulse')}
               >
-                📊 Governance Pulse
+                <BarChartIcon size={16} /> Governance Pulse
               </button>
               <button
                 type="button"
                 className={`portal-tab ${activeTab === 'tree' ? 'active' : ''}`}
                 onClick={() => setActiveTab('tree')}
               >
-                🌳 4-Tier Hierarchy Explorer
+                <FolderTreeIcon size={16} /> 4-Tier Hierarchy Explorer
               </button>
               <button
                 type="button"
                 className={`portal-tab ${activeTab === 'kb' ? 'active' : ''}`}
                 onClick={() => setActiveTab('kb')}
               >
-                📚 Document Knowledge Base & Tester
+                <DatabaseIcon size={16} /> Knowledge Base & Citation Tester
+              </button>
+              <button
+                type="button"
+                className={`portal-tab ${activeTab === 'staff' ? 'active' : ''}`}
+                onClick={() => setActiveTab('staff')}
+              >
+                <UsersIcon size={16} /> Staff & Evaluators
               </button>
             </div>
           </div>
@@ -231,6 +339,14 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
               documents={documents}
               loading={loading}
               onRefresh={() => loadInstitutionData(selectedInst.id)}
+            />
+          )}
+
+          {activeTab === 'staff' && selectedInst && (
+            <StaffDirectory
+              institutionId={selectedInst.id}
+              institutionName={selectedInst.name}
+              tierTwoTerm={selectedInst.tier_two_term === 'SCHOOL' ? 'School' : 'Faculty'}
             />
           )}
         </div>

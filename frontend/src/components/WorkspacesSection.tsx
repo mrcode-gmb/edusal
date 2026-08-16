@@ -1,4 +1,5 @@
 import { useState, type FC } from 'react';
+import { ShieldCheckIcon } from './icons';
 
 export const WorkspacesSection: FC = () => {
   const [activeRole, setActiveRole] = useState<'student' | 'counsellor' | 'admin' | 'employer'>('student');
@@ -186,7 +187,9 @@ export const WorkspacesSection: FC = () => {
                     <button type="button" className="sim-action-btn">
                       {current.workspacePreview.actionText} →
                     </button>
-                    <span className="sim-security-note">🔒 Single Source of Truth</span>
+                    <span className="sim-security-note">
+                      <ShieldCheckIcon size={13} /> Single Source of Truth
+                    </span>
                   </div>
                 </div>
               </div>
