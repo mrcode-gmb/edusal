@@ -1,6 +1,15 @@
 import { useState, type FC, type FormEvent } from 'react';
 import type { InstitutionHierarchyTree, AcademicSession } from '../../types/institution';
-import { GraduationCapIcon } from '../icons';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  MenuItem,
+  TextField,
+} from '@mui/material';
+import { School as GraduationCapIcon, Close as CloseIcon } from '@mui/icons-material';
 
 interface AddStudentModalProps {
   isOpen: boolean;
@@ -107,173 +116,189 @@ export const AddStudentModal: FC<AddStudentModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-md" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-with-icon">
-            <GraduationCapIcon size={20} color="#0284c7" />
-            <div>
-              <h3>Register Student into Program</h3>
-              <p>Anchored hierarchically to degree programme, department, and faculty</p>
-            </div>
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      slotProps={{ paper: { sx: { borderRadius: '15px' } } }}
+    >
+      <DialogTitle
+        sx={{
+          p: 3,
+          pb: 2,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 2,
+        }}
+      >
+        <div className="flex items-start gap-2">
+          <GraduationCapIcon sx={{ fontSize: 22, color: 'primary.main', mt: 0.5 }} />
+          <div>
+            <p className="text-base font-bold text-charcoal">Register Student into Program</p>
+            <p className="mt-0.5 text-sm text-charcoal-faint">
+              Anchored hierarchically to degree programme, department, and faculty
+            </p>
           </div>
-          <button type="button" className="modal-close-btn" onClick={onClose}>
-            ✕
-          </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-row-2">
-            <div className="form-group">
-              <label>Student Full Name *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Amina Bello"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label>Official Institutional Email *</label>
-              <input
-                type="email"
-                required
-                placeholder="e.g. a.bello@student.edu.ng"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
+        <IconButton size="medium" onClick={onClose}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ p: 3, pt: 1 }}>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid gap-4 space-y-4 sm:grid-cols-2">
+            <TextField
+              fullWidth
+              size="medium"
+              label="Student Full Name"
+              required
+              placeholder="e.g. Amina Bello"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              size="medium"
+              label="Official Institutional Email"
+              required
+              type="email"
+              placeholder="e.g. a.bello@student.edu.ng"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
-
-          <div className="form-row-2">
-            <div className="form-group">
-              <label>Matriculation Number *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. 2021/1/74892SWE"
-                value={matricNumber}
-                onChange={(e) => setMatricNumber(e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label>JAMB Registration No.</label>
-              <input
-                type="text"
-                placeholder="e.g. 202140192849EF"
-                value={jambRegNumber}
-                onChange={(e) => setJambRegNumber(e.target.value)}
-              />
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              fullWidth
+              size="medium"
+              label="Matriculation Number"
+              required
+              placeholder="e.g. 2021/1/74892SWE"
+              value={matricNumber}
+              onChange={(e) => setMatricNumber(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              size="medium"
+              label="JAMB Registration No."
+              placeholder="e.g. 202140192849EF"
+              value={jambRegNumber}
+              onChange={(e) => setJambRegNumber(e.target.value)}
+            />
           </div>
-
-          <div className="form-group">
-            <label>Academic Programme (Tier 4) *</label>
-            <select
-              value={selectedProgramId || (availablePrograms[0]?.id ?? '')}
+          <TextField
+            fullWidth
+            size="medium"
+            select
+            label="Academic Programme (Tier 4)"
+            required
+            value={selectedProgramId || (availablePrograms[0]?.id ?? '')}
+            onChange={(e) => {
+              setSelectedProgramId(e.target.value);
+              const p = availablePrograms.find((item) => item.id === e.target.value);
+              if (p && yearOfStudy > p.durationYears) {
+                setYearOfStudy(p.durationYears);
+              }
+            }}
+          >
+            {availablePrograms.map((prog) => (
+              <MenuItem key={prog.id} value={prog.id}>
+                {prog.name} — {prog.departmentName} ({prog.durationYears} Years Duration)
+              </MenuItem>
+            ))}
+          </TextField>
+          <br /> <br />
+          <p className="-mt-3 text-xs text-charcoal-faint">
+            Program duration ({maxYears} years) automatically dictates student level
+            progression & SIWES windows.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Entry Session"
+              required
+              value={selectedSessionId || (sessions[0]?.id ?? '')}
+              onChange={(e) => setSelectedSessionId(e.target.value)}
+            >
+              {sessions.map((s) => (
+                <MenuItem key={s.id} value={s.id}>
+                  {s.session_label} {s.is_current ? '(Current Session)' : ''}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Entry Mode"
+              value={entryMode}
               onChange={(e) => {
-                setSelectedProgramId(e.target.value);
-                const p = availablePrograms.find((item) => item.id === e.target.value);
-                if (p && yearOfStudy > p.durationYears) {
-                  setYearOfStudy(p.durationYears);
+                setEntryMode(e.target.value);
+                if (e.target.value === 'DIRECT_ENTRY' && yearOfStudy === 1) {
+                  setYearOfStudy(2);
                 }
               }}
             >
-              {availablePrograms.map((prog) => (
-                <option key={prog.id} value={prog.id}>
-                  {prog.name} — {prog.departmentName} ({prog.durationYears} Years Duration)
-                </option>
+              <MenuItem value="UTME">UTME (Standard Entry — Year 1)</MenuItem>
+              <MenuItem value="DIRECT_ENTRY">Direct Entry (DE — Year 2)</MenuItem>
+              <MenuItem value="TRANSFER">Inter-Faculty / University Transfer</MenuItem>
+              <MenuItem value="CONVERSION">HND to B.Sc. Conversion</MenuItem>
+            </TextField>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label={`Current Year of Study (${yearOfStudy} of ${maxYears})`}
+              value={yearOfStudy}
+              onChange={(e) => setYearOfStudy(Number(e.target.value))}
+            >
+              {Array.from({ length: maxYears }, (_, i) => i + 1).map((yr) => (
+                <MenuItem key={yr} value={yr}>
+                  Year {yr} — {yr * 100} Level {yr === maxYears ? '(Final Year)' : ''}
+                </MenuItem>
               ))}
-            </select>
-            <span className="form-hint">
-              Program duration ({maxYears} years) automatically dictates student level progression & SIWES windows.
-            </span>
-          </div>
-
-          <div className="form-row-2">
-            <div className="form-group">
-              <label>Entry Session *</label>
-              <select
-                value={selectedSessionId || (sessions[0]?.id ?? '')}
-                onChange={(e) => setSelectedSessionId(e.target.value)}
-              >
-                {sessions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.session_label} {s.is_current ? '(Current Session)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Entry Mode</label>
-              <select
-                value={entryMode}
-                onChange={(e) => {
-                  setEntryMode(e.target.value);
-                  if (e.target.value === 'DIRECT_ENTRY' && yearOfStudy === 1) {
-                    setYearOfStudy(2);
-                  }
-                }}
-              >
-                <option value="UTME">UTME (Standard Entry — Year 1)</option>
-                <option value="DIRECT_ENTRY">Direct Entry (DE — Year 2)</option>
-                <option value="TRANSFER">Inter-Faculty / University Transfer</option>
-                <option value="CONVERSION">HND to B.Sc. Conversion</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-row-2">
-            <div className="form-group">
-              <label>Current Year of Study ({yearOfStudy} of {maxYears})</label>
-              <select
-                value={yearOfStudy}
-                onChange={(e) => setYearOfStudy(Number(e.target.value))}
-              >
-                {Array.from({ length: maxYears }, (_, i) => i + 1).map((yr) => (
-                  <option key={yr} value={yr}>
-                    Year {yr} — {yr * 100} Level {yr === maxYears ? '(Final Year)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Current CGPA (Optional)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0.00"
-                max="5.00"
-                placeholder="e.g. 4.35"
-                value={cgpa}
-                onChange={(e) => setCgpa(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>Phone / WhatsApp Number</label>
-            <input
-              type="tel"
-              placeholder="e.g. +234 803 000 0000"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+            </TextField>
+            <TextField
+              fullWidth
+              size="medium"
+              label="Current CGPA (Optional)"
+              type="number"
+              slotProps={{ htmlInput: { step: '0.01', min: '0.00', max: '5.00' } }}
+              placeholder="e.g. 4.35"
+              value={cgpa}
+              onChange={(e) => setCgpa(e.target.value)}
             />
           </div>
-
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary-sm" onClick={onClose}>
+          <TextField
+            fullWidth
+            size="medium"
+            label="Phone / WhatsApp Number"
+            type="tel"
+            placeholder="e.g. +234 803 000 0000"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outlined"
+              color="inherit"
+              onClick={onClose}
+              sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+            >
               Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+            </Button>
+            <Button type="submit" variant="contained" color="primary" disabled={isSubmitting}>
               {isSubmitting ? 'Registering Student...' : 'Register Student'}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

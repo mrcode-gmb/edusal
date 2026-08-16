@@ -2,18 +2,41 @@ import { useState, useEffect, useCallback, type FC, type FormEvent } from 'react
 import type { InstitutionStaff, AcademicDivision, Department } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
 import {
-  UsersIcon,
-  PlusIcon,
-  MailIcon,
-  ShieldCheckIcon,
-  CheckCircleIcon,
-} from '../icons';
+  Button,
+  Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  MenuItem,
+  TextField,
+  LinearProgress,
+} from '@mui/material';
+import {
+  Group as GroupIcon,
+  Add as AddIcon,
+  Close as CloseIcon,
+  Mail as MailIcon,
+  Shield as ShieldIcon,
+  Verified as VerifiedIcon,
+  PersonAdd as PersonAddIcon,
+} from '@mui/icons-material';
+import { Panel, PageHead, StatCard } from './Shared';
 
 interface StaffDirectoryProps {
   institutionId: string;
   institutionName: string;
   tierTwoTerm: string;
 }
+
+const roleFilters = [
+  'All Roles',
+  'COUNSELLOR',
+  'HOD',
+  'DEAN',
+  'DIRECTOR_CAREER_SERVICES',
+  'SUPERADMIN',
+];
 
 export const StaffDirectory: FC<StaffDirectoryProps> = ({
   institutionId,
@@ -24,6 +47,7 @@ export const StaffDirectory: FC<StaffDirectoryProps> = ({
   const [divisions, setDivisions] = useState<AcademicDivision[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
+  const [roleFilter, setRoleFilter] = useState('All Roles');
 
   // Add Staff Modal
   const [showModal, setShowModal] = useState(false);
@@ -87,234 +111,304 @@ export const StaffDirectory: FC<StaffDirectoryProps> = ({
     }
   };
 
-  return (
-    <div className="staff-directory-container">
-      {/* Header */}
-      <div className="staff-header-card">
-        <div className="staff-header-info">
-          <div className="staff-badge-row">
-            <span className="staff-tag">Governance & Evaluation Caseload</span>
-            <span className="staff-count-pill">{staffList.length} Active Staff</span>
-          </div>
-          <h3 className="staff-title">Faculty Evaluators, Deans & Counsellors</h3>
-          <p className="staff-sub">
-            Staff directory and assigned milestone evaluator roles for <strong>{institutionName}</strong>.
-          </p>
-        </div>
+  const filtered = staffList.filter(
+    (st) => roleFilter === 'All Roles' || st.role === roleFilter,
+  );
 
-        <button
-          type="button"
-          className="btn btn-primary-sm"
-          onClick={() => setShowModal(true)}
-        >
-          <PlusIcon size={16} /> Add Staff Member
-        </button>
+  const activeCount = staffList.length;
+  const counsellorCount = staffList.filter((st) => st.role === 'COUNSELLOR').length;
+  const hodCount = staffList.filter((st) => st.role === 'HOD').length;
+
+  return (
+    <div>
+      <PageHead
+        eyebrow="Governance & Evaluation Caseload"
+        title="Staff & Evaluators"
+        sub={`Faculty evaluators, deans & counsellors assigned for ${institutionName}.`}
+        actions={
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<PersonAddIcon />}
+            onClick={() => setShowModal(true)}
+          >
+            Add Staff Member
+          </Button>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          icon={GroupIcon}
+          value={activeCount}
+          label="Active Staff"
+          sub="Assigned evaluator accounts"
+          chip="Institutional"
+        />
+        <StatCard
+          icon={ShieldIcon}
+          value={counsellorCount}
+          label="Career Counsellors & Evaluators"
+          sub="Milestone sign-off authority"
+        />
+        <StatCard
+          icon={VerifiedIcon}
+          value={hodCount}
+          label="Head of Departments"
+          sub="Programme-level oversight"
+        />
       </div>
 
-      {/* Staff List Table */}
-      <div className="staff-table-card">
+      <Panel className="mt-4">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-bold text-charcoal">Staff Directory</h3>
+            <p className="mt-0.5 text-sm text-charcoal-faint">
+              {filtered.length} of {staffList.length} staff shown
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {roleFilters.map((rf) => (
+              <button
+                key={rf}
+                type="button"
+                onClick={() => setRoleFilter(rf)}
+                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                  roleFilter === rf
+                    ? 'bg-primary text-white'
+                    : 'bg-bgsoft text-charcoal-faint hover:bg-primary-soft'
+                }`}
+              >
+                {rf === 'All Roles' ? 'All Roles' : rf}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {loading ? (
-          <div className="staff-loading">Loading staff roster...</div>
+          <LinearProgress sx={{ borderRadius: 99, height: 6 }} />
         ) : staffList.length === 0 ? (
-          <div className="staff-empty">
-            <UsersIcon size={32} color="#94a3b8" />
-            <p>No staff accounts assigned yet.</p>
-            <button
-              type="button"
-              className="btn btn-secondary-sm"
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <GroupIcon sx={{ fontSize: 40, color: 'charcoal.faint' }} />
+            <p className="text-sm text-charcoal-faint">No staff accounts assigned yet.</p>
+            <Button
+              variant="outlined"
+              color="inherit"
+              size="medium"
+              startIcon={<AddIcon />}
               onClick={() => setShowModal(true)}
+              sx={{ color: 'primary.main', borderColor: 'primary.main' }}
             >
               Assign First Staff Member
-            </button>
+            </Button>
           </div>
         ) : (
-          <table className="custom-data-table">
-            <thead>
-              <tr>
-                <th>Staff Name & Email</th>
-                <th>Institutional Role</th>
-                <th>Assigned {tierTwoTerm} / Dept</th>
-                <th>Status</th>
-                <th>Assigned Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {staffList.map((st) => (
-                <tr key={st.id}>
-                  <td>
-                    <div className="staff-user-cell">
-                      <div className="staff-avatar">
-                        {(st.user_name || st.user_email).slice(0, 2).toUpperCase()}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left">
+              <thead>
+                <tr className="text-[11px] font-bold uppercase tracking-wide text-charcoal-faint">
+                  <th className="pb-3 pr-4">Staff Name & Email</th>
+                  <th className="pb-3 pr-4">Institutional Role</th>
+                  <th className="pb-3 pr-4">Assigned {tierTwoTerm} / Dept</th>
+                  <th className="pb-3 pr-4">Status</th>
+                  <th className="pb-3">Assigned Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((st) => (
+                  <tr key={st.id}>
+                    <td className="py-3.5 pr-4">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-bold text-primary">
+                          {(st.user_name || st.user_email).slice(0, 2).toUpperCase()}
+                        </span>
+                        <div>
+                          <p className="text-sm font-bold text-charcoal">
+                            {st.user_name || 'Staff Member'}
+                          </p>
+                          <p className="text-xs text-charcoal-faint">{st.user_email}</p>
+                        </div>
                       </div>
-                      <div>
-                        <strong className="staff-name">{st.user_name || 'Staff Member'}</strong>
-                        <span className="staff-email">{st.user_email}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span className={`role-badge ${st.role.toLowerCase()}`}>
-                      {st.role_display}
-                    </span>
-                    {st.title && <span className="staff-custom-title">{st.title}</span>}
-                  </td>
-                  <td>
-                    <div className="assigned-unit-block">
+                    </td>
+                    <td className="py-3.5 pr-4">
+                      <Chip
+                        label={st.role_display}
+                        size="medium"
+                        sx={{ bgcolor: 'primary.soft', color: 'primary.main', fontWeight: 700 }}
+                      />
+                      {st.title && (
+                        <p className="mt-1 text-xs font-semibold text-charcoal-soft">{st.title}</p>
+                      )}
+                    </td>
+                    <td className="py-3.5 pr-4">
                       {st.division_name && (
-                        <span className="unit-div">{st.division_name}</span>
+                        <p className="text-sm font-semibold text-charcoal">{st.division_name}</p>
                       )}
                       {st.department_name && (
-                        <span className="unit-dept">Dept: {st.department_name}</span>
+                        <p className="text-xs text-charcoal-faint">Dept: {st.department_name}</p>
                       )}
                       {!st.division_name && !st.department_name && (
-                        <span className="unit-all">Institution-Wide</span>
+                        <span className="text-xs font-semibold text-charcoal-faint">
+                          Institution-Wide
+                        </span>
                       )}
-                    </div>
-                  </td>
-                  <td>
-                    <span className="badge-active">
-                      <CheckCircleIcon size={13} color="#059669" /> Active
-                    </span>
-                  </td>
-                  <td>
-                    <span className="table-date">
+                    </td>
+                    <td className="py-3.5 pr-4">
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-primary">
+                        <VerifiedIcon sx={{ fontSize: 14 }} /> Active
+                      </span>
+                    </td>
+                    <td className="py-3.5 text-xs text-charcoal-faint">
                       {new Date(st.created_at).toLocaleDateString()}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Add Staff Modal */}
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content modal-md" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title-with-icon">
-                <ShieldCheckIcon size={20} color="#0284c7" />
-                <h3>Assign Institutional Staff / Evaluator</h3>
-              </div>
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={() => setShowModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateStaff} className="modal-form">
-              <div className="form-group">
-                <label>Staff Full Name & Academic Title</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Dr. Aminu Adebayo"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Institutional Email (Login Identifier)</label>
-                <div className="input-with-icon">
-                  <MailIcon size={16} className="input-icon" />
-                  <input
-                    type="email"
-                    required
-                    placeholder="e.g. adebayo@futminna.edu.ng"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <span className="form-hint">
-                  Default login password for new accounts is <strong>1234!@#$</strong>
-                </span>
-              </div>
-
-              <div className="form-row-2">
-                <div className="form-group">
-                  <label>Institutional Role</label>
-                  <select value={role} onChange={(e) => setRole(e.target.value)}>
-                    <option value="COUNSELLOR">Career Counsellor & Evaluator</option>
-                    <option value="HOD">Head of Department (HOD)</option>
-                    <option value="DEAN">Dean of {tierTwoTerm}</option>
-                    <option value="DIRECTOR_CAREER_SERVICES">Director of Career Services</option>
-                    <option value="SUPERADMIN">Institution Superadmin</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Official Position Title</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. SIWES Coordinator"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row-2">
-                <div className="form-group">
-                  <label>Academic {tierTwoTerm}</label>
-                  <select
-                    value={selectedDivision}
-                    onChange={(e) => {
-                      setSelectedDivision(e.target.value);
-                      setSelectedDepartment('');
-                    }}
-                  >
-                    <option value="">All / Institution-Wide</option>
-                    {divisions.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Department</label>
-                  <select
-                    value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                  >
-                    <option value="">All Departments</option>
-                    {departments
-                      .filter((dept) => !selectedDivision || dept.division === selectedDivision)
-                      .map((dept) => (
-                        <option key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary-sm"
-                  onClick={() => setShowModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? 'Assigning...' : 'Assign Staff Member'}
-                </button>
-              </div>
-            </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
-      )}
+        )}
+      </Panel>
+
+      <Dialog
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        slotProps={{ paper: { sx: { borderRadius: '15px', maxWidth: 560 } } }}
+      >
+        <DialogTitle
+          sx={{
+            p: 3,
+            pb: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 2,
+          }}
+        >
+          <span className="flex items-center gap-2 text-base font-bold text-charcoal">
+            <ShieldIcon sx={{ fontSize: 20, color: 'primary.main' }} />
+            Assign Institutional Staff / Evaluator
+          </span>
+          <IconButton size="medium" onClick={() => setShowModal(false)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3, pt: 1 }}>
+          <form onSubmit={handleCreateStaff} className="space-y-5">
+            <TextField
+              fullWidth
+              size="medium"
+              label="Staff Full Name & Academic Title"
+              required
+              placeholder="e.g. Dr. Aminu Adebayo"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <br /> <br />
+            <TextField
+              fullWidth
+              size="medium"
+              label="Institutional Email (Login Identifier)"
+              required
+              type="email"
+              placeholder="e.g. adebayo@futminna.edu.ng"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <MailIcon sx={{ fontSize: 18, mr: 1, color: 'charcoal.faint' }} />
+                  ),
+                },
+              }}
+            />
+            <br /> <br />
+            <p className="-mt-2 text-xs text-charcoal-faint">
+              Default login password for new accounts is <strong>1234!@#$</strong>
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField
+                fullWidth
+                size="medium"
+                select
+                label="Institutional Role"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+              >
+                <MenuItem value="COUNSELLOR">Career Counsellor & Evaluator</MenuItem>
+                <MenuItem value="HOD">Head of Department (HOD)</MenuItem>
+                <MenuItem value="DEAN">Dean of {tierTwoTerm}</MenuItem>
+                <MenuItem value="DIRECTOR_CAREER_SERVICES">
+                  Director of Career Services
+                </MenuItem>
+                <MenuItem value="SUPERADMIN">Institution Superadmin</MenuItem>
+              </TextField>
+              <TextField
+                fullWidth
+                size="medium"
+                label="Official Position Title"
+                placeholder="e.g. SIWES Coordinator"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField
+                fullWidth
+                size="medium"
+                select
+                label={`Academic ${tierTwoTerm}`}
+                value={selectedDivision}
+                onChange={(e) => {
+                  setSelectedDivision(e.target.value);
+                  setSelectedDepartment('');
+                }}
+              >
+                <MenuItem value="">All / Institution-Wide</MenuItem>
+                {divisions.map((d) => (
+                  <MenuItem key={d.id} value={d.id}>
+                    {d.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                fullWidth
+                size="medium"
+                select
+                label="Department"
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+              >
+                <MenuItem value="">All Departments</MenuItem>
+                {departments
+                  .filter((dept) => !selectedDivision || dept.division === selectedDivision)
+                  .map((dept) => (
+                    <MenuItem key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </MenuItem>
+                  ))}
+              </TextField>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outlined"
+                color="inherit"
+                onClick={() => setShowModal(false)}
+                sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Assigning...' : 'Assign Staff Member'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

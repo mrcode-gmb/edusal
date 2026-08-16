@@ -2,10 +2,14 @@ import { useState, type FC } from 'react';
 import type { Pathway, PathwayMilestone } from '../../types/institution';
 import { AddMilestoneModal } from './AddMilestoneModal';
 import { institutionApi } from '../../services/institutionApi';
+import { Button, Chip, IconButton } from '@mui/material';
 import {
-  PlusIcon,
-  CheckCircleIcon,
-} from '../icons';
+  Add as AddIcon,
+  Verified as VerifiedIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+} from '@mui/icons-material';
+import { Panel } from './Shared';
 
 interface MilestoneTimelineProps {
   pathway: Pathway;
@@ -62,69 +66,92 @@ export const MilestoneTimeline: FC<MilestoneTimelineProps> = ({
   };
 
   return (
-    <div className="milestone-timeline-container">
-      {/* Header Bar */}
-      <div className="timeline-header-card">
-        <div className="timeline-title-meta">
-          <div className="pathway-badge-row">
-            <span className="prog-pill">{pathway.program_name}</span>
-            <span className="duration-pill">{pathway.duration_years} Year Duration</span>
-            {pathway.is_template && <span className="template-pill">Master Blueprint</span>}
+    <div>
+      <Panel>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap gap-2">
+              <Chip
+                label={pathway.program_name}
+                size="small"
+                sx={{ bgcolor: 'primary.soft', color: 'primary.main', fontWeight: 700 }}
+              />
+              <Chip
+                label={`${pathway.duration_years} Year Duration`}
+                size="small"
+                variant="outlined"
+                sx={{ color: 'charcoal.soft', borderColor: 'border.strong', fontWeight: 700 }}
+              />
+              {pathway.is_template && (
+                <Chip
+                  label="Master Blueprint"
+                  size="small"
+                  sx={{ bgcolor: 'charcoal', color: '#fff', fontWeight: 700 }}
+                />
+              )}
+            </div>
+            <h3 className="mt-2 text-lg font-bold text-charcoal">{pathway.title}</h3>
+            <p className="mt-0.5 text-sm text-charcoal-faint">
+              Target Role: <strong className="text-charcoal">{pathway.career_role}</strong> ·
+              Industry:{' '}
+              <strong className="text-charcoal">{pathway.industry_sector || 'General Tech'}</strong>
+            </p>
+            <p className="mt-1.5 max-w-2xl text-sm text-charcoal-faint">{pathway.description}</p>
           </div>
-          <h3>{pathway.title}</h3>
-          <p className="pathway-role-desc">
-            Target Role: <strong>{pathway.career_role}</strong> · Industry: <strong>{pathway.industry_sector || 'General Tech'}</strong>
-          </p>
-          <p className="pathway-full-desc">{pathway.description}</p>
-        </div>
 
-        <div className="timeline-actions-side">
-          <div className="points-summary-card">
-            <span className="pts-label">Total Points</span>
-            <span className="pts-val">{pathway.total_points}</span>
-            <span className="pts-sub">{milestones.length} Verifiable Milestones</span>
+          <div className="flex flex-col items-end gap-3">
+            <div className="rounded-[15px] bg-bgsoft px-5 py-3 text-center">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-charcoal-faint">
+                Total Points
+              </p>
+              <p className="text-2xl font-extrabold text-primary">{pathway.total_points}</p>
+              <p className="text-xs text-charcoal-faint">
+                {milestones.length} Verifiable Milestones
+              </p>
+            </div>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setEditingMilestone(null);
+                setShowAddModal(true);
+              }}
+            >
+              Add Verifiable Milestone
+            </Button>
           </div>
-
-          <button
-            type="button"
-            className="btn btn-primary-sm"
-            onClick={() => {
-              setEditingMilestone(null);
-              setShowAddModal(true);
-            }}
-          >
-            <PlusIcon size={14} /> Add Verifiable Milestone
-          </button>
         </div>
-      </div>
+      </Panel>
 
-      {/* Progressive Level-by-Level Visual Roadmap */}
-      <div className="timeline-levels-grid">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {Array.from({ length: durationYears }, (_, i) => i + 1).map((year) => {
           const yearMilestones = milestonesByYear[year] || [];
           const yearPoints = yearMilestones.reduce((acc, m) => acc + m.points, 0);
 
           return (
-            <div key={year} className="timeline-level-section">
-              <div className="level-section-header">
-                <div className="level-title-group">
-                  <span className="level-number-badge">{year}</span>
-                  <div>
-                    <h4>{getLevelName(year)}</h4>
-                    <span className="level-sub">
-                      {yearMilestones.length} Milestone(s) · {yearPoints} Points
-                    </span>
-                  </div>
+            <Panel key={year}>
+              <div className="mb-4 flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-white">
+                  {year}
+                </span>
+                <div>
+                  <h4 className="text-base font-bold text-charcoal">{getLevelName(year)}</h4>
+                  <p className="text-xs text-charcoal-faint">
+                    {yearMilestones.length} Milestone(s) · {yearPoints} Points
+                  </p>
                 </div>
               </div>
 
-              <div className="level-milestones-list">
+              <div className="space-y-3">
                 {yearMilestones.length === 0 ? (
-                  <div className="level-empty-card">
-                    <p>No milestones assigned for {getLevelName(year)} yet.</p>
+                  <div className="flex flex-col items-center gap-2 rounded-[15px] bg-bgsoft px-4 py-6 text-center">
+                    <p className="text-sm text-charcoal-faint">
+                      No milestones assigned for {getLevelName(year)} yet.
+                    </p>
                     <button
                       type="button"
-                      className="btn-link-sm"
+                      className="text-sm font-bold text-primary hover:underline"
                       onClick={() => {
                         setEditingMilestone(null);
                         setShowAddModal(true);
@@ -135,77 +162,89 @@ export const MilestoneTimeline: FC<MilestoneTimelineProps> = ({
                   </div>
                 ) : (
                   yearMilestones.map((m) => (
-                    <div key={m.id} className="milestone-card">
-                      <div className="milestone-card-top">
-                        <div className="step-and-type">
-                          <span className="step-chip">Step #{m.order_index + 1}</span>
-                          <span className="type-chip">{m.milestone_type_display || m.milestone_type}</span>
-                          <span className="semester-tag">Semester: {m.target_semester}</span>
+                    <div key={m.id} className="rounded-[15px] bg-bgsoft p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Chip
+                            label={`Step #${m.order_index + 1}`}
+                            size="small"
+                            sx={{ bgcolor: 'primary', color: '#fff', fontWeight: 700 }}
+                          />
+                          <Chip
+                            label={m.milestone_type_display || m.milestone_type}
+                            size="small"
+                            sx={{ bgcolor: 'white', color: 'charcoal.soft', fontWeight: 700 }}
+                          />
+                          <Chip
+                            label={`Semester: ${m.target_semester}`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ color: 'charcoal.faint', borderColor: 'border.strong' }}
+                          />
                         </div>
-                        <span className="milestone-points-badge">+{m.points} pts</span>
+                        <span className="text-sm font-extrabold text-primary">+{m.points} pts</span>
                       </div>
 
-                      <h5 className="milestone-title">{m.title}</h5>
-                      <p className="milestone-desc">{m.description}</p>
+                      <h5 className="mt-3 text-sm font-bold text-charcoal">{m.title}</h5>
+                      <p className="mt-1 text-sm text-charcoal-faint">{m.description}</p>
 
-                      {/* Evidence & Verification Rules */}
-                      <div className="milestone-rules-row">
-                        <div className="rule-item">
-                          <span className="rule-label">Required Evidence:</span>
-                          <span className="rule-val">{m.required_evidence_type_display || m.required_evidence_type}</span>
-                        </div>
-                        <div className="rule-item">
-                          <span className="rule-label">Verification:</span>
-                          <span className="rule-val">{m.verification_method_display || m.verification_method}</span>
-                        </div>
+                      <div className="mt-3 flex flex-wrap gap-4 text-xs">
+                        <span className="text-charcoal-faint">
+                          <strong className="text-charcoal">Required Evidence:</strong>{' '}
+                          {m.required_evidence_type_display || m.required_evidence_type}
+                        </span>
+                        <span className="text-charcoal-faint">
+                          <strong className="text-charcoal">Verification:</strong>{' '}
+                          {m.verification_method_display || m.verification_method}
+                        </span>
                       </div>
 
-                      {/* Competency Tags */}
                       {m.competency_tags && m.competency_tags.length > 0 && (
-                        <div className="competencies-chips">
+                        <div className="mt-3 flex flex-wrap gap-1.5">
                           {m.competency_tags.map((tag, tIdx) => (
-                            <span key={tIdx} className="comp-tag">
+                            <span
+                              key={tIdx}
+                              className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-charcoal"
+                            >
                               {tag}
                             </span>
                           ))}
                         </div>
                       )}
 
-                      {/* Footer Controls */}
-                      <div className="milestone-card-footer">
-                        <div className="verified-status-tag">
-                          <CheckCircleIcon size={12} color="#059669" /> Ready for Evidence
-                        </div>
-                        <div className="card-btn-group">
-                          <button
-                            type="button"
-                            className="btn-action-edit"
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-3">
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-primary">
+                          <VerifiedIcon sx={{ fontSize: 14 }} /> Ready for Evidence
+                        </span>
+                        <div className="flex gap-1">
+                          <IconButton
+                            size="small"
+                            title="Edit milestone"
                             onClick={() => {
                               setEditingMilestone(m);
                               setShowAddModal(true);
                             }}
                           >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-action-delete"
+                            <EditIcon fontSize="small" sx={{ color: 'charcoal.soft' }} />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            title="Delete milestone"
                             onClick={() => handleDeleteMilestone(m.id, m.title)}
                           >
-                            Delete
-                          </button>
+                            <DeleteIcon fontSize="small" sx={{ color: '#b91c1c' }} />
+                          </IconButton>
                         </div>
                       </div>
                     </div>
                   ))
                 )}
               </div>
-            </div>
+            </Panel>
           );
         })}
       </div>
 
-      {/* Add / Edit Milestone Modal */}
       {showAddModal && (
         <AddMilestoneModal
           isOpen={showAddModal}

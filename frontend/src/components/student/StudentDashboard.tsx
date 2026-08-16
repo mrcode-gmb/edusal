@@ -1,14 +1,25 @@
 import { useState, useEffect, type FC } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import type { StudentDashboardData, AuthUser } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
 import { EmployabilityGaugeCard } from './EmployabilityGaugeCard';
 import { StudentRoadmapTimeline } from './StudentRoadmapTimeline';
+import { DashboardTheme, PageHead, Panel, StatCard, Badge } from '../institution/Shared';
+import { Chip, Drawer, IconButton, Tooltip } from '@mui/material';
 import {
-  GraduationCapIcon,
-  LogOutIcon,
-  RefreshCwIcon,
-  CompassIcon,
-} from '../icons';
+  Menu as MenuIcon,
+  Dashboard as DashboardIcon,
+  Timeline as TimelineIcon,
+  WorkspacePremium as WorkspacePremiumIcon,
+  ArrowForward as ArrowForwardIcon,
+  Logout as LogoutIcon,
+  Public as PublicIcon,
+  School as SchoolIcon,
+  Refresh as RefreshIcon,
+  Explore as CompassIcon,
+  Verified as VerifiedIcon,
+  EmojiEvents as EmojiEventsIcon,
+} from '@mui/icons-material';
 
 interface StudentDashboardProps {
   currentUser?: AuthUser;
@@ -16,13 +27,55 @@ interface StudentDashboardProps {
   onLogout: () => void;
 }
 
+type TabKey = 'overview' | 'employability' | 'roadmap';
+
+const TAB_PATHS: Record<TabKey, string> = {
+  overview: 'overview',
+  employability: 'employability',
+  roadmap: 'career-roadmap',
+};
+
+const PATH_TO_TAB: Record<string, TabKey> = Object.fromEntries(
+  (Object.entries(TAB_PATHS) as [TabKey, string][]).map(([key, path]) => [path, key])
+);
+
+const NavSections: {
+  label: string;
+  items: { key: TabKey; label: string; icon: typeof DashboardIcon }[];
+}[] = [
+  {
+    label: 'Overview',
+    items: [{ key: 'overview', label: 'Career Overview', icon: DashboardIcon }],
+  },
+  {
+    label: 'My Record',
+    items: [
+      { key: 'employability', label: 'Employability Quotient', icon: WorkspacePremiumIcon },
+      { key: 'roadmap', label: 'Career Roadmap', icon: TimelineIcon },
+    ],
+  },
+];
+
 export const StudentDashboard: FC<StudentDashboardProps> = ({
+  currentUser,
   authToken,
   onLogout,
 }) => {
   const [data, setData] = useState<StudentDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const pathSeg = location.pathname.split('/').filter(Boolean).pop() || '';
+  const activeTab: TabKey = PATH_TO_TAB[pathSeg] || 'overview';
+
+  useEffect(() => {
+    if (!PATH_TO_TAB[pathSeg]) {
+      navigate(`/portal/institution/${TAB_PATHS.overview}`, { replace: true });
+    }
+  }, [pathSeg, navigate]);
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -41,117 +94,356 @@ export const StudentDashboard: FC<StudentDashboardProps> = ({
     loadDashboard();
   }, [authToken]);
 
-  if (loading) {
-    return (
-      <div className="student-loading-container">
-        <div className="loading-spinner" />
-        <p>Loading your career pathway dashboard...</p>
+  const displayName = data?.profile.user_name || currentUser?.name || 'Student';
+  const displayRole =
+    data?.profile.level_display || data?.profile.award_level_display || 'Student';
+  const initials = displayName.slice(0, 2).toUpperCase();
+
+  const SidebarContent = (
+    <div className="flex h-full flex-col bg-charcoal">
+      <div className="flex h-16 items-center px-6">
+        <img src="/logo-white.png" alt="Edusal Consult" className="h-9 w-auto" />
       </div>
-    );
-  }
 
-  if (error || !data) {
-    return (
-      <div className="student-error-container">
-        <h3>Unable to Load Dashboard</h3>
-        <p>{error || 'Student profile data could not be retrieved.'}</p>
-        <button type="button" className="btn btn-primary-sm" onClick={loadDashboard}>
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  const { profile, active_pathway, submissions, employability_summary } = data;
-
-  return (
-    <div className="student-portal-wrapper">
-      {/* Top Navigation Bar */}
-      <header className="student-portal-navbar">
-        <div className="portal-brand-row">
-          <div className="student-brand-badge">
-            <GraduationCapIcon size={20} color="#ffffff" />
-          </div>
-          <div>
-            <h3>EduSal Student Career Portal</h3>
-            <p>{profile.institution_name}</p>
-          </div>
-        </div>
-
-        <div className="portal-user-actions">
-          <div className="student-info-pill">
-            <span className="student-name">{profile.user_name}</span>
-            <span className="student-matric">{profile.matric_number}</span>
-          </div>
-          <button type="button" className="btn-logout" onClick={onLogout} title="Log Out">
-            <LogOutIcon size={16} /> Sign Out
-          </button>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="student-portal-main">
-        {/* Student Profile Identity Banner */}
-        <div className="student-identity-banner">
-          <div className="banner-left">
-            <div className="student-tag-row">
-              <span className="inst-badge">{profile.institution_short_name}</span>
-              <span className="dept-badge">{profile.department_name}</span>
-              <span className="level-badge">{profile.level_display}</span>
-              {profile.is_siwes_year && (
-                <span className="siwes-active-badge">SIWES Eligible Cohort</span>
-              )}
-            </div>
-
-            <h2 className="student-headline">{profile.program_name}</h2>
-            <p className="student-subhead">
-              Matriculation: <strong>{profile.matric_number}</strong> · Entry Mode: <strong>{profile.entry_mode_display}</strong> · Session: <strong>{profile.entry_session_label}</strong>
+      <div className="mx-4 mt-2 rounded-[15px] bg-white/[0.06] p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-white">
+            {initials}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-white">{displayName}</p>
+            <p className="truncate text-xs text-white/60">
+              {data?.profile.matric_number || displayRole}
             </p>
           </div>
-
-          <div className="banner-right-stats">
-            <div className="stat-pill">
-              <span className="stat-pill-label">Cumulative GPA</span>
-              <span className="stat-pill-val">{profile.cgpa ? Number(profile.cgpa).toFixed(2) : '3.50'}</span>
-            </div>
-            <div className="stat-pill">
-              <span className="stat-pill-label">SIWES Status</span>
-              <span className="stat-pill-val">{profile.siwes_clearance_status_display}</span>
-            </div>
-            <button
-              type="button"
-              className="btn-icon-refresh"
-              onClick={loadDashboard}
-              title="Refresh Dashboard"
-            >
-              <RefreshCwIcon size={14} color="#64748b" />
-            </button>
-          </div>
         </div>
-
-        {/* Employability Score Gauge Card */}
-        <EmployabilityGaugeCard
-          summary={employability_summary}
-          profile={profile}
-        />
-
-        {/* Career Pathway Roadmap */}
-        {active_pathway ? (
-          <StudentRoadmapTimeline
-            pathway={active_pathway}
-            submissions={submissions}
-            studentYearOfStudy={profile.year_of_study}
-            authToken={authToken}
-            onRefresh={loadDashboard}
-          />
-        ) : (
-          <div className="no-enrolled-pathway-card">
-            <CompassIcon size={36} color="#94a3b8" />
-            <h4>No Career Pathway Assigned Yet</h4>
-            <p>Your departmental counsellor will assign a career pathway blueprint to your degree program shortly.</p>
+        {data && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <Chip
+              size="small"
+              icon={<VerifiedIcon sx={{ fontSize: 13, color: '#7FB69A' }} />}
+              label={data.profile.institution_short_name}
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.08)',
+                color: '#E6F2EC',
+                '& .MuiChip-label': { fontSize: 11, fontWeight: 700 },
+              }}
+            />
+            <Chip
+              size="small"
+              label={data.profile.level_display}
+              sx={{
+                bgcolor: 'rgba(20,107,74,0.55)',
+                color: '#fff',
+                '& .MuiChip-label': { fontSize: 11, fontWeight: 700 },
+              }}
+            />
           </div>
         )}
-      </main>
+      </div>
+
+      <nav className="mt-5 flex-1 overflow-y-auto px-4 pb-6">
+        {NavSections.map((s) => (
+          <div key={s.label} className="mb-5">
+            <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+              {s.label}
+            </p>
+            <div className="space-y-1">
+              {s.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => {
+                      navigate(`/portal/institution/${TAB_PATHS[item.key]}`);
+                      setSidebarOpen(false);
+                    }}
+                    className={`flex w-full items-center gap-3 rounded-[15px] px-3 py-2.5 text-[13px] font-semibold transition-colors ${
+                      activeTab === item.key
+                        ? 'bg-primary text-white'
+                        : 'text-white/65 hover:bg-white/[0.06] hover:text-white'
+                    }`}
+                  >
+                    <Icon sx={{ fontSize: 18 }} />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      <div className="border-t border-white/10 px-4 py-4">
+        <Link
+          to="/"
+          onClick={() => setSidebarOpen(false)}
+          className="flex w-full items-center justify-between rounded-[15px] px-3 py-2.5 text-[13px] font-semibold text-white/65 transition-colors hover:bg-white/[0.06] hover:text-white"
+        >
+          <span className="flex items-center gap-3">
+            <PublicIcon sx={{ fontSize: 18 }} />
+            Back to Landing
+          </span>
+          <ArrowForwardIcon sx={{ fontSize: 15 }} />
+        </Link>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="mt-1 flex w-full items-center gap-3 rounded-[15px] px-3 py-2.5 text-[13px] font-semibold text-white/65 transition-colors hover:bg-white/[0.06] hover:text-white"
+        >
+          <LogoutIcon sx={{ fontSize: 18 }} />
+          Sign out
+        </button>
+      </div>
     </div>
+  );
+
+  return (
+    <DashboardTheme>
+      <div className="min-h-screen bg-bgsoft">
+        <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 lg:block">
+          {SidebarContent}
+        </aside>
+
+        <Drawer
+          anchor="left"
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          slotProps={{ paper: { sx: { width: 288 } } }}
+        >
+          {SidebarContent}
+        </Drawer>
+
+        <div className="lg:pl-72">
+          <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-white/90 px-4 backdrop-blur-md sm:px-6">
+            <div className="flex items-center gap-3">
+              <IconButton
+                className="lg:hidden"
+                aria-label="Open menu"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <MenuIcon />
+              </IconButton>
+              <div className="hidden items-center gap-1.5 text-sm text-charcoal-faint sm:flex">
+                <span className="font-semibold text-charcoal">
+                  {data?.profile.institution_name || 'Institution'}
+                </span>
+                <span>/</span>
+                <span className="font-semibold text-primary">Student Workspace</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Tooltip title={data?.profile.award_level_display || ''}>
+                <span className="hidden items-center gap-1.5 rounded-full bg-primary-soft px-3 py-1 text-[11px] font-bold text-primary md:inline-flex">
+                  <SchoolIcon sx={{ fontSize: 13 }} />
+                  {data?.profile.award_level_display || 'Student'}
+                </span>
+              </Tooltip>
+              <Tooltip title="Accredited Employability Quotient">
+                <IconButton aria-label="Employability">
+                  <WorkspacePremiumIcon />
+                </IconButton>
+              </Tooltip>
+              <button
+                type="button"
+                className="flex items-center gap-2.5 rounded-full bg-white py-1.5 pr-3 pl-1.5"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-white">
+                  {initials}
+                </span>
+                <span className="hidden text-left sm:block">
+                  <span className="block text-xs font-bold text-charcoal">{displayName}</span>
+                  <span className="block text-[11px] text-charcoal-faint">
+                    {data?.profile.matric_number || displayRole}
+                  </span>
+                </span>
+              </button>
+            </div>
+          </header>
+
+          <main className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
+            {loading && (
+              <div className="space-y-5">
+                <div className="h-28 animate-pulse rounded-[15px] bg-bgsoft" />
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="h-32 animate-pulse rounded-[15px] bg-bgsoft" />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!loading && (error || !data) && (
+              <Panel>
+                <div className="py-10 text-center">
+                  <CompassIcon sx={{ fontSize: 40, color: 'charcoal.faint', mb: 2 }} />
+                  <h3 className="text-lg font-bold text-charcoal">Unable to Load Dashboard</h3>
+                  <p className="mx-auto mt-1 max-w-md text-sm text-charcoal-faint">
+                    {error || 'Student profile data could not be retrieved.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={loadDashboard}
+                    className="mt-5 inline-flex items-center gap-2 rounded-[15px] bg-primary px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+                  >
+                    <RefreshIcon sx={{ fontSize: 16 }} />
+                    Retry
+                  </button>
+                </div>
+              </Panel>
+            )}
+
+            {!loading && data && (
+              <>
+                {activeTab === 'overview' && (
+                  <>
+                    <PageHead
+                      eyebrow="Student Career Portal"
+                      title={data.profile.program_name}
+                      sub={`Matriculation: ${data.profile.matric_number} · Entry Mode: ${data.profile.entry_mode_display} · Session: ${data.profile.entry_session_label}`}
+                      actions={
+                        <button
+                          type="button"
+                          onClick={loadDashboard}
+                          className="inline-flex items-center gap-2 rounded-[15px] bg-primary px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+                        >
+                          <RefreshIcon sx={{ fontSize: 16 }} />
+                          Refresh Dashboard
+                        </button>
+                      }
+                    />
+
+                    <Panel className="mb-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge color="#fff" bg="var(--color-primary)">
+                              {data.profile.institution_short_name}
+                            </Badge>
+                            <Badge color="var(--color-charcoal)" bg="rgba(31,41,51,0.08)">
+                              {data.profile.department_name}
+                            </Badge>
+                            <Badge>{data.profile.level_display}</Badge>
+                            {data.profile.is_siwes_year && (
+                              <Badge color="#92400e" bg="#fef3c7">
+                                SIWES Eligible Cohort
+                              </Badge>
+                            )}
+                          </div>
+                          <h2 className="mt-3 text-lg font-bold text-charcoal md:text-xl">
+                            {data.profile.program_name}
+                          </h2>
+                          <p className="mt-1 text-sm text-charcoal-faint">
+                            {data.profile.division_name} · {data.profile.department_name}
+                          </p>
+                        </div>
+
+                        <div className="flex items-start gap-2.5">
+                          <div className="rounded-[15px] bg-bgsoft px-4 py-3 text-center">
+                            <span className="block text-[11px] font-bold uppercase tracking-wide text-charcoal-faint">
+                              Cumulative GPA
+                            </span>
+                            <span className="mt-1 block text-xl font-extrabold text-charcoal">
+                              {data.profile.cgpa ? Number(data.profile.cgpa).toFixed(2) : '3.50'}
+                            </span>
+                          </div>
+                          <div className="rounded-[15px] bg-bgsoft px-4 py-3 text-center">
+                            <span className="block text-[11px] font-bold uppercase tracking-wide text-charcoal-faint">
+                              SIWES Status
+                            </span>
+                            <span className="mt-1 block text-sm font-bold text-primary">
+                              {data.profile.siwes_clearance_status_display}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </Panel>
+
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      <StatCard
+                        icon={WorkspacePremiumIcon}
+                        value={`${Number(data.profile.employability_score || 0).toFixed(1)}%`}
+                        label="Employability Score"
+                        sub="Accredited Employability Quotient"
+                      />
+                      <StatCard
+                        icon={SchoolIcon}
+                        value={data.profile.cgpa ? Number(data.profile.cgpa).toFixed(2) : 'N/A'}
+                        label="Cumulative GPA"
+                        sub={data.profile.academic_standing_display || 'In Good Standing'}
+                      />
+                      <StatCard
+                        icon={VerifiedIcon}
+                        value={data.profile.milestones_completed_count}
+                        label="Verified Milestones"
+                        sub="Deliverables accredited"
+                      />
+                      <StatCard
+                        icon={EmojiEventsIcon}
+                        value={data.profile.verified_points_total}
+                        label="Accredited Points"
+                        sub="Milestone points earned"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {activeTab === 'employability' && (
+                  <>
+                    <PageHead
+                      eyebrow="Employability"
+                      title="Accredited Employability Quotient"
+                      sub="Composite ranking evaluated from verified technical milestones (70%) and academic CGPA (30%)"
+                    />
+                    <EmployabilityGaugeCard
+                      summary={data.employability_summary}
+                      profile={data.profile}
+                    />
+                  </>
+                )}
+
+                {activeTab === 'roadmap' && (
+                  <>
+                    <PageHead
+                      eyebrow="Career Roadmap"
+                      title="Career Pathway Milestone Roadmap"
+                      sub={
+                        data.active_pathway
+                          ? `Track and complete industry deliverables sequenced for ${data.active_pathway.title}`
+                          : 'Your departmental counsellor will assign a career pathway blueprint to your degree program.'
+                      }
+                    />
+                    {data.active_pathway ? (
+                      <StudentRoadmapTimeline
+                        pathway={data.active_pathway}
+                        submissions={data.submissions}
+                        studentYearOfStudy={data.profile.year_of_study}
+                        authToken={authToken}
+                        onRefresh={loadDashboard}
+                      />
+                    ) : (
+                      <Panel>
+                        <div className="py-10 text-center">
+                          <CompassIcon sx={{ fontSize: 40, color: 'charcoal.faint', mb: 2 }} />
+                          <h3 className="text-lg font-bold text-charcoal">
+                            No Career Pathway Assigned Yet
+                          </h3>
+                          <p className="mx-auto mt-1 max-w-md text-sm text-charcoal-faint">
+                            Your departmental counsellor will assign a career pathway blueprint to
+                            your degree program shortly.
+                          </p>
+                        </div>
+                      </Panel>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </main>
+        </div>
+      </div>
+    </DashboardTheme>
   );
 };

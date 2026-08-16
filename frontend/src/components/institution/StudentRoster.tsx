@@ -4,15 +4,25 @@ import { institutionApi } from '../../services/institutionApi';
 import { AddStudentModal } from './AddStudentModal';
 import { GenerateCredentialModal } from './GenerateCredentialModal';
 import {
-  GraduationCapIcon,
-  PlusIcon,
-  SearchIcon,
-  ShieldCheckIcon,
-  RefreshCwIcon,
-  BookOpenIcon,
-  BriefcaseIcon,
-  KeyIcon,
-} from '../icons';
+  Button,
+  Chip,
+  IconButton,
+  MenuItem,
+  TextField,
+  LinearProgress,
+} from '@mui/material';
+import {
+  School as GraduationCapIcon,
+  Add as AddIcon,
+  Search as SearchIcon,
+  VerifiedUser as ShieldCheckIcon,
+  Refresh as RefreshCwIcon,
+  MenuBook as BookOpenIcon,
+  WorkOutlineOutlined as BriefcaseIcon,
+  Key as KeyIcon,
+  Close as CloseIcon,
+} from '@mui/icons-material';
+import { PageHead, StatCard, Panel } from './Shared';
 
 interface StudentRosterProps {
   institutionId: string;
@@ -84,126 +94,109 @@ export const StudentRoster: FC<StudentRosterProps> = ({
   };
 
   return (
-    <div className="student-roster-container">
-      {/* Header & KPI Summary */}
-      <div className="roster-header-card">
-        <div className="roster-header-info">
-          <div className="roster-badge-row">
-            <span className="roster-tag">Hierarchical Student Identity</span>
-            <span className="roster-count-pill">{totalStudents} Enrolled Students</span>
-          </div>
-          <h3 className="roster-title">Student Directory & Academic Cohorts</h3>
-          <p className="roster-sub">
-            All students are hierarchically enrolled in degree programmes at <strong>{institutionName}</strong> with dynamic level progression.
-          </p>
-        </div>
+    <div>
+      <PageHead
+        eyebrow="Hierarchical Student Identity"
+        title="Student Directory & Academic Cohorts"
+        sub={`All students are hierarchically enrolled in degree programmes at ${institutionName} with dynamic level progression.`}
+        actions={
+          <>
+            <Button
+              variant="outlined"
+              color="inherit"
+              startIcon={<RefreshCwIcon />}
+              onClick={loadStudents}
+              sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => setShowAddModal(true)}
+            >
+              Register Student
+            </Button>
+          </>
+        }
+      />
 
-        <div className="roster-actions">
-          <button
-            type="button"
-            className="btn btn-outline-sm"
-            onClick={loadStudents}
-            title="Refresh student roster"
-          >
-            <RefreshCwIcon size={14} /> Refresh
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setShowAddModal(true)}
-          >
-            <PlusIcon size={16} /> Register Student
-          </button>
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          icon={GraduationCapIcon}
+          value={totalStudents}
+          label="Active Student Records"
+          sub="Enrolled this session"
+        />
+        <StatCard
+          icon={BriefcaseIcon}
+          value={siwesQualifying}
+          label="SIWES Eligible Candidates"
+          sub="Qualifying / attachment year"
+        />
+        <StatCard
+          icon={BookOpenIcon}
+          value={finalYearCount}
+          label="Final Year Graduating Cohorts"
+          sub="Dynamic level progression"
+        />
+        <StatCard
+          icon={ShieldCheckIcon}
+          value={verifiedCount}
+          label="Admissions Ledger Verified"
+          sub="Verified student records"
+        />
       </div>
 
-      {/* KPI Cards Strip */}
-      <div className="roster-kpi-grid">
-        <div className="roster-kpi-card">
-          <div className="kpi-icon-box bg-blue">
-            <GraduationCapIcon size={20} color="#0284c7" />
-          </div>
-          <div className="kpi-data">
-            <span className="kpi-num">{totalStudents}</span>
-            <span className="kpi-label">Active Student Records</span>
-          </div>
-        </div>
-
-        <div className="roster-kpi-card">
-          <div className="kpi-icon-box bg-amber">
-            <BriefcaseIcon size={20} color="#d97706" />
-          </div>
-          <div className="kpi-data">
-            <span className="kpi-num">{siwesQualifying}</span>
-            <span className="kpi-label">SIWES Eligible Candidates</span>
-          </div>
-        </div>
-
-        <div className="roster-kpi-card">
-          <div className="kpi-icon-box bg-emerald">
-            <BookOpenIcon size={20} color="#059669" />
-          </div>
-          <div className="kpi-data">
-            <span className="kpi-num">{finalYearCount}</span>
-            <span className="kpi-label">Final Year Graduating Cohorts</span>
-          </div>
-        </div>
-
-        <div className="roster-kpi-card">
-          <div className="kpi-icon-box bg-indigo">
-            <ShieldCheckIcon size={20} color="#6366f1" />
-          </div>
-          <div className="kpi-data">
-            <span className="kpi-num">{verifiedCount}</span>
-            <span className="kpi-label">Admissions Ledger Verified</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter & Search Bar */}
-      <div className="roster-filter-bar">
-        <div className="roster-search-box">
-          <SearchIcon size={15} color="#64748b" />
-          <input
-            type="text"
-            placeholder="Search by matric number, student name, email, or program..."
+      <Panel className="mt-4">
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <TextField
+            size="small"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by matric number, student name, email, or program..."
+            className="lg:w-96"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <SearchIcon sx={{ fontSize: 18, mr: 1, color: 'charcoal.faint' }} />
+                ),
+                endAdornment: searchQuery ? (
+                  <IconButton size="small" onClick={() => setSearchQuery('')}>
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                ) : undefined,
+              },
+            }}
           />
-          {searchQuery && (
-            <button
-              type="button"
-              className="clear-search-btn"
-              onClick={() => setSearchQuery('')}
-            >
-              ✕
-            </button>
-          )}
-        </div>
 
-        <div className="roster-filter-controls">
-          <div className="dept-select-wrap">
-            <label>Department:</label>
-            <select
+          <div className="flex flex-wrap items-center gap-4">
+            <TextField
+              size="small"
+              select
               value={selectedDeptId}
               onChange={(e) => setSelectedDeptId(e.target.value)}
+              sx={{ minWidth: 220 }}
             >
-              <option value="ALL">All Departments ({departments.length})</option>
+              <MenuItem value="ALL">All Departments ({departments.length})</MenuItem>
               {departments.map((d) => (
-                <option key={d.id} value={d.id}>
+                <MenuItem key={d.id} value={d.id}>
                   {d.name}
-                </option>
+                </MenuItem>
               ))}
-            </select>
-          </div>
+            </TextField>
 
-          <div className="year-pills-wrap">
-            <label>Year of Study:</label>
-            <div className="year-pill-group">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-bold text-charcoal-faint">Year:</span>
               <button
                 type="button"
-                className={`year-pill ${selectedYear === 'ALL' ? 'active' : ''}`}
                 onClick={() => setSelectedYear('ALL')}
+                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                  selectedYear === 'ALL'
+                    ? 'bg-primary text-white'
+                    : 'bg-bgsoft text-charcoal-faint hover:bg-primary-soft'
+                }`}
               >
                 All
               </button>
@@ -211,8 +204,12 @@ export const StudentRoster: FC<StudentRosterProps> = ({
                 <button
                   key={yr}
                   type="button"
-                  className={`year-pill ${selectedYear === yr ? 'active' : ''}`}
                   onClick={() => setSelectedYear(yr)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                    selectedYear === yr
+                      ? 'bg-primary text-white'
+                      : 'bg-bgsoft text-charcoal-faint hover:bg-primary-soft'
+                  }`}
                 >
                   Yr {yr} ({yr * 100}L)
                 </button>
@@ -220,130 +217,137 @@ export const StudentRoster: FC<StudentRosterProps> = ({
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Student Roster Table */}
-      <div className="roster-table-card">
         {loading ? (
-          <div className="roster-loading-state">
-            <RefreshCwIcon size={24} color="#0284c7" />
-            <p>Loading student cohort records...</p>
-          </div>
+          <LinearProgress sx={{ borderRadius: 99, height: 6 }} />
         ) : students.length === 0 ? (
-          <div className="roster-empty-state">
-            <GraduationCapIcon size={36} color="#94a3b8" />
-            <h4>No Student Records Found</h4>
-            <p>No students match your filter criteria or have been registered into this unit yet.</p>
-            <button
-              type="button"
-              className="btn btn-primary"
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <GraduationCapIcon sx={{ fontSize: 40, color: 'charcoal.faint' }} />
+            <h4 className="text-base font-bold text-charcoal">No Student Records Found</h4>
+            <p className="max-w-sm text-sm text-charcoal-faint">
+              No students match your filter criteria or have been registered into this unit yet.
+            </p>
+            <Button
+              variant="outlined"
+              color="inherit"
+              startIcon={<AddIcon />}
               onClick={() => setShowAddModal(true)}
+              sx={{ color: 'primary.main', borderColor: 'primary.main' }}
             >
-              <PlusIcon size={15} /> Register First Student
-            </button>
+              Register First Student
+            </Button>
           </div>
         ) : (
-          <div className="table-responsive">
-            <table className="roster-table">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] text-left">
               <thead>
-                <tr>
-                  <th>Matriculation Number</th>
-                  <th>Student Profile</th>
-                  <th>Department & Programme</th>
-                  <th>Dynamic Level</th>
-                  <th>Active Pathway</th>
-                  <th>Employability Score</th>
-                  <th>SIWES Clearance</th>
-                  <th>CGPA</th>
-                  <th>Portal Account</th>
+                <tr className="text-[11px] font-bold uppercase tracking-wide text-charcoal-faint">
+                  <th className="pb-3 pr-4">Matriculation Number</th>
+                  <th className="pb-3 pr-4">Student Profile</th>
+                  <th className="pb-3 pr-4">Department & Programme</th>
+                  <th className="pb-3 pr-4">Dynamic Level</th>
+                  <th className="pb-3 pr-4">Active Pathway</th>
+                  <th className="pb-3 pr-4">Employability</th>
+                  <th className="pb-3 pr-4">SIWES Clearance</th>
+                  <th className="pb-3 pr-4">CGPA</th>
+                  <th className="pb-3">Portal Account</th>
                 </tr>
               </thead>
               <tbody>
                 {students.map((std) => (
-                  <tr key={std.id} className="student-row">
-                    <td>
-                      <code className="matric-badge">{std.matric_number}</code>
+                  <tr key={std.id}>
+                    <td className="py-3.5 pr-4">
+                      <code className="rounded bg-primary-soft px-1.5 py-0.5 font-mono text-xs font-bold text-primary">
+                        {std.matric_number}
+                      </code>
                       {std.jamb_reg_number && (
-                        <span className="jamb-sub-badge">JAMB: {std.jamb_reg_number}</span>
+                        <p className="mt-1 text-[11px] text-charcoal-faint">
+                          JAMB: {std.jamb_reg_number}
+                        </p>
                       )}
                     </td>
-
-                    <td>
-                      <div className="student-name-block">
-                        <span className="std-full-name">{std.user_name || 'Student User'}</span>
-                        <span className="std-email">{std.user_email}</span>
-                      </div>
+                    <td className="py-3.5 pr-4">
+                      <p className="text-sm font-bold text-charcoal">{std.user_name || 'Student User'}</p>
+                      <p className="text-xs text-charcoal-faint">{std.user_email}</p>
                     </td>
-
-                    <td>
-                      <div className="std-program-block">
-                        <span className="std-prog-name">{std.program_name}</span>
-                        <span className="std-dept-tag">
-                          {std.department_name} · <strong>{std.program_duration_years} Years</strong>
-                        </span>
-                      </div>
+                    <td className="py-3.5 pr-4">
+                      <p className="text-sm font-semibold text-charcoal">{std.program_name}</p>
+                      <p className="text-xs text-charcoal-faint">
+                        {std.department_name} · <strong>{std.program_duration_years} Years</strong>
+                      </p>
                     </td>
-
-                    <td>
-                      <span
-                        className={`level-badge-pill ${
-                          std.is_final_year
-                            ? 'level-final'
+                    <td className="py-3.5 pr-4">
+                      <Chip
+                        label={std.level_display}
+                        size="small"
+                        sx={{
+                          bgcolor: std.is_final_year
+                            ? 'charcoal'
                             : std.is_siwes_year
-                            ? 'level-siwes'
-                            : 'level-standard'
-                        }`}
-                      >
-                        {std.level_display}
-                      </span>
+                              ? 'warning.light'
+                              : 'primary.soft',
+                          color: std.is_final_year ? '#fff' : std.is_siwes_year ? '#92400e' : 'primary.main',
+                          fontWeight: 700,
+                        }}
+                      />
                     </td>
-
-                    <td>
+                    <td className="py-3.5 pr-4">
                       {std.active_pathway_title ? (
-                        <span className="pathway-active-pill" title={std.active_pathway_career_role || ''}>
+                        <span
+                          className="inline-flex items-center rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-bold text-primary"
+                          title={std.active_pathway_career_role || ''}
+                        >
                           {std.active_pathway_title}
                         </span>
                       ) : (
-                        <span className="text-muted-xs">Unassigned</span>
+                        <span className="text-xs text-charcoal-faint">Unassigned</span>
                       )}
                     </td>
-
-                    <td>
-                      <div className="employability-score-cell">
-                        <span className="emp-score-number">
-                          {std.employability_score !== undefined && std.employability_score !== null
-                            ? `${Number(std.employability_score).toFixed(1)}%`
-                            : '0.0%'}
-                        </span>
-                        <span className="emp-pts-sub">
-                          {std.verified_points_total || 0} pts ({std.milestones_completed_count || 0} done)
-                        </span>
-                      </div>
+                    <td className="py-3.5 pr-4">
+                      <p className="text-sm font-extrabold text-charcoal">
+                        {std.employability_score !== undefined && std.employability_score !== null
+                          ? `${Number(std.employability_score).toFixed(1)}%`
+                          : '0.0%'}
+                      </p>
+                      <p className="text-[11px] text-charcoal-faint">
+                        {std.verified_points_total || 0} pts ({std.milestones_completed_count || 0} done)
+                      </p>
                     </td>
-
-                    <td>
-                      <span
-                        className={`siwes-status-pill status-${std.siwes_clearance_status.toLowerCase()}`}
-                      >
-                        {std.siwes_clearance_status_display}
-                      </span>
+                    <td className="py-3.5 pr-4">
+                      <Chip
+                        label={std.siwes_clearance_status_display}
+                        size="small"
+                        sx={{
+                          bgcolor:
+                            std.siwes_clearance_status === 'CLEARED'
+                              ? 'primary.soft'
+                              : std.siwes_clearance_status === 'QUALIFYING'
+                                ? 'warning.light'
+                                : 'action.hover',
+                          color:
+                            std.siwes_clearance_status === 'CLEARED'
+                              ? 'primary.main'
+                              : std.siwes_clearance_status === 'QUALIFYING'
+                                ? '#92400e'
+                                : 'text.secondary',
+                          fontWeight: 700,
+                        }}
+                      />
                     </td>
-
-                    <td>
-                      <span className="cgpa-pill">
-                        {std.cgpa !== null && std.cgpa !== undefined ? Number(std.cgpa).toFixed(2) : '—'}
-                      </span>
+                    <td className="py-3.5 pr-4 text-sm font-bold text-charcoal">
+                      {std.cgpa !== null && std.cgpa !== undefined ? Number(std.cgpa).toFixed(2) : '—'}
                     </td>
-
-                    <td>
-                      <button
-                        type="button"
-                        className="btn btn-outline-xs btn-cred-action"
+                    <td className="py-3.5">
+                      <Button
+                        variant="outlined"
+                        color="inherit"
+                        size="small"
+                        startIcon={<KeyIcon sx={{ fontSize: 14 }} />}
                         onClick={() => setSelectedStudentForCreds(std)}
-                        title="Generate password and email credentials"
+                        sx={{ color: 'primary.main', borderColor: 'primary.main' }}
                       >
-                        <KeyIcon size={12} /> Email Password
-                      </button>
+                        Email Password
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -351,9 +355,8 @@ export const StudentRoster: FC<StudentRosterProps> = ({
             </table>
           </div>
         )}
-      </div>
+      </Panel>
 
-      {/* Add Student Modal */}
       <AddStudentModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
@@ -364,7 +367,6 @@ export const StudentRoster: FC<StudentRosterProps> = ({
         onSubmit={handleStudentCreated}
       />
 
-      {/* Generate Credentials Modal */}
       {selectedStudentForCreds && (
         <GenerateCredentialModal
           isOpen={!!selectedStudentForCreds}
@@ -377,4 +379,3 @@ export const StudentRoster: FC<StudentRosterProps> = ({
     </div>
   );
 };
-

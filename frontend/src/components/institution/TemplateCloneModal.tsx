@@ -1,6 +1,16 @@
 import { useState, type FC, type FormEvent } from 'react';
 import type { Pathway, InstitutionHierarchyTree, PathwayClonePayload } from '../../types/institution';
-import { SparklesIcon } from '../icons';
+import {
+  Button,
+  Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  MenuItem,
+  TextField,
+} from '@mui/material';
+import { AutoAwesome as SparklesIcon, Close as CloseIcon } from '@mui/icons-material';
 
 interface TemplateCloneModalProps {
   isOpen: boolean;
@@ -65,132 +75,170 @@ export const TemplateCloneModal: FC<TemplateCloneModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-md" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-with-icon">
-            <SparklesIcon size={20} color="#0284c7" />
-            <div>
-              <h3>Use Template Blueprint for My Department</h3>
-              <p>Deep-clone <strong>{template.title}</strong> and all its milestones to your program</p>
-            </div>
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      slotProps={{ paper: { sx: { borderRadius: '15px' } } }}
+    >
+      <DialogTitle
+        sx={{
+          p: 3,
+          pb: 2,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 2,
+        }}
+      >
+        <div className="flex items-start gap-2">
+          <SparklesIcon sx={{ fontSize: 22, color: 'primary.main', mt: 0.5 }} />
+          <div>
+            <p className="text-base font-bold text-charcoal">
+              Use Template Blueprint for My Department
+            </p>
+            <p className="mt-0.5 text-sm text-charcoal-faint">
+              Deep-clone <strong>{template.title}</strong> and all its milestones to your
+              program
+            </p>
           </div>
-          <button type="button" className="modal-close-btn" onClick={onClose}>
-            ✕
-          </button>
         </div>
-
-        {/* Template Blueprint Summary Preview */}
-        <div className="template-preview-banner">
-          <div className="blueprint-meta-row">
-            <span className="blueprint-tag">Master Blueprint</span>
-            <span className="blueprint-points">{template.total_points} Total Points</span>
-            <span className="blueprint-count">{template.total_milestones_count} Sequenced Milestones</span>
+        <IconButton size="medium" onClick={onClose}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ p: 3, pt: 1 }}>
+        <div className="rounded-[15px] bg-primary-soft/40 p-5">
+          <div className="flex flex-wrap gap-1.5">
+            <Chip
+              label="Master Blueprint"
+              size="medium"
+              sx={{ bgcolor: 'charcoal', color: '#fff', fontWeight: 700 }}
+            />
+            <Chip
+              label={`${template.total_points} Total Points`}
+              size="medium"
+              sx={{ bgcolor: 'white', color: 'primary.main', fontWeight: 700 }}
+            />
+            <Chip
+              label={`${template.total_milestones_count} Sequenced Milestones`}
+              size="medium"
+              variant="outlined"
+              sx={{ color: 'charcoal.soft', borderColor: 'border.strong', fontWeight: 700 }}
+            />
           </div>
-          <h4 className="blueprint-title">{template.title}</h4>
-          <p className="blueprint-role">
-            Target Role: <strong>{template.career_role}</strong> · Industry: <strong>{template.industry_sector || 'General Tech'}</strong>
+          <h4 className="mt-3 text-base font-bold text-charcoal">{template.title}</h4>
+          <p className="mt-1 text-sm text-charcoal-faint">
+            Target Role: <strong className="text-charcoal">{template.career_role}</strong> ·
+            Industry:{' '}
+            <strong className="text-charcoal">
+              {template.industry_sector || 'General Tech'}
+            </strong>
           </p>
-          <p className="blueprint-desc">{template.description}</p>
+          <p className="mt-1.5 text-sm text-charcoal-faint">{template.description}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-row-3">
-            <div className="form-group">
-              <label>Target Division / Faculty *</label>
-              <select
-                required
-                value={selectedDivision}
-                onChange={(e) => {
-                  setSelectedDivision(e.target.value);
-                  setSelectedDepartment('');
-                  setSelectedProgram('');
-                }}
-              >
-                <option value="">Select Faculty/School</option>
-                {tree?.divisions.map((div) => (
-                  <option key={div.id} value={div.id}>
-                    {div.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Target Department *</label>
-              <select
-                required
-                value={selectedDepartment}
-                onChange={(e) => {
-                  setSelectedDepartment(e.target.value);
-                  setSelectedProgram('');
-                }}
-                disabled={!selectedDivision}
-              >
-                <option value="">Select Department</option>
-                {availableDepts.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Target Programme *</label>
-              <select
-                required
-                value={selectedProgram}
-                onChange={(e) => setSelectedProgram(e.target.value)}
-                disabled={!selectedDepartment}
-              >
-                <option value="">Select Programme</option>
-                {availableProgs.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.duration_years} yrs)
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>Customized Pathway Title *</label>
-            <input
-              type="text"
+        <form onSubmit={handleSubmit} className="mt-5 space-y-5">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Target Division / Faculty"
               required
-              value={customTitle}
-              onChange={(e) => setCustomTitle(e.target.value)}
-              placeholder="e.g. Software Engineering Cloud & DevOps Track"
-            />
+              value={selectedDivision}
+              onChange={(e) => {
+                setSelectedDivision(e.target.value);
+                setSelectedDepartment('');
+                setSelectedProgram('');
+              }}
+            >
+              <MenuItem value="">Select Faculty/School</MenuItem>
+              {tree?.divisions.map((div) => (
+                <MenuItem key={div.id} value={div.id}>
+                  {div.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Target Department"
+              required
+              value={selectedDepartment}
+              onChange={(e) => {
+                setSelectedDepartment(e.target.value);
+                setSelectedProgram('');
+              }}
+              disabled={!selectedDivision}
+            >
+              <MenuItem value="">Select Department</MenuItem>
+              {availableDepts.map((dept) => (
+                <MenuItem key={dept.id} value={dept.id}>
+                  {dept.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Target Programme"
+              required
+              value={selectedProgram}
+              onChange={(e) => setSelectedProgram(e.target.value)}
+              disabled={!selectedDepartment}
+            >
+              <MenuItem value="">Select Programme</MenuItem>
+              {availableProgs.map((p) => (
+                <MenuItem key={p.id} value={p.id}>
+                  {p.name} ({p.duration_years} yrs)
+                </MenuItem>
+              ))}
+            </TextField>
           </div>
-
-          <div className="form-group">
-            <label>Customized Description</label>
-            <textarea
-              rows={2}
-              value={customDescription}
-              onChange={(e) => setCustomDescription(e.target.value)}
-              placeholder="Adapt the blueprint description for your departmental requirements..."
-            />
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary-sm" onClick={onClose}>
+          <TextField
+            fullWidth
+            size="medium"
+            label="Customized Pathway Title"
+            required
+            value={customTitle}
+            onChange={(e) => setCustomTitle(e.target.value)}
+            placeholder="e.g. Software Engineering Cloud & DevOps Track"
+          />
+          <TextField
+            fullWidth
+            size="medium"
+            multiline
+            rows={3}
+            label="Customized Description"
+            value={customDescription}
+            onChange={(e) => setCustomDescription(e.target.value)}
+            placeholder="Adapt the blueprint description for your departmental requirements..."
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outlined"
+              color="inherit"
+              onClick={onClose}
+              sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+            >
               Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting || !selectedProgram}>
-              {isSubmitting ? (
-                'Cloning Blueprint...'
-              ) : (
-                <>
-                  <SparklesIcon size={14} /> Clone Blueprint to My Department
-                </>
-              )}
-            </button>
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={isSubmitting || !selectedProgram}
+              startIcon={<SparklesIcon />}
+            >
+              {isSubmitting ? 'Cloning Blueprint...' : 'Clone Blueprint to My Department'}
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

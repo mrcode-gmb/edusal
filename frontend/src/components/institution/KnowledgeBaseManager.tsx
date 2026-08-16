@@ -9,15 +9,24 @@ import { institutionApi } from '../../services/institutionApi';
 import { UploadDocumentModal } from './UploadDocumentModal';
 import { InstitutionalAIAdvisor } from './InstitutionalAIAdvisor';
 import {
-  BookOpenIcon,
-  RefreshCwIcon,
-  SearchIcon,
-  ShieldCheckIcon,
-  DatabaseIcon,
-  CheckCircleIcon,
-  SparklesIcon,
-  UploadIcon,
-} from '../icons';
+  Button,
+  Chip,
+  IconButton,
+  TextField,
+  LinearProgress,
+} from '@mui/material';
+import {
+  MenuBook as MenuBookIcon,
+  Refresh as RefreshIcon,
+  Search as SearchIcon,
+  VerifiedUser as VerifiedUserIcon,
+  Storage as StorageIcon,
+  CheckCircle as CheckCircleIcon,
+  AutoAwesome as AutoAwesomeIcon,
+  UploadFile as UploadFileIcon,
+  Psychology as PsychologyIcon,
+} from '@mui/icons-material';
+import { Panel, PanelHead, PageHead, StatCard } from './Shared';
 
 interface KnowledgeBaseManagerProps {
   institutionId: string;
@@ -68,39 +77,64 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
     }
   };
 
-  return (
-    <div className="kb-manager-container">
-      {/* Knowledge Base Navigation Strip */}
-      <div className="kb-subnav-strip">
-        <div className="kb-subtabs">
-          <button
-            type="button"
-            className={`kb-subtab ${subTab === 'advisor' ? 'active' : ''}`}
-            onClick={() => setSubTab('advisor')}
-          >
-            <SparklesIcon size={15} color={subTab === 'advisor' ? '#0284c7' : '#64748b'} />
-            Institutional AI Policy Advisor (Groq Llama-3.3-70B)
-          </button>
-          <button
-            type="button"
-            className={`kb-subtab ${subTab === 'repository' ? 'active' : ''}`}
-            onClick={() => setSubTab('repository')}
-          >
-            <DatabaseIcon size={15} color={subTab === 'repository' ? '#0284c7' : '#64748b'} />
-            Document Repository & Chunk Inspector ({documents.length})
-          </button>
-        </div>
+  const totalChunks = documents.reduce((sum, d) => sum + d.chunk_count, 0);
 
+  return (
+    <div>
+      <PageHead
+        eyebrow="Semantic Knowledge Repository"
+        title="Knowledge Base & Citation Tester"
+        sub={`Official handbooks, SIWES guidelines, and curriculum standards for ${institutionName}. The AI Career Assistant strictly answers from these verified documents.`}
+        actions={
+          <>
+            <Button
+              variant="outlined"
+              color="inherit"
+              startIcon={<RefreshIcon />}
+              onClick={onRefresh}
+              sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<UploadFileIcon />}
+              onClick={() => setShowUploadModal(true)}
+            >
+              Upload Handbook / Guideline
+            </Button>
+          </>
+        }
+      />
+
+      <div className="mb-5 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          className="btn btn-primary-sm"
-          onClick={() => setShowUploadModal(true)}
+          onClick={() => setSubTab('advisor')}
+          className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+            subTab === 'advisor'
+              ? 'bg-primary text-white'
+              : 'bg-bgsoft text-charcoal-faint hover:bg-primary-soft'
+          }`}
         >
-          <UploadIcon size={14} /> Upload Handbook / Guideline
+          <PsychologyIcon sx={{ fontSize: 16 }} />
+          Institutional AI Policy Advisor
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubTab('repository')}
+          className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+            subTab === 'repository'
+              ? 'bg-primary text-white'
+              : 'bg-bgsoft text-charcoal-faint hover:bg-primary-soft'
+          }`}
+        >
+          <StorageIcon sx={{ fontSize: 16 }} />
+          Document Repository & Chunk Inspector ({documents.length})
         </button>
       </div>
 
-      {/* Subtab 1: Institutional AI Policy Advisor */}
       {subTab === 'advisor' && (
         <InstitutionalAIAdvisor
           institutionId={institutionId}
@@ -112,222 +146,231 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
         />
       )}
 
-      {/* Subtab 2: Document Repository & Chunk Inspector */}
       {subTab === 'repository' && (
-        <div className="kb-repository-view">
-          {/* Header Card */}
-          <div className="kb-header-card">
-            <div className="kb-header-info">
-              <div className="kb-badge-row">
-                <span className="kb-tag">
-                  <DatabaseIcon size={13} /> pgvector Semantic Knowledge Base
-                </span>
-                <span className="kb-status-live">
-                  <CheckCircleIcon size={13} /> Vector Indexed
-                </span>
-              </div>
-              <h3 className="kb-title">Grounded Document Repository & Citation Engine</h3>
-              <p className="kb-sub">
-                Official handbooks, SIWES guidelines, and curriculum standards for <strong>{institutionName}</strong>.
-                The AI Career Assistant strictly answers from these verified documents.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className="btn btn-outline-sm"
-              onClick={onRefresh}
-            >
-              <RefreshCwIcon size={14} /> Refresh Documents
-            </button>
+        <div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StatCard
+              icon={MenuBookIcon}
+              value={documents.length}
+              label="Official Documents"
+              sub="Handbooks, guidelines & standards"
+              chip="pgvector Indexed"
+            />
+            <StatCard
+              icon={StorageIcon}
+              value={totalChunks}
+              label="Vector Chunks"
+              sub="Grounded semantic units"
+            />
+            <StatCard
+              icon={VerifiedUserIcon}
+              value="100%"
+              label="Zero-Hallucination"
+              sub="All answers cite exact pages"
+            />
           </div>
 
-          <div className="kb-main-layout">
-            {/* Left Column: Ingested Documents List */}
-            <div className="kb-docs-column">
-              <div className="column-header">
-                <h4>Official Documents ({documents.length})</h4>
-                <button
-                  type="button"
-                  className="btn-icon-refresh"
-                  onClick={onRefresh}
-                  title="Refresh repository"
-                >
-                  <RefreshCwIcon size={15} color="#64748b" />
-                </button>
-              </div>
-
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <Panel>
+              <PanelHead
+                title={`Official Documents (${documents.length})`}
+                sub="Ingested sources powering grounded AI answers"
+                action={
+                  <IconButton size="small" onClick={onRefresh} title="Refresh repository">
+                    <RefreshIcon fontSize="small" sx={{ color: 'charcoal.soft' }} />
+                  </IconButton>
+                }
+              />
               {loading ? (
-                <div className="kb-loading">Loading documents...</div>
+                <LinearProgress sx={{ borderRadius: 99, height: 6 }} />
               ) : documents.length === 0 ? (
-                <div className="kb-empty">
-                  <BookOpenIcon size={32} color="#94a3b8" />
-                  <p>No documents ingested yet.</p>
-                  <button
-                    type="button"
-                    className="btn btn-secondary-sm"
+                <div className="flex flex-col items-center gap-3 py-8 text-center">
+                  <MenuBookIcon sx={{ fontSize: 40, color: 'charcoal.faint' }} />
+                  <p className="text-sm text-charcoal-faint">No documents ingested yet.</p>
+                  <Button
+                    variant="outlined"
+                    color="inherit"
+                    size="small"
+                    startIcon={<UploadFileIcon />}
                     onClick={() => setShowUploadModal(true)}
+                    sx={{ color: 'primary.main', borderColor: 'primary.main' }}
                   >
                     Upload First Document
-                  </button>
+                  </Button>
                 </div>
               ) : (
-                <div className="kb-docs-list">
+                <div className="space-y-3">
                   {documents.map((doc) => (
-                    <div key={doc.id} className="doc-card">
-                      <div className="doc-card-top">
-                        <span className="doc-type-pill">{doc.doc_type_display}</span>
-                        <span className={`doc-status-badge ${doc.embedding_status.toLowerCase()}`}>
-                          {doc.embedding_status === 'INDEXED' ? (
-                            <>
-                              <CheckCircleIcon size={12} /> Indexed
-                            </>
-                          ) : (
-                            doc.embedding_status
-                          )}
+                    <div
+                      key={doc.id}
+                      className="rounded-[15px] bg-bgsoft p-4"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="inline-flex items-center rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-bold text-primary">
+                          {doc.doc_type_display}
                         </span>
+                        {doc.embedding_status === 'INDEXED' ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary">
+                            <CheckCircleIcon sx={{ fontSize: 13 }} /> Indexed
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-bold text-charcoal-faint">
+                            {doc.embedding_status}
+                          </span>
+                        )}
                       </div>
-
-                      <h5 className="doc-title">{doc.title}</h5>
-
-                      {doc.session_label && (
-                        <span className="doc-session-tag">Session: {doc.session_label}</span>
-                      )}
-
+                      <p className="mt-2.5 text-sm font-bold text-charcoal">{doc.title}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-charcoal-faint">
+                        {doc.session_label && (
+                          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 font-semibold">
+                            Session: {doc.session_label}
+                          </span>
+                        )}
+                        <span className="font-semibold">
+                          {doc.chunk_count} pgvector Chunks
+                        </span>
+                        <span>{new Date(doc.created_at).toLocaleDateString()}</span>
+                      </div>
                       {doc.content_hash && (
-                        <div className="doc-hash-row">
-                          <span className="hash-label">Audit Hash:</span>
-                          <code className="doc-hash">{doc.content_hash.slice(0, 24)}...</code>
+                        <div className="mt-2 flex items-center gap-2 text-[11px] text-charcoal-faint">
+                          <span className="font-bold">Audit Hash:</span>
+                          <code className="rounded bg-white px-1.5 py-0.5 font-mono">
+                            {doc.content_hash.slice(0, 24)}...
+                          </code>
                         </div>
                       )}
-
-                      <div className="doc-meta-footer">
-                        <span className="doc-chunks-count">
-                          <strong>{doc.chunk_count}</strong> pgvector Chunks
-                        </span>
-                        <span className="doc-date">
-                          {new Date(doc.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </Panel>
 
-            {/* Right Column: Interactive Citation Test Bench */}
-            <div className="kb-tester-column">
-              <div className="tester-card">
-                <div className="tester-header">
-                  <span className="tester-badge">
-                    <SparklesIcon size={13} /> Interactive Test Bench
-                  </span>
-                  <h4>Live Hybrid Citation Retrieval Simulator</h4>
-                  <p className="tester-sub">
-                    Test how the AI queries pgvector and retrieves exact page & section citations.
-                  </p>
+            <Panel>
+              <PanelHead
+                title="Live Hybrid Citation Retrieval Simulator"
+                sub="Test how the AI queries pgvector and retrieves exact page & section citations."
+              />
+              <form onSubmit={handleTestSearch} className="space-y-3">
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="e.g. What are the SIWES requirements for 300L students?"
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <SearchIcon sx={{ fontSize: 18, mr: 1, color: 'charcoal.faint' }} />
+                      ),
+                    },
+                  }}
+                />
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  disabled={isSearching}
+                  startIcon={<SearchIcon />}
+                >
+                  {isSearching ? 'Searching...' : 'Test Retrieval'}
+                </Button>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-semibold text-charcoal-faint">Try query:</span>
+                  {['SIWES placement prerequisites', 'Relational Databases milestone'].map(
+                    (q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => setSearchQuery(q)}
+                        className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-charcoal hover:bg-primary-soft hover:text-primary"
+                      >
+                        "{q}"
+                      </button>
+                    ),
+                  )}
                 </div>
+              </form>
 
-                <form onSubmit={handleTestSearch} className="tester-form">
-                  <div className="tester-input-group">
-                    <input
-                      type="text"
-                      className="tester-input"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="e.g. What are the SIWES requirements for 300L students?"
-                      required
-                    />
-                    <button
-                      type="submit"
-                      className="btn btn-primary-sm"
-                      disabled={isSearching}
-                    >
-                      <SearchIcon size={15} />
-                      {isSearching ? 'Searching...' : 'Test Retrieval'}
-                    </button>
+              <div className="mt-4">
+                {searchError && (
+                  <div className="rounded-[15px] bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {searchError}
                   </div>
+                )}
 
-                  <div className="quick-query-pills">
-                    <span className="quick-label">Try query:</span>
-                    <button
-                      type="button"
-                      className="pill-quick"
-                      onClick={() => setSearchQuery('SIWES placement prerequisites')}
-                    >
-                      "SIWES placement prerequisites"
-                    </button>
-                    <button
-                      type="button"
-                      className="pill-quick"
-                      onClick={() => setSearchQuery('Relational Databases milestone')}
-                    >
-                      "Relational Databases milestone"
-                    </button>
+                {isSearching ? (
+                  <div className="flex items-center gap-3 py-8 text-sm text-charcoal-faint">
+                    <LinearProgress sx={{ flex: 1, borderRadius: 99 }} />
+                    Querying PostgreSQL pgvector index...
                   </div>
-                </form>
-
-                {/* Results Window */}
-                <div className="tester-results-box">
-                  {searchError && <div className="tester-error">{searchError}</div>}
-
-                  {isSearching ? (
-                    <div className="tester-searching">
-                      <div className="tree-spinner"></div>
-                      <span>Querying PostgreSQL pgvector index...</span>
+                ) : searchResults ? (
+                  <div>
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-sm text-charcoal">
+                        Found{' '}
+                        <strong className="text-primary">{searchResults.total_matches}</strong>{' '}
+                        verified citation chunk(s)
+                      </span>
+                      <Chip
+                        icon={<VerifiedUserIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
+                        label="100% Zero-Hallucination"
+                        size="small"
+                        sx={{ bgcolor: 'primary.soft', color: 'primary.main', fontWeight: 700 }}
+                      />
                     </div>
-                  ) : searchResults ? (
-                    <div className="search-results-container">
-                      <div className="results-summary-row">
-                        <span className="results-count">
-                          Found <strong>{searchResults.total_matches}</strong> verified citation chunk(s)
-                        </span>
-                        <span className="grounding-badge">
-                          <ShieldCheckIcon size={13} /> 100% Zero-Hallucination
-                        </span>
+
+                    {searchResults.results.length === 0 ? (
+                      <div className="rounded-[15px] bg-bgsoft px-4 py-6 text-center text-sm text-charcoal-faint">
+                        No matching excerpts found for this query in the current document
+                        repository.
                       </div>
-
-                      {searchResults.results.length === 0 ? (
-                        <div className="no-matches-box">
-                          No matching excerpts found for this query in the current document repository.
-                        </div>
-                      ) : (
-                        searchResults.results.map((res, rIdx) => (
-                          <div key={res.chunk_id} className="citation-result-card">
-                            <div className="citation-result-header">
-                              <span className="citation-pill">
-                                Citation #{rIdx + 1}: {res.document_title} (p. {res.page_number})
+                    ) : (
+                      <div className="space-y-3">
+                        {searchResults.results.map((res, rIdx) => (
+                          <div
+                            key={res.chunk_id}
+                            className="rounded-[15px] bg-primary-soft/40 p-4"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-white">
+                                Citation #{rIdx + 1}: {res.document_title} (p.{' '}
+                                {res.page_number})
                               </span>
-                              <span className="section-pill">{res.section_reference || 'General Section'}</span>
+                              <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-charcoal-soft">
+                                {res.section_reference || 'General Section'}
+                              </span>
                             </div>
-
-                            <blockquote className="citation-quote">
+                            <blockquote className="mt-3 border-l-4 border-primary bg-white px-4 py-3 text-sm italic text-charcoal">
                               "{res.content}"
                             </blockquote>
-
-                            <div className="citation-footer">
-                              <span className="relevance-tag">Exact Match Score: {res.relevance_score}</span>
-                              <span className="verified-status">
-                                <CheckCircleIcon size={12} color="#059669" /> Grounding Ready
+                            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+                              <span className="font-semibold text-charcoal-faint">
+                                Exact Match Score: {res.relevance_score}
+                              </span>
+                              <span className="inline-flex items-center gap-1 font-bold text-primary">
+                                <CheckCircleIcon sx={{ fontSize: 13 }} /> Grounding Ready
                               </span>
                             </div>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  ) : (
-                    <div className="tester-idle-prompt">
-                      <span>Enter a query above or click one of the quick suggestions to test live pgvector retrieval.</span>
-                    </div>
-                  )}
-                </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-[15px] bg-bgsoft px-4 py-6 text-center text-sm text-charcoal-faint">
+                    <AutoAwesomeIcon sx={{ fontSize: 22, color: 'charcoal.faint', mb: 0.5 }} />
+                    <p>
+                      Enter a query above or click one of the quick suggestions to test live
+                      pgvector retrieval.
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
+            </Panel>
           </div>
         </div>
       )}
 
-      {/* Upload Document Modal */}
       <UploadDocumentModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
