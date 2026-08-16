@@ -26,16 +26,13 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 
 
 # Requirements are installed here to ensure they will be cached.
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-install-project --no-dev
+# NOTE: BuildKit --mount syntax (used in compose/production/django/Dockerfile)
+# is NOT supported by Heroku's container builder, so plain COPY/RUN is used.
+COPY uv.lock pyproject.toml ./
+RUN uv sync --locked --no-install-project --no-dev
 COPY . ${APP_HOME}
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-dev
+RUN uv sync --locked --no-dev
 
 # Python 'run' stage
 FROM python:3.14-slim-bookworm AS python-run-stage
