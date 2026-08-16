@@ -7,4 +7,5 @@ set -o nounset
 
 python /app/manage.py collectstatic --noinput
 
-exec gunicorn config.wsgi --bind 0.0.0.0:5000 --chdir=/app
+# Bind to $PORT when set (Heroku container runtime) and fall back to 5000 locally.
+exec gunicorn config.wsgi --bind 0.0.0.0:${PORT:-5000} --chdir=/app
