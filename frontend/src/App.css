@@ -4785,10 +4785,442 @@ body {
   gap: 12px;
 }
 
+/* ==========================================================================
+   16. STUDENT ROSTER & COHORTS
+   ========================================================================== */
+.student-roster-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.roster-header-card {
+  background-color: var(--white);
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius-lg);
+  padding: 22px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.roster-badge-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.roster-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--blue-700);
+  background-color: var(--blue-100);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.roster-count-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--emerald-700);
+  background-color: var(--emerald-100);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.roster-title {
+  font-size: 20px;
+  font-weight: 850;
+  color: var(--navy-950);
+  margin-bottom: 2px;
+}
+
+.roster-sub {
+  font-size: 13px;
+  color: var(--slate-600);
+}
+
+.roster-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.roster-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.roster-kpi-card {
+  background-color: var(--white);
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.kpi-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpi-icon-box.bg-blue {
+  background-color: #e0f2fe;
+}
+
+.kpi-icon-box.bg-amber {
+  background-color: #fef3c7;
+}
+
+.kpi-icon-box.bg-emerald {
+  background-color: #d1fae5;
+}
+
+.kpi-icon-box.bg-indigo {
+  background-color: #e0e7ff;
+}
+
+.kpi-data {
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-num {
+  font-size: 20px;
+  font-weight: 850;
+  color: var(--navy-950);
+  line-height: 1.1;
+}
+
+.kpi-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--slate-500);
+  margin-top: 3px;
+}
+
+.roster-filter-bar {
+  background-color: var(--white);
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.roster-search-box {
+  flex: 1;
+  min-width: 260px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px 12px;
+  background-color: #ffffff;
+}
+
+.roster-search-box input {
+  border: none !important;
+  outline: none !important;
+  width: 100%;
+  font-size: 13.5px;
+  color: #0f172a;
+  background: transparent;
+  padding: 0 !important;
+}
+
+.clear-search-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 13px;
+  padding: 2px 4px;
+}
+
+.roster-filter-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dept-select-wrap,
+.year-pills-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--slate-700);
+}
+
+.dept-select-wrap select {
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+.year-pill-group {
+  display: flex;
+  gap: 4px;
+}
+
+.year-pill {
+  border: 1px solid #cbd5e1;
+  background-color: #f8fafc;
+  color: #334155;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.year-pill:hover {
+  background-color: #e2e8f0;
+}
+
+.year-pill.active {
+  background-color: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.roster-table-card {
+  background-color: var(--white);
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.roster-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.roster-table th {
+  background-color: var(--slate-50);
+  padding: 13px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--slate-600);
+  border-bottom: 1px solid var(--slate-200);
+}
+
+.roster-table td {
+  padding: 14px 16px;
+  font-size: 12.5px;
+  color: var(--slate-700);
+  border-bottom: 1px solid var(--slate-100);
+  vertical-align: middle;
+}
+
+.roster-table tr:hover td {
+  background-color: #fafbfc;
+}
+
+.matric-badge {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  background-color: #f1f5f9;
+  color: #0f172a;
+  padding: 3px 7px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  display: inline-block;
+}
+
+.jamb-sub-badge {
+  font-size: 10.5px;
+  color: #64748b;
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+}
+
+.student-name-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.std-full-name {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 13.5px;
+}
+
+.std-email {
+  font-size: 11.5px;
+  color: #64748b;
+  font-family: var(--font-mono);
+}
+
+.std-program-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.std-prog-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.std-dept-tag {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.level-badge-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.level-badge-pill.level-standard {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.level-badge-pill.level-siwes {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.level-badge-pill.level-final {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.entry-mode-tag {
+  font-size: 11px;
+  background-color: #f1f5f9;
+  color: #475569;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.siwes-status-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.siwes-status-pill.status-qualifying {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #ffedd5;
+}
+
+.siwes-status-pill.status-cleared {
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.siwes-status-pill.status-on_attachment {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.siwes-status-pill.status-completed {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.siwes-status-pill.status-not_eligible {
+  background-color: #f8fafc;
+  color: #94a3b8;
+  border: 1px solid #e2e8f0;
+}
+
+.cgpa-pill {
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: #0f172a;
+  background-color: #f8fafc;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+}
+
+.verified-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #059669;
+  font-weight: 700;
+  font-size: 11.5px;
+}
+
+.pending-status-tag {
+  color: #94a3b8;
+  font-size: 11.5px;
+}
+
+.roster-loading-state,
+.roster-empty-state {
+  padding: 48px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--slate-500);
+}
+
+@media (max-width: 900px) {
+  .roster-kpi-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (max-width: 800px) {
   .login-card-container {
     grid-template-columns: 1fr;
   }
+  .roster-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
+
 
 

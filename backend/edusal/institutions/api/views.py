@@ -18,6 +18,9 @@ from edusal.institutions.models import (
     InstitutionalDocument,
     InstitutionalDocumentChunk,
     InstitutionStaff,
+    StaffAssignment,
+    StaffRoleAtUnit,
+    StudentProfile,
     EmbeddingStatus,
 )
 from .serializers import (
@@ -31,6 +34,9 @@ from .serializers import (
     InstitutionalDocumentChunkSerializer,
     DocumentSearchQuerySerializer,
     InstitutionStaffSerializer,
+    StaffAssignmentSerializer,
+    StudentProfileSerializer,
+    StudentProfileCreateSerializer,
     AuthLoginSerializer,
     AuthUserSerializer,
 )
@@ -489,4 +495,244 @@ class AuthLogoutView(APIView):
     def post(self, request):
         Token.objects.filter(user=request.user).delete()
         return Response({"status": "ok", "message": "Successfully logged out."})
+
+
+def get_staff_scoped_students(user, institution_id=None):
+    """
+    Returns StudentProfile QuerySet restricted strictly to the staff member's
+    assigned department(s) or faculty/division(s).
+    """
+    if not user.is_authenticated:
+        qs = StudentProfile.objects.all()
+        if institution_id:
+            qs = qs.filter(institution_id=institution_id)
+        return qs.select_related(
+            "user", "program", "program__department", "program__department__division", "institution", "entry_session"
+        )
+
+    # Check staff assignments
+    assignments = user.staff_assignments.filter(is_active=True)
+
+    # Check fallback legacy InstitutionStaff if no granular assignments
+    if not assignments.exists():
+        legacy_staff = user.institution_staff_profiles.filter(is_active=True).first()
+        if legacy_staff:
+            if legacy_staff.role in ["SUPERADMIN", "DIRECTOR_CAREER_SERVICES"]:
+                qs = StudentProfile.objects.filter(institution=legacy_staff.institution)
+            elif legacy_staff.department:
+                qs = StudentProfile.objects.filter(program__department=legacy_staff.department)
+            elif legacy_staff.division:
+                qs = StudentProfile.objects.filter(program__department__division=legacy_staff.division)
+            else:
+                qs = StudentProfile.objects.filter(institution=legacy_staff.institution)
+            if institution_id:
+                qs = qs.filter(institution_id=institution_id)
+            return qs.select_related(
+                "user", "program", "program__department", "program__department__division", "institution", "entry_session"
+            )
+        # If user is a student, they can only view themselves
+        if hasattr(user, "student_profile") and user.student_profile:
+            return StudentProfile.objects.filter(id=user.student_profile.id)
+
+        # Allow institution filter for public/admin demo queries
+        qs = StudentProfile.objects.all()
+        if institution_id:
+            qs = qs.filter(institution_id=institution_id)
+        return qs.select_related(
+            "user", "program", "program__department", "program__department__division", "institution", "entry_session"
+        )
+
+    # If user is Superadmin or Director of Career Services -> Full Institution Access
+    if assignments.filter(role_at_unit__in=[
+        StaffRoleAtUnit.SUPERADMIN,
+        StaffRoleAtUnit.DIRECTOR_CAREER_SERVICES,
+    ]).exists():
+        inst_id = institution_id or assignments.first().institution_id
+        return StudentProfile.objects.filter(institution_id=inst_id).select_related(
+            "user", "program", "program__department", "program__department__division", "institution", "entry_session"
+        )
+
+    # Compile scoped divisions and departments
+    scoped_division_ids = assignments.filter(department__isnull=True, division__isnull=False).values_list("division_id", flat=True)
+    scoped_department_ids = assignments.filter(department__isnull=False).values_list("department_id", flat=True)
+
+    q_filter = Q(program__department_id__in=scoped_department_ids) | Q(program__department__division_id__in=scoped_division_ids)
+    qs = StudentProfile.objects.filter(q_filter)
+    if institution_id:
+        qs = qs.filter(institution_id=institution_id)
+
+    return qs.select_related(
+        "user", "program", "program__department", "program__department__division", "institution", "entry_session"
+    )
+
+
+class StaffAssignmentViewSet(viewsets.ModelViewSet):
+    """Endpoints for managing fine-grained departmental/division staff assignments."""
+
+    queryset = StaffAssignment.objects.all().select_related("user", "institution", "division", "department")
+    serializer_class = StaffAssignmentSerializer
+    permission_classes = [AllowAny]
+    lookup_field = "id"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        inst_id = self.request.query_params.get("institution")
+        div_id = self.request.query_params.get("division")
+        dept_id = self.request.query_params.get("department")
+        role = self.request.query_params.get("role_at_unit")
+        user_id = self.request.query_params.get("user")
+
+        if inst_id:
+            qs = qs.filter(institution_id=inst_id)
+        if div_id:
+            qs = qs.filter(division_id=div_id)
+        if dept_id:
+            qs = qs.filter(department_id=dept_id)
+        if role:
+            qs = qs.filter(role_at_unit=role.upper())
+        if user_id:
+            qs = qs.filter(user_id=user_id)
+        return qs
+
+    @action(detail=False, methods=["get"], url_path="my-caseload")
+    def my_caseload(self, request):
+        """Returns currently authenticated staff member's assigned units and student metrics."""
+        if not request.user.is_authenticated:
+            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        assignments = request.user.staff_assignments.filter(is_active=True).select_related("institution", "division", "department")
+        students_qs = get_staff_scoped_students(request.user)
+
+        total_students = students_qs.count()
+        siwes_qualifying = students_qs.filter(siwes_clearance_status="QUALIFYING").count()
+        final_year_count = sum(1 for s in students_qs if s.is_final_year)
+
+        return Response({
+            "assignments": StaffAssignmentSerializer(assignments, many=True).data,
+            "metrics": {
+                "total_managed_students": total_students,
+                "siwes_qualifying_candidates": siwes_qualifying,
+                "final_year_students": final_year_count,
+            },
+        })
+
+
+class StudentProfileViewSet(viewsets.ModelViewSet):
+    """
+    Endpoints for student identities anchored to Tier-4 AcademicProgram.
+    Scoped strictly to staff member's assigned departments.
+    """
+
+    queryset = StudentProfile.objects.all().select_related(
+        "user", "program", "program__department", "program__department__division", "institution", "entry_session"
+    )
+    serializer_class = StudentProfileSerializer
+    permission_classes = [AllowAny]
+    lookup_field = "id"
+
+    def get_queryset(self):
+        inst_id = self.request.query_params.get("institution")
+        qs = get_staff_scoped_students(self.request.user, inst_id)
+
+        prog_id = self.request.query_params.get("program")
+        dept_id = self.request.query_params.get("department")
+        div_id = self.request.query_params.get("division")
+        year = self.request.query_params.get("year_of_study")
+        siwes_status = self.request.query_params.get("siwes_status")
+        standing = self.request.query_params.get("academic_standing")
+        search = self.request.query_params.get("search")
+
+        if prog_id:
+            qs = qs.filter(program_id=prog_id)
+        if dept_id:
+            qs = qs.filter(program__department_id=dept_id)
+        if div_id:
+            qs = qs.filter(program__department__division_id=div_id)
+        if year:
+            qs = qs.filter(year_of_study=year)
+        if siwes_status:
+            qs = qs.filter(siwes_clearance_status=siwes_status.upper())
+        if standing:
+            qs = qs.filter(academic_standing=standing.upper())
+        if search:
+            qs = qs.filter(
+                Q(matric_number__icontains=search)
+                | Q(user__name__icontains=search)
+                | Q(user__email__icontains=search)
+                | Q(program__name__icontains=search)
+            )
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        """Creates a student user account and initializes StudentProfile."""
+        serializer = StudentProfileCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        with transaction.atomic():
+            email = data["email"].lower().strip()
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={"name": data["name"]},
+            )
+            if created or not user.has_usable_password():
+                user.set_password(data.get("password", "1234!@#$"))
+                user.name = data["name"]
+                user.save()
+
+            program = AcademicProgram.objects.get(id=data["program"])
+            institution = Institution.objects.get(id=data["institution"])
+            session = AcademicSession.objects.get(id=data["entry_session"])
+
+            student, _ = StudentProfile.objects.update_or_create(
+                user=user,
+                defaults={
+                    "institution": institution,
+                    "program": program,
+                    "matric_number": data["matric_number"].strip(),
+                    "jamb_reg_number": data.get("jamb_reg_number", "").strip(),
+                    "entry_session": session,
+                    "entry_mode": data.get("entry_mode", "UTME"),
+                    "year_of_study": data.get("year_of_study", 1),
+                    "cgpa": data.get("cgpa"),
+                    "phone_number": data.get("phone_number", ""),
+                    "state_of_origin": data.get("state_of_origin", ""),
+                    "gender": data.get("gender", ""),
+                    "portfolio_url": data.get("portfolio_url", ""),
+                    "is_verified_student": True,
+                },
+            )
+
+        output_serializer = StudentProfileSerializer(student)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["get"], url_path="me")
+    def me(self, request):
+        """Returns the currently logged-in student's complete profile."""
+        if not request.user.is_authenticated:
+            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+        if not hasattr(request.user, "student_profile") or not request.user.student_profile:
+            return Response({"error": "User does not have a student profile"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = StudentProfileSerializer(request.user.student_profile)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="update-status")
+    def update_status(self, request, id=None):
+        """Allows assigned HOD/adviser to update SIWES status or academic standing."""
+        student = self.get_object()
+        siwes_status = request.data.get("siwes_clearance_status")
+        standing = request.data.get("academic_standing")
+        cgpa = request.data.get("cgpa")
+
+        if siwes_status:
+            student.siwes_clearance_status = siwes_status.upper()
+        if standing:
+            student.academic_standing = standing.upper()
+        if cgpa is not None:
+            student.cgpa = cgpa
+
+        student.save()
+        return Response(StudentProfileSerializer(student).data)
+
 

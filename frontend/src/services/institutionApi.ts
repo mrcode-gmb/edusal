@@ -235,5 +235,104 @@ export const institutionApi = {
     }
     return res.json();
   },
+
+  // Scoped Staff Assignments
+  async getStaffAssignments(params?: {
+    institution?: string;
+    division?: string;
+    department?: string;
+  }): Promise<import('../types/institution').StaffAssignment[]> {
+    const query = new URLSearchParams();
+    if (params?.institution) query.append('institution', params.institution);
+    if (params?.division) query.append('division', params.division);
+    if (params?.department) query.append('department', params.department);
+    const res = await fetch(`${API_BASE}/api/staff-assignments/?${query.toString()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch staff assignments`);
+    return res.json();
+  },
+
+  async createStaffAssignment(data: {
+    user: number;
+    institution: string;
+    division?: string;
+    department?: string;
+    role_at_unit: string;
+    official_title?: string;
+    assigned_years_of_study?: number[];
+  }): Promise<import('../types/institution').StaffAssignment> {
+    const res = await fetch(`${API_BASE}/api/staff-assignments/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to create staff assignment`);
+    return res.json();
+  },
+
+  async getMyCaseload(token: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/api/staff-assignments/my-caseload/`, {
+      headers: { Authorization: `Token ${token}` },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch caseload`);
+    return res.json();
+  },
+
+  // Student Directory & Cohorts
+  async getStudents(params?: {
+    institution?: string;
+    department?: string;
+    program?: string;
+    year_of_study?: number;
+    search?: string;
+  }, token?: string): Promise<import('../types/institution').StudentProfile[]> {
+    const query = new URLSearchParams();
+    if (params?.institution) query.append('institution', params.institution);
+    if (params?.department) query.append('department', params.department);
+    if (params?.program) query.append('program', params.program);
+    if (params?.year_of_study) query.append('year_of_study', String(params.year_of_study));
+    if (params?.search) query.append('search', params.search);
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Token ${token}`;
+    }
+
+    const res = await fetch(`${API_BASE}/api/students/?${query.toString()}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch students`);
+    return res.json();
+  },
+
+  async createStudent(data: {
+    email: string;
+    name: string;
+    institution: string;
+    program: string;
+    matric_number: string;
+    jamb_reg_number?: string;
+    entry_session: string;
+    entry_mode?: string;
+    year_of_study?: number;
+    cgpa?: number | null;
+    phone_number?: string;
+  }, token?: string): Promise<import('../types/institution').StudentProfile> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers.Authorization = `Token ${token}`;
+    }
+
+    const res = await fetch(`${API_BASE}/api/students/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Failed to register student`);
+    }
+    return res.json();
+  },
 };
+
 

@@ -240,15 +240,117 @@ export interface InstitutionStaff {
   updated_at: string;
 }
 
+export type StaffRoleAtUnit =
+  | 'DEAN'
+  | 'SUB_DEAN'
+  | 'HOD'
+  | 'DEPARTMENTAL_COUNSELLOR'
+  | 'FACULTY_COUNSELLOR'
+  | 'SIWES_COORDINATOR'
+  | 'ACADEMIC_ADVISER'
+  | 'FACULTY_EVALUATOR'
+  | 'DIRECTOR_CAREER_SERVICES'
+  | 'SUPERADMIN';
+
+export interface StaffAssignment {
+  id: string;
+  user: number;
+  user_email: string;
+  user_name: string;
+  institution: string;
+  institution_name: string;
+  institution_short_name: string;
+  division?: string;
+  division_name?: string;
+  department?: string;
+  department_name?: string;
+  role_at_unit: StaffRoleAtUnit;
+  role_at_unit_display: string;
+  official_title: string;
+  assigned_years_of_study: number[];
+  can_evaluate_milestones: boolean;
+  can_manage_waivers: boolean;
+  max_caseload: number;
+  is_primary: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type EntryMode = 'UTME' | 'DIRECT_ENTRY' | 'TRANSFER' | 'CONVERSION';
+
+export type AcademicStanding =
+  | 'IN_GOOD_STANDING'
+  | 'PROBATION'
+  | 'SIWES_SUSPENDED'
+  | 'GRADUATED'
+  | 'ALUMNI'
+  | 'DEFERRED';
+
+export type SIWESClearanceStatus =
+  | 'NOT_ELIGIBLE'
+  | 'QUALIFYING'
+  | 'CLEARED'
+  | 'ON_ATTACHMENT'
+  | 'COMPLETED';
+
+export interface StudentProfile {
+  id: string;
+  user: number;
+  user_email: string;
+  user_name: string;
+  institution: string;
+  institution_name: string;
+  institution_short_name: string;
+  program: string;
+  program_name: string;
+  program_code: string;
+  program_duration_years: number;
+  award_level_display: string;
+  department_id: string;
+  department_name: string;
+  division_id: string;
+  division_name: string;
+  matric_number: string;
+  jamb_reg_number?: string;
+  entry_session: string;
+  entry_session_label: string;
+  entry_mode: EntryMode;
+  entry_mode_display: string;
+  year_of_study: number;
+  level_code: string;
+  level_display: string;
+  is_final_year: boolean;
+  is_siwes_year: boolean;
+  is_spillover: boolean;
+  cgpa?: number | null;
+  academic_standing: AcademicStanding;
+  academic_standing_display: string;
+  siwes_clearance_status: SIWESClearanceStatus;
+  siwes_clearance_status_display: string;
+  phone_number?: string;
+  state_of_origin?: string;
+  gender?: string;
+  bio?: string;
+  portfolio_url?: string;
+  linkedin_url?: string;
+  is_verified_student: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AuthUser {
   id: number;
   email: string;
   name: string;
   staff_profile: InstitutionStaff | null;
+  staff_assignments?: StaffAssignment[];
+  student_profile?: StudentProfile | null;
 }
 
 export interface LoginResponse {
   token: string;
   user: AuthUser;
 }
+
 

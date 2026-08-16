@@ -4,6 +4,7 @@ import type {
   InstitutionHierarchyTree,
   GovernanceSummary,
   InstitutionalDocument,
+  AcademicSession,
   LoginResponse,
   AuthUser,
 } from '../../types/institution';
@@ -13,6 +14,7 @@ import { GovernancePulse } from './GovernancePulse';
 import { AcademicHierarchyTree } from './AcademicHierarchyTree';
 import { KnowledgeBaseManager } from './KnowledgeBaseManager';
 import { StaffDirectory } from './StaffDirectory';
+import { StudentRoster } from './StudentRoster';
 import { AddDivisionModal } from './AddDivisionModal';
 import { AddDepartmentModal } from './AddDepartmentModal';
 import { AddProgramModal } from './AddProgramModal';
@@ -27,6 +29,7 @@ import {
   ArrowLeftIcon,
   ShieldCheckIcon,
   FileTextIcon,
+  GraduationCapIcon,
 } from '../icons';
 
 interface InstitutionDashboardProps {
@@ -46,12 +49,13 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
   // Institution State locked to the logged-in staff member's institution
   const [institution, setInstitution] = useState<InstitutionSummary | null>(null);
   const selectedInstId = currentUser?.staff_profile?.institution || '';
-  const [activeTab, setActiveTab] = useState<'pulse' | 'tree' | 'kb' | 'staff'>('pulse');
+  const [activeTab, setActiveTab] = useState<'pulse' | 'tree' | 'kb' | 'staff' | 'students'>('pulse');
 
   // Hierarchy & Governance Data
   const [tree, setTree] = useState<InstitutionHierarchyTree | null>(null);
   const [summary, setSummary] = useState<GovernanceSummary | null>(null);
   const [documents, setDocuments] = useState<InstitutionalDocument[]>([]);
+  const [sessions, setSessions] = useState<AcademicSession[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal States
@@ -81,6 +85,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
     setTree(null);
     setSummary(null);
     setDocuments([]);
+    setSessions([]);
     localStorage.removeItem('edusal_auth_token');
     localStorage.removeItem('edusal_auth_user');
   };
@@ -90,15 +95,17 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
     if (!instId) return;
     setLoading(true);
     try {
-      const [treeData, summaryData, docsData, instList] = await Promise.all([
+      const [treeData, summaryData, docsData, instList, sessionsData] = await Promise.all([
         institutionApi.getInstitutionTree(instId),
         institutionApi.getGovernanceSummary(instId),
         institutionApi.getDocuments(instId),
         institutionApi.getInstitutions({ id: instId }),
+        institutionApi.getSessions(instId),
       ]);
       setTree(treeData);
       setSummary(summaryData);
       setDocuments(docsData);
+      setSessions(sessionsData);
       if (instList && instList.length > 0) {
         setInstitution(instList.find((i) => i.id === instId) || instList[0]);
       }
@@ -295,6 +302,13 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
               >
                 <UsersIcon size={16} /> Staff & Evaluators
               </button>
+              <button
+                type="button"
+                className={`portal-tab ${activeTab === 'students' ? 'active' : ''}`}
+                onClick={() => setActiveTab('students')}
+              >
+                <GraduationCapIcon size={16} /> Student Roster & Cohorts
+              </button>
             </div>
           </div>
         )}
@@ -340,6 +354,16 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
               institutionId={selectedInst.id}
               institutionName={selectedInst.name}
               tierTwoTerm={selectedInst.tier_two_term === 'SCHOOL' ? 'School' : 'Faculty'}
+            />
+          )}
+
+          {activeTab === 'students' && selectedInst && (
+            <StudentRoster
+              institutionId={selectedInst.id}
+              institutionName={selectedInst.name}
+              tree={tree}
+              sessions={sessions}
+              authToken={authToken}
             />
           )}
         </div>

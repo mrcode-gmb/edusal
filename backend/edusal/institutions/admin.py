@@ -8,7 +8,24 @@ from .models import (
     InstitutionalDocument,
     InstitutionalDocumentChunk,
     InstitutionStaff,
+    StaffAssignment,
+    StudentProfile,
 )
+
+
+@admin.register(StaffAssignment)
+class StaffAssignmentAdmin(admin.ModelAdmin):
+    list_display = ["user", "institution", "role_at_unit", "official_title", "division", "department", "can_evaluate_milestones", "is_active"]
+    list_filter = ["role_at_unit", "can_evaluate_milestones", "is_active", "institution"]
+    search_fields = ["user__email", "user__name", "official_title", "institution__name"]
+
+
+@admin.register(StudentProfile)
+class StudentProfileAdmin(admin.ModelAdmin):
+    list_display = ["matric_number", "user", "program", "institution", "year_of_study", "entry_mode", "academic_standing", "siwes_clearance_status"]
+    list_filter = ["year_of_study", "entry_mode", "academic_standing", "siwes_clearance_status", "institution"]
+    search_fields = ["matric_number", "user__email", "user__name", "program__name"]
+
 
 
 class AcademicDivisionInline(admin.TabularInline):

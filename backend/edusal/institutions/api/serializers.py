@@ -8,6 +8,8 @@ from edusal.institutions.models import (
     InstitutionalDocument,
     InstitutionalDocumentChunk,
     InstitutionStaff,
+    StaffAssignment,
+    StudentProfile,
 )
 
 
@@ -269,6 +271,141 @@ class InstitutionStaffSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
 
+class StaffAssignmentSerializer(serializers.ModelSerializer):
+    user_email = serializers.CharField(source="user.email", read_only=True)
+    user_name = serializers.CharField(source="user.name", read_only=True)
+    role_at_unit_display = serializers.CharField(source="get_role_at_unit_display", read_only=True)
+    institution_name = serializers.CharField(source="institution.name", read_only=True)
+    institution_short_name = serializers.CharField(source="institution.short_name", read_only=True)
+    division_name = serializers.CharField(source="division.name", read_only=True)
+    department_name = serializers.CharField(source="department.name", read_only=True)
+
+    class Meta:
+        model = StaffAssignment
+        fields = [
+            "id",
+            "user",
+            "user_email",
+            "user_name",
+            "institution",
+            "institution_name",
+            "institution_short_name",
+            "division",
+            "division_name",
+            "department",
+            "department_name",
+            "role_at_unit",
+            "role_at_unit_display",
+            "official_title",
+            "assigned_years_of_study",
+            "can_evaluate_milestones",
+            "can_manage_waivers",
+            "max_caseload",
+            "is_primary",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class StudentProfileSerializer(serializers.ModelSerializer):
+    user_email = serializers.CharField(source="user.email", read_only=True)
+    user_name = serializers.CharField(source="user.name", read_only=True)
+    institution_name = serializers.CharField(source="institution.name", read_only=True)
+    institution_short_name = serializers.CharField(source="institution.short_name", read_only=True)
+    program_name = serializers.CharField(source="program.name", read_only=True)
+    program_code = serializers.CharField(source="program.program_code", read_only=True)
+    program_duration_years = serializers.IntegerField(source="program.duration_years", read_only=True)
+    award_level_display = serializers.CharField(source="program.get_award_level_display", read_only=True)
+    department_id = serializers.UUIDField(source="program.department.id", read_only=True)
+    department_name = serializers.CharField(source="program.department.name", read_only=True)
+    division_id = serializers.UUIDField(source="program.department.division.id", read_only=True)
+    division_name = serializers.CharField(source="program.department.division.name", read_only=True)
+    entry_session_label = serializers.CharField(source="entry_session.session_label", read_only=True)
+    entry_mode_display = serializers.CharField(source="get_entry_mode_display", read_only=True)
+    academic_standing_display = serializers.CharField(source="get_academic_standing_display", read_only=True)
+    siwes_clearance_status_display = serializers.CharField(source="get_siwes_clearance_status_display", read_only=True)
+    level_code = serializers.CharField(source="get_level_code", read_only=True)
+    level_display = serializers.CharField(source="get_level_display", read_only=True)
+    is_final_year = serializers.BooleanField(read_only=True)
+    is_siwes_year = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = StudentProfile
+        fields = [
+            "id",
+            "user",
+            "user_email",
+            "user_name",
+            "institution",
+            "institution_name",
+            "institution_short_name",
+            "program",
+            "program_name",
+            "program_code",
+            "program_duration_years",
+            "award_level_display",
+            "department_id",
+            "department_name",
+            "division_id",
+            "division_name",
+            "matric_number",
+            "jamb_reg_number",
+            "entry_session",
+            "entry_session_label",
+            "entry_mode",
+            "entry_mode_display",
+            "year_of_study",
+            "level_code",
+            "level_display",
+            "is_final_year",
+            "is_siwes_year",
+            "is_spillover",
+            "cgpa",
+            "academic_standing",
+            "academic_standing_display",
+            "siwes_clearance_status",
+            "siwes_clearance_status_display",
+            "phone_number",
+            "state_of_origin",
+            "gender",
+            "bio",
+            "portfolio_url",
+            "linkedin_url",
+            "is_verified_student",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "level_code",
+            "level_display",
+            "is_final_year",
+            "is_siwes_year",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class StudentProfileCreateSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    name = serializers.CharField(required=True, max_length=150)
+    password = serializers.CharField(required=False, default="1234!@#$", write_only=True)
+    institution = serializers.UUIDField(required=True)
+    program = serializers.UUIDField(required=True)
+    matric_number = serializers.CharField(required=True, max_length=50)
+    jamb_reg_number = serializers.CharField(required=False, allow_blank=True, default="")
+    entry_session = serializers.UUIDField(required=True)
+    entry_mode = serializers.CharField(required=False, default="UTME")
+    year_of_study = serializers.IntegerField(required=False, default=1, min_value=1, max_value=6)
+    cgpa = serializers.DecimalField(required=False, allow_null=True, max_digits=4, decimal_places=2)
+    phone_number = serializers.CharField(required=False, allow_blank=True, default="")
+    state_of_origin = serializers.CharField(required=False, allow_blank=True, default="")
+    gender = serializers.CharField(required=False, allow_blank=True, default="")
+    portfolio_url = serializers.URLField(required=False, allow_blank=True, default="")
+
+
 class AuthLoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True, write_only=True)
@@ -279,10 +416,21 @@ class AuthUserSerializer(serializers.Serializer):
     email = serializers.EmailField()
     name = serializers.CharField()
     staff_profile = serializers.SerializerMethodField()
+    staff_assignments = serializers.SerializerMethodField()
+    student_profile = serializers.SerializerMethodField()
 
     def get_staff_profile(self, obj):
         staff = obj.institution_staff_profiles.filter(is_active=True).select_related("institution", "division", "department").first()
         if staff:
             return InstitutionStaffSerializer(staff).data
+        return None
+
+    def get_staff_assignments(self, obj):
+        assignments = obj.staff_assignments.filter(is_active=True).select_related("institution", "division", "department")
+        return StaffAssignmentSerializer(assignments, many=True).data
+
+    def get_student_profile(self, obj):
+        if hasattr(obj, "student_profile") and obj.student_profile:
+            return StudentProfileSerializer(obj.student_profile).data
         return None
 
