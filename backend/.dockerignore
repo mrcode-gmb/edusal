@@ -11,4 +11,6 @@ venv
 .git
 .envs/
 .venv/
+.ipython/
 **/__pycache__/
+
