@@ -300,11 +300,25 @@ class InstitutionalDocument(models.Model):
         blank=True,
         related_name="documents",
     )
+    session = models.ForeignKey(
+        AcademicSession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="documents",
+        help_text="Academic session this document applies to (e.g. 2025/2026)",
+    )
     title = models.CharField(max_length=255, help_text="e.g. FUTMinna 2025/2026 SIWES Operational Guidelines")
     doc_type = models.CharField(
         max_length=30,
         choices=DocumentType.choices,
         default=DocumentType.STUDENT_HANDBOOK,
+    )
+    file = models.FileField(
+        upload_to="institutional_documents/%Y/%m/",
+        null=True,
+        blank=True,
+        help_text="Uploaded handbook or guidelines document (PDF, DOCX, TXT)",
     )
     file_path = models.CharField(max_length=500, blank=True, help_text="Relative storage or media path")
     content_hash = models.CharField(max_length=128, blank=True, help_text="SHA-256 hash of document for auditability")
@@ -345,10 +359,14 @@ class InstitutionalDocumentChunk(models.Model):
     )
     content = models.TextField()
     embedding = VectorField(
-        dimensions=1536,
+        dimensions=384,
         null=True,
         blank=True,
-        help_text="1536-dimensional vector embedding for cosine similarity search in PostgreSQL",
+        help_text="384-dimensional vector embedding (bge-small-en-v1.5 / all-MiniLM-L6-v2) for cosine similarity search in PostgreSQL",
+    )
+    is_header = models.BooleanField(
+        default=False,
+        help_text="Indicates whether this chunk represents a major section heading or table of contents",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -412,3 +430,630 @@ class InstitutionStaff(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user.email} — {self.get_role_display()} ({self.institution.short_name})"
+
+
+class StaffRoleAtUnit(models.TextChoices):
+    DEAN = "DEAN", "Dean of Division"
+    SUB_DEAN = "SUB_DEAN", "Sub-Dean (Academics / Student Affairs)"
+    HOD = "HOD", "Head of Department (HOD)"
+    DEPARTMENTAL_COUNSELLOR = "DEPARTMENTAL_COUNSELLOR", "Departmental Career Counsellor"
+    FACULTY_COUNSELLOR = "FACULTY_COUNSELLOR", "Faculty Lead Counsellor"
+    SIWES_COORDINATOR = "SIWES_COORDINATOR", "Departmental SIWES Coordinator"
+    ACADEMIC_ADVISER = "ACADEMIC_ADVISER", "Level Academic Adviser"
+    FACULTY_EVALUATOR = "FACULTY_EVALUATOR", "Technical Milestone Evaluator"
+    DIRECTOR_CAREER_SERVICES = "DIRECTOR_CAREER_SERVICES", "Director of Career Services (Institution-Wide)"
+    SUPERADMIN = "SUPERADMIN", "Institution Superadmin"
+
+
+class StaffAssignment(models.Model):
+    """Fine-grained scoping for staff members assigned to specific faculties, departments, and roles."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="staff_assignments",
+    )
+    institution = models.ForeignKey(
+        Institution,
+        on_delete=models.CASCADE,
+        related_name="staff_assignments",
+    )
+    division = models.ForeignKey(
+        AcademicDivision,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="staff_assignments",
+        help_text="If set and department is null, staff is scoped to the entire division/faculty",
+    )
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="staff_assignments",
+        help_text="If set, staff is scoped to this specific department",
+    )
+    role_at_unit = models.CharField(
+        max_length=40,
+        choices=StaffRoleAtUnit.choices,
+        default=StaffRoleAtUnit.FACULTY_EVALUATOR,
+    )
+    official_title = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="e.g. Academic Adviser — 300L SLT Track",
+    )
+    assigned_years_of_study = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of years of study assigned (e.g. [3, 4, 5])",
+    )
+    can_evaluate_milestones = models.BooleanField(
+        default=True,
+        help_text="Permission to authenticate student evidence and milestones",
+    )
+    can_manage_waivers = models.BooleanField(
+        default=False,
+        help_text="Permission to grant prerequisite waivers for SIWES placement",
+    )
+    max_caseload = models.PositiveIntegerField(
+        default=150,
+        help_text="Maximum student caseload allocation",
+    )
+    is_primary = models.BooleanField(
+        default=True,
+        help_text="Marks this assignment as the staff member's primary institutional post",
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["institution", "department", "user__name"]
+        verbose_name = "Staff Assignment"
+        verbose_name_plural = "Staff Assignments"
+
+    def __str__(self) -> str:
+        unit = self.department.name if self.department else (self.division.name if self.division else self.institution.short_name)
+        return f"{self.user.email} — {self.get_role_at_unit_display()} ({unit})"
+
+
+class EntryMode(models.TextChoices):
+    UTME = "UTME", "UTME (Standard Entry - Year 1)"
+    DIRECT_ENTRY = "DIRECT_ENTRY", "Direct Entry (DE - Year 2)"
+    TRANSFER = "TRANSFER", "Inter-Faculty / University Transfer"
+    CONVERSION = "CONVERSION", "HND to B.Sc. Conversion"
+
+
+class AcademicStanding(models.TextChoices):
+    IN_GOOD_STANDING = "IN_GOOD_STANDING", "In Good Standing"
+    PROBATION = "PROBATION", "Academic Warning / Probation"
+    SIWES_SUSPENDED = "SIWES_SUSPENDED", "SIWES Clearance Suspended"
+    GRADUATED = "GRADUATED", "Graduated (Awaiting NYSC)"
+    ALUMNI = "ALUMNI", "Alumni / Post-NYSC"
+    DEFERRED = "DEFERRED", "Session Deferred"
+
+
+class SIWESClearanceStatus(models.TextChoices):
+    NOT_ELIGIBLE = "NOT_ELIGIBLE", "Not Yet Eligible (Pre-SIWES Year)"
+    QUALIFYING = "QUALIFYING", "Qualifying (Prerequisites in Progress)"
+    CLEARED = "CLEARED", "Cleared by HOD & Coordinator (Ready for Placement)"
+    ON_ATTACHMENT = "ON_ATTACHMENT", "Active On Attachment"
+    COMPLETED = "COMPLETED", "Attachment Logbook & Presentation Completed"
+
+
+class StudentProfile(models.Model):
+    """
+    Hierarchical Student Identity anchored directly to AcademicProgram (Tier 4).
+    Dynamically computes student level based on the program's duration_years (4-yr, 5-yr, 2-yr ND/HND, 3-yr NCE).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="student_profile",
+    )
+    institution = models.ForeignKey(
+        Institution,
+        on_delete=models.PROTECT,
+        related_name="students",
+    )
+    program = models.ForeignKey(
+        AcademicProgram,
+        on_delete=models.PROTECT,
+        related_name="enrolled_students",
+        help_text="Tier-4 degree option (which links to Department -> Division -> Institution)",
+    )
+    matric_number = models.CharField(
+        max_length=50,
+        db_index=True,
+        help_text="e.g. 2021/1/74892CS or GSU/SCI/CSC/22/0104",
+    )
+    jamb_reg_number = models.CharField(
+        max_length=50,
+        blank=True,
+        db_index=True,
+        help_text="JAMB registration number for national verification",
+    )
+    entry_session = models.ForeignKey(
+        AcademicSession,
+        on_delete=models.PROTECT,
+        related_name="matriculated_students",
+    )
+    entry_mode = models.CharField(
+        max_length=20,
+        choices=EntryMode.choices,
+        default=EntryMode.UTME,
+    )
+    year_of_study = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Current year of study (1 to 6), e.g. 1 for 100L/ND I, 4 for 400L/HND II, 5 for 500L SLT/Eng",
+    )
+    is_spillover = models.BooleanField(
+        default=False,
+        help_text="True if student has exceeded standard program duration",
+    )
+    cgpa = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Current cumulative grade point average (e.g. 4.35)",
+    )
+    academic_standing = models.CharField(
+        max_length=30,
+        choices=AcademicStanding.choices,
+        default=AcademicStanding.IN_GOOD_STANDING,
+    )
+    siwes_clearance_status = models.CharField(
+        max_length=30,
+        choices=SIWESClearanceStatus.choices,
+        default=SIWESClearanceStatus.NOT_ELIGIBLE,
+    )
+    phone_number = models.CharField(max_length=30, blank=True)
+    state_of_origin = models.CharField(max_length=50, blank=True)
+    gender = models.CharField(max_length=15, blank=True)
+    bio = models.TextField(blank=True)
+    portfolio_url = models.URLField(
+        blank=True,
+        help_text="Link to student GitHub, Behance, or live project repository",
+    )
+    linkedin_url = models.URLField(blank=True)
+    is_verified_student = models.BooleanField(
+        default=True,
+        help_text="True if matched with institutional admissions ledger",
+    )
+    active_pathway = models.ForeignKey(
+        "Pathway",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="enrolled_students",
+        help_text="The career pathway this student is currently actively pursuing",
+    )
+    employability_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.00,
+        help_text="Composite Employability Score (0.00 - 100.00%) based on verified milestones (70%) and CGPA (30%)",
+    )
+    verified_points_total = models.PositiveIntegerField(
+        default=0,
+        help_text="Total verified milestone points accumulated by this student",
+    )
+    milestones_completed_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Count of verified milestone submissions",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["institution", "program", "matric_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["institution", "matric_number"],
+                name="unique_matric_per_institution",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["institution", "year_of_study"]),
+            models.Index(fields=["program", "year_of_study"]),
+        ]
+        verbose_name = "Student Profile"
+        verbose_name_plural = "Student Profiles"
+
+    def __str__(self) -> str:
+        return f"{self.matric_number} — {self.user.name or self.user.email} ({self.program.name})"
+
+    @property
+    def is_final_year(self) -> bool:
+        """True if the student is in the final year of their specific program."""
+        return self.year_of_study >= self.program.duration_years
+
+    @property
+    def is_siwes_year(self) -> bool:
+        """Determines if the current year of study is the program's primary SIWES attachment year."""
+        dur = self.program.duration_years
+        if dur == 5:
+            return self.year_of_study == 4  # Year 4 for 5-year programs (B.Tech / B.Eng / SLT)
+        elif dur == 4:
+            return self.year_of_study == 3  # Year 3 for 4-year programs (B.Sc.)
+        elif dur == 2 and self.program.award_level == AwardLevel.ND:
+            return self.year_of_study == 2  # Year 2 for ND programs
+        return False
+
+    def get_level_code(self) -> str:
+        """Returns normalized level code (e.g. '100', '400', '500', 'ND_I', 'ND_II', 'NCE_III')."""
+        inst_type = self.institution.institution_type
+        award = self.program.award_level
+
+        if inst_type == InstitutionType.POLYTECHNIC:
+            if award == AwardLevel.ND:
+                return "ND_I" if self.year_of_study == 1 else "ND_II"
+            elif award == AwardLevel.HND:
+                return "HND_I" if self.year_of_study == 1 else "HND_II"
+
+        if inst_type == InstitutionType.COLLEGE_OF_EDUCATION:
+            levels = {1: "NCE_I", 2: "NCE_II", 3: "NCE_III"}
+            return levels.get(self.year_of_study, f"NCE_{self.year_of_study}")
+
+        # University / standard numerical levels
+        return f"{self.year_of_study * 100}"
+
+    def get_level_display(self) -> str:
+        """
+        Dynamically returns human-readable level label tailored to program duration:
+        e.g. '500 Level (Final Year)' for SLT/B.Tech, '400 Level (Final Year)' for 4-yr B.Sc,
+        'ND II (Final Year)' for Polytechnic ND, 'NCE III (Final Year)' for College of Ed.
+        """
+        code = self.get_level_code()
+
+        if self.is_spillover:
+            return f"{code} Level (Spillover)"
+
+        if self.is_final_year:
+            if "ND_" in code or "HND_" in code or "NCE_" in code:
+                formatted = code.replace("_", " ")
+                return f"{formatted} (Final Year)"
+            return f"{code} Level (Final Year)"
+
+        if self.is_siwes_year:
+            if "ND_" in code or "HND_" in code:
+                formatted = code.replace("_", " ")
+                return f"{formatted} (SIWES Year)"
+            return f"{code} Level (SIWES Year)"
+
+        if "ND_" in code or "HND_" in code or "NCE_" in code:
+            return code.replace("_", " ")
+
+        return f"{code} Level"
+
+    def recalculate_employability(self) -> dict:
+        """
+        Calculates composite Employability Score:
+        - Verified Milestone Points vs. Active Pathway Total Target Points (70% weighting)
+        - Academic CGPA normalized against 5.0 scale (30% weighting)
+        """
+        verified_submissions = self.milestone_submissions.filter(status="VERIFIED")
+        self.verified_points_total = sum(s.points_awarded for s in verified_submissions)
+        self.milestones_completed_count = verified_submissions.count()
+
+        pathway_target_points = self.active_pathway.total_points if self.active_pathway else 0
+
+        if pathway_target_points > 0:
+            milestone_ratio = min(self.verified_points_total / pathway_target_points, 1.0)
+            milestone_component = milestone_ratio * 70.0
+        else:
+            milestone_component = 0.0
+
+        cgpa_val = float(self.cgpa or 0.0)
+        cgpa_ratio = min(cgpa_val / 5.0, 1.0)
+        cgpa_component = cgpa_ratio * 30.0
+
+        total_score = round(milestone_component + cgpa_component, 2)
+        self.employability_score = total_score
+        self.save(update_fields=[
+            "verified_points_total",
+            "milestones_completed_count",
+            "employability_score",
+            "updated_at",
+        ])
+
+        tier = "Foundational"
+        if total_score >= 80.0:
+            tier = "High-Calibre Talent"
+        elif total_score >= 60.0:
+            tier = "Industry Ready"
+        elif total_score >= 40.0:
+            tier = "Developing"
+
+        return {
+            "employability_score": float(total_score),
+            "tier": tier,
+            "milestone_component": round(milestone_component, 2),
+            "cgpa_component": round(cgpa_component, 2),
+            "verified_points": self.verified_points_total,
+            "target_points": pathway_target_points,
+            "milestones_completed": self.milestones_completed_count,
+        }
+
+
+
+class TemplateVisibility(models.TextChoices):
+    DEPARTMENT = "DEPARTMENT", "Department Only"
+    INSTITUTION = "INSTITUTION", "Institution-Wide"
+    NATIONAL_CATALOG = "NATIONAL_CATALOG", "National Open Catalog"
+
+
+class MilestoneType(models.TextChoices):
+    FOUNDATIONAL_COURSEWORK = "FOUNDATIONAL_COURSEWORK", "Foundational Coursework Prerequisite"
+    TECHNICAL_SKILL = "TECHNICAL_SKILL", "Technical Skill Mastery"
+    GITHUB_PROJECT = "GITHUB_PROJECT", "Production Repository / Deployed App"
+    INDUSTRY_CERTIFICATION = "INDUSTRY_CERTIFICATION", "Industry Recognized Certification"
+    SIWES_PREREQUISITE = "SIWES_PREREQUISITE", "SIWES / ITCC Placement Clearance"
+    INTERNSHIP_EXPERIENCE = "INTERNSHIP_EXPERIENCE", "Internship / Work Placement"
+    CAPSTONE_PROJECT = "CAPSTONE_PROJECT", "Final Year Capstone Project Defense"
+    CAREER_READINESS = "CAREER_READINESS", "Portfolio & Technical Interview Readiness"
+
+
+class VerificationMethod(models.TextChoices):
+    SUPERVISOR_SIGN_OFF = "SUPERVISOR_SIGN_OFF", "Counsellor / HOD Sign-Off"
+    URL_VERIFICATION = "URL_VERIFICATION", "Repository / Live URL Review"
+    DOCUMENT_UPLOAD = "DOCUMENT_UPLOAD", "Certificate / Document PDF Upload"
+    AUTOMATED_ASSESSMENT = "AUTOMATED_ASSESSMENT", "Automated Assessment / Quiz"
+
+
+class RequiredEvidenceType(models.TextChoices):
+    GITHUB_REPO = "GITHUB_REPO", "GitHub / GitLab Repository URL"
+    LIVE_URL = "LIVE_URL", "Live Deployed Project URL"
+    CERTIFICATE_PDF = "CERTIFICATE_PDF", "Certificate PDF / Verified Credential Link"
+    PORTFOLIO_LINK = "PORTFOLIO_LINK", "Portfolio Link (Behance, Dribbble, Personal Site)"
+    SUPERVISOR_ENDORSEMENT = "SUPERVISOR_ENDORSEMENT", "Faculty / Industry Supervisor Form"
+
+
+class Pathway(models.Model):
+    """Structured career roadmap for an academic program, containing progressive milestones."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    institution = models.ForeignKey(
+        Institution,
+        on_delete=models.CASCADE,
+        related_name="pathways",
+    )
+    program = models.ForeignKey(
+        AcademicProgram,
+        on_delete=models.CASCADE,
+        related_name="pathways",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_pathways",
+    )
+    title = models.CharField(
+        max_length=200,
+        help_text="e.g. Full-Stack Web & Cloud Architecture",
+    )
+    career_role = models.CharField(
+        max_length=150,
+        help_text="Target role e.g. Full-Stack Software Engineer, DevOps Specialist",
+    )
+    industry_sector = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="e.g. Information Technology / Fintech / Telecommunications",
+    )
+    description = models.TextField(
+        help_text="Comprehensive overview of competencies and expected learning outcomes",
+    )
+    target_cgpa_recommendation = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Recommended minimum CGPA (e.g. 3.00)",
+    )
+    total_milestones_count = models.PositiveIntegerField(default=0)
+    total_points = models.PositiveIntegerField(
+        default=0,
+        help_text="Total employability points accumulated across all milestones",
+    )
+    is_active = models.BooleanField(default=True)
+    is_template = models.BooleanField(
+        default=False,
+        help_text="If True, serves as a master template blueprint in the institutional catalog",
+    )
+    template_visibility = models.CharField(
+        max_length=25,
+        choices=TemplateVisibility.choices,
+        default=TemplateVisibility.INSTITUTION,
+    )
+    cloned_from = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cloned_derivatives",
+        help_text="Master template from which this pathway was cloned",
+    )
+    version = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["program", "title"]
+        verbose_name = "Career Pathway"
+        verbose_name_plural = "Career Pathways"
+
+    def __str__(self) -> str:
+        tag = " [TEMPLATE]" if self.is_template else ""
+        return f"{self.title} ({self.program.name}){tag}"
+
+    def recalculate_totals(self) -> None:
+        """Updates total_milestones_count and total_points from child milestones."""
+        milestones = self.milestones.all()
+        self.total_milestones_count = milestones.count()
+        self.total_points = sum(m.points for m in milestones)
+        self.save(update_fields=["total_milestones_count", "total_points", "updated_at"])
+
+
+class PathwayMilestone(models.Model):
+    """Verifiable progressive requirement within a career pathway."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    pathway = models.ForeignKey(
+        Pathway,
+        on_delete=models.CASCADE,
+        related_name="milestones",
+    )
+    order_index = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Sequence order within the pathway",
+    )
+    year_of_study = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Target academic year (1..5) matching student year of study",
+    )
+    target_level_code = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="e.g. '100', '200', '300', '400', '500', 'ND_I', 'ND_II', 'NCE_I', 'NCE_II', 'NCE_III'",
+    )
+    target_semester = models.CharField(
+        max_length=20,
+        choices=[
+            ("FIRST", "First Semester"),
+            ("SECOND", "Second Semester"),
+            ("BOTH", "Both Semesters / Annual"),
+        ],
+        default="FIRST",
+    )
+    title = models.CharField(
+        max_length=255,
+        help_text="e.g. Deploy Modular Microservice with CI/CD Pipeline",
+    )
+    description = models.TextField(
+        help_text="Specific deliverables, rubric criteria, and requirements",
+    )
+    milestone_type = models.CharField(
+        max_length=30,
+        choices=MilestoneType.choices,
+        default=MilestoneType.TECHNICAL_SKILL,
+    )
+    points = models.PositiveIntegerField(
+        default=100,
+        help_text="Employability weighting score assigned to this milestone",
+    )
+    is_mandatory = models.BooleanField(
+        default=True,
+        help_text="Whether completion is strictly required for pathway badge",
+    )
+    verification_method = models.CharField(
+        max_length=30,
+        choices=VerificationMethod.choices,
+        default=VerificationMethod.SUPERVISOR_SIGN_OFF,
+    )
+    required_evidence_type = models.CharField(
+        max_length=30,
+        choices=RequiredEvidenceType.choices,
+        default=RequiredEvidenceType.GITHUB_REPO,
+    )
+    competency_tags = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of skill keywords, e.g. ['React', 'TypeScript', 'Docker', 'PostgreSQL']",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["pathway", "order_index", "year_of_study"]
+        verbose_name = "Pathway Milestone"
+        verbose_name_plural = "Pathway Milestones"
+
+    def __str__(self) -> str:
+        return f"{self.pathway.title} — Step {self.order_index + 1}: {self.title} ({self.points} pts)"
+
+
+class SubmissionStatus(models.TextChoices):
+    PENDING_REVIEW = "PENDING_REVIEW", "Pending Review"
+    VERIFIED = "VERIFIED", "Verified & Points Awarded"
+    CHANGES_REQUESTED = "CHANGES_REQUESTED", "Changes / Re-submission Requested"
+    REJECTED = "REJECTED", "Rejected / Incomplete"
+
+
+class StudentMilestoneSubmission(models.Model):
+    """Verifiable student submission for a pathway milestone with counsellor evaluation."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(
+        StudentProfile,
+        on_delete=models.CASCADE,
+        related_name="milestone_submissions",
+    )
+    milestone = models.ForeignKey(
+        PathwayMilestone,
+        on_delete=models.CASCADE,
+        related_name="submissions",
+    )
+    status = models.CharField(
+        max_length=25,
+        choices=SubmissionStatus.choices,
+        default=SubmissionStatus.PENDING_REVIEW,
+    )
+    evidence_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text="GitHub repository URL or Live demo deployment link",
+    )
+    evidence_file = models.FileField(
+        upload_to="student_evidence/%Y/%m/",
+        blank=True,
+        null=True,
+        help_text="Uploaded certificate PDF or supervisor endorsement form",
+    )
+    submission_notes = models.TextField(
+        blank=True,
+        help_text="Student description of work completed, architectural decisions, or SIWES context",
+    )
+    points_awarded = models.PositiveIntegerField(
+        default=0,
+        help_text="Points awarded upon verification (defaults to milestone.points)",
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_milestones",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_feedback = models.TextField(
+        blank=True,
+        help_text="Counsellor or HOD remarks and evaluation notes",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "milestone"],
+                name="unique_student_milestone_submission",
+            )
+        ]
+        verbose_name = "Student Milestone Submission"
+        verbose_name_plural = "Student Milestone Submissions"
+
+    def __str__(self) -> str:
+        return f"{self.student.matric_number} — {self.milestone.title} ({self.status})"
+
+
+

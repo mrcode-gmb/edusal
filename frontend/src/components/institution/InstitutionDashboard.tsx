@@ -1,17 +1,22 @@
 import { useState, useEffect, type FC } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import type {
   InstitutionSummary,
   InstitutionHierarchyTree,
   GovernanceSummary,
   InstitutionalDocument,
+  AcademicSession,
+  LoginResponse,
+  AuthUser,
 } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
-import { useAuth } from '../../context/AuthContext';
+import { InstitutionLogin } from './InstitutionLogin';
 import { GovernancePulse } from './GovernancePulse';
 import { AcademicHierarchyTree } from './AcademicHierarchyTree';
 import { KnowledgeBaseManager } from './KnowledgeBaseManager';
 import { StaffDirectory } from './StaffDirectory';
+import { StudentRoster } from './StudentRoster';
+import { PathwaysManager } from './PathwaysManager';
+import { StudentDashboard } from '../student/StudentDashboard';
 import { AddDivisionModal } from './AddDivisionModal';
 import { AddDepartmentModal } from './AddDepartmentModal';
 import { AddProgramModal } from './AddProgramModal';
@@ -26,41 +31,38 @@ import {
   ArrowLeftIcon,
   ShieldCheckIcon,
   FileTextIcon,
+  GraduationCapIcon,
+  CompassIcon,
 } from '../icons';
 
-export const InstitutionDashboard: FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { authToken, currentUser, logout } = useAuth();
+interface InstitutionDashboardProps {
+  initialRole?: 'student' | 'staff';
+  onBackToLanding: () => void;
+}
+
+export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
+  initialRole = 'student',
+  onBackToLanding,
+}) => {
+  // Authentication State
+  const [authToken, setAuthToken] = useState<string | null>(() => {
+    return localStorage.getItem('edusal_auth_token') || null;
+  });
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    const saved = localStorage.getItem('edusal_auth_user');
+    return saved ? JSON.parse(saved) : null;
+  });
 
   // Institution State locked to the logged-in staff member's institution
   const [institution, setInstitution] = useState<InstitutionSummary | null>(null);
   const selectedInstId = currentUser?.staff_profile?.institution || '';
-
-  // Determine active tab directly from URL path
-  const getTabFromPath = (path: string): 'pulse' | 'tree' | 'kb' | 'staff' => {
-    if (path.includes('/structure') || path.includes('/tree')) return 'tree';
-    if (path.includes('/documents') || path.includes('/kb')) return 'kb';
-    if (path.includes('/staff')) return 'staff';
-    return 'pulse';
-  };
-
-  const activeTab = getTabFromPath(location.pathname);
-
-  const handleTabChange = (tab: 'pulse' | 'tree' | 'kb' | 'staff') => {
-    const routeMap = {
-      pulse: '/institution/pulse',
-      tree: '/institution/structure',
-      kb: '/institution/documents',
-      staff: '/institution/staff',
-    };
-    navigate(routeMap[tab]);
-  };
+  const [activeTab, setActiveTab] = useState<'pulse' | 'tree' | 'kb' | 'staff' | 'students' | 'pathways'>('pulse');
 
   // Hierarchy & Governance Data
   const [tree, setTree] = useState<InstitutionHierarchyTree | null>(null);
   const [summary, setSummary] = useState<GovernanceSummary | null>(null);
   const [documents, setDocuments] = useState<InstitutionalDocument[]>([]);
+  const [sessions, setSessions] = useState<AcademicSession[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal States
@@ -71,10 +73,28 @@ export const InstitutionDashboard: FC = () => {
   const [selectedDeptForProg, setSelectedDeptForProg] = useState<string>('');
   const [showSenateModal, setShowSenateModal] = useState(false);
 
+  // Handle Login Success
+  const handleLoginSuccess = (authData: LoginResponse) => {
+    setAuthToken(authData.token);
+    setCurrentUser(authData.user);
+    localStorage.setItem('edusal_auth_token', authData.token);
+    localStorage.setItem('edusal_auth_user', JSON.stringify(authData.user));
+  };
+
   // Handle Logout
   const handleLogout = async () => {
-    await logout();
-    navigate('/institution/login');
+    if (authToken) {
+      await institutionApi.logout(authToken).catch(() => {});
+    }
+    setAuthToken(null);
+    setCurrentUser(null);
+    setInstitution(null);
+    setTree(null);
+    setSummary(null);
+    setDocuments([]);
+    setSessions([]);
+    localStorage.removeItem('edusal_auth_token');
+    localStorage.removeItem('edusal_auth_user');
   };
 
   // Load single institution data strictly matching current logged-in user
@@ -82,15 +102,17 @@ export const InstitutionDashboard: FC = () => {
     if (!instId) return;
     setLoading(true);
     try {
-      const [treeData, summaryData, docsData, instList] = await Promise.all([
+      const [treeData, summaryData, docsData, instList, sessionsData] = await Promise.all([
         institutionApi.getInstitutionTree(instId),
         institutionApi.getGovernanceSummary(instId),
         institutionApi.getDocuments(instId),
         institutionApi.getInstitutions({ id: instId }),
+        institutionApi.getSessions(instId),
       ]);
       setTree(treeData);
       setSummary(summaryData);
       setDocuments(docsData);
+      setSessions(sessionsData);
       if (instList && instList.length > 0) {
         setInstitution(instList.find((i) => i.id === instId) || instList[0]);
       }
@@ -107,8 +129,26 @@ export const InstitutionDashboard: FC = () => {
     }
   }, [selectedInstId, authToken]);
 
-  if (!currentUser) {
-    return null;
+  // If not logged in, render the login view
+  if (!authToken || !currentUser) {
+    return (
+      <InstitutionLogin
+        initialRole={initialRole}
+        onLoginSuccess={handleLoginSuccess}
+        onBackToLanding={onBackToLanding}
+      />
+    );
+  }
+
+  // If user is a student, render the dedicated Student Dashboard
+  if (currentUser.student_profile) {
+    return (
+      <StudentDashboard
+        currentUser={currentUser}
+        authToken={authToken}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   // Handlers for adding division/department/program
@@ -176,7 +216,7 @@ export const InstitutionDashboard: FC = () => {
       {/* Top Portal Navigation Bar */}
       <header className="portal-navbar">
         <div className="portal-nav-left">
-          <button type="button" className="btn-back-link" onClick={() => navigate('/')}>
+          <button type="button" className="btn-back-link" onClick={onBackToLanding}>
             <ArrowLeftIcon size={14} /> Back to Landing
           </button>
           <div className="portal-brand-block">
@@ -251,35 +291,49 @@ export const InstitutionDashboard: FC = () => {
               </div>
             </div>
 
-            {/* View Tabs with URL-backed Navigation */}
+            {/* View Tabs */}
             <div className="portal-tabs">
               <button
                 type="button"
                 className={`portal-tab ${activeTab === 'pulse' ? 'active' : ''}`}
-                onClick={() => handleTabChange('pulse')}
+                onClick={() => setActiveTab('pulse')}
               >
                 <BarChartIcon size={16} /> Governance Pulse
               </button>
               <button
                 type="button"
                 className={`portal-tab ${activeTab === 'tree' ? 'active' : ''}`}
-                onClick={() => handleTabChange('tree')}
+                onClick={() => setActiveTab('tree')}
               >
                 <FolderTreeIcon size={16} /> 4-Tier Hierarchy Explorer
               </button>
               <button
                 type="button"
                 className={`portal-tab ${activeTab === 'kb' ? 'active' : ''}`}
-                onClick={() => handleTabChange('kb')}
+                onClick={() => setActiveTab('kb')}
               >
                 <DatabaseIcon size={16} /> Knowledge Base & Citation Tester
               </button>
               <button
                 type="button"
                 className={`portal-tab ${activeTab === 'staff' ? 'active' : ''}`}
-                onClick={() => handleTabChange('staff')}
+                onClick={() => setActiveTab('staff')}
               >
                 <UsersIcon size={16} /> Staff & Evaluators
+              </button>
+              <button
+                type="button"
+                className={`portal-tab ${activeTab === 'students' ? 'active' : ''}`}
+                onClick={() => setActiveTab('students')}
+              >
+                <GraduationCapIcon size={16} /> Student Roster & Cohorts
+              </button>
+              <button
+                type="button"
+                className={`portal-tab ${activeTab === 'pathways' ? 'active' : ''}`}
+                onClick={() => setActiveTab('pathways')}
+              >
+                <CompassIcon size={16} /> Career Pathways & Milestones
               </button>
             </div>
           </div>
@@ -315,8 +369,12 @@ export const InstitutionDashboard: FC = () => {
             <KnowledgeBaseManager
               institutionId={selectedInst.id}
               institutionName={selectedInst.name}
+              tierTwoTerm={selectedInst.tier_two_term === 'SCHOOL' ? 'School' : 'Faculty'}
+              tree={tree}
+              sessions={sessions}
               documents={documents}
               loading={loading}
+              authToken={authToken}
               onRefresh={() => loadInstitutionData(selectedInst.id)}
             />
           )}
@@ -326,6 +384,26 @@ export const InstitutionDashboard: FC = () => {
               institutionId={selectedInst.id}
               institutionName={selectedInst.name}
               tierTwoTerm={selectedInst.tier_two_term === 'SCHOOL' ? 'School' : 'Faculty'}
+            />
+          )}
+
+          {activeTab === 'students' && selectedInst && (
+            <StudentRoster
+              institutionId={selectedInst.id}
+              institutionName={selectedInst.name}
+              tree={tree}
+              sessions={sessions}
+              authToken={authToken}
+            />
+          )}
+
+          {activeTab === 'pathways' && selectedInst && (
+            <PathwaysManager
+              institutionId={selectedInst.id}
+              institutionName={selectedInst.name}
+              tierTwoTerm={selectedInst.tier_two_term === 'SCHOOL' ? 'School' : 'Faculty'}
+              tree={tree}
+              authToken={authToken}
             />
           )}
         </div>

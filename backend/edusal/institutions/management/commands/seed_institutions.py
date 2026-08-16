@@ -20,7 +20,25 @@ from edusal.institutions.models import (
     InstitutionalDocumentChunk,
     InstitutionStaff,
     InstitutionRole,
+    StaffAssignment,
+    StaffRoleAtUnit,
+    StudentProfile,
+    EntryMode,
+    AcademicStanding,
+    SIWESClearanceStatus,
+    Pathway,
+    PathwayMilestone,
+    TemplateVisibility,
+    MilestoneType,
+    VerificationMethod,
+    RequiredEvidenceType,
+    StudentMilestoneSubmission,
+    SubmissionStatus,
 )
+from edusal.institutions.services.embedding_service import EmbeddingService
+
+
+
 
 User = get_user_model()
 
@@ -64,6 +82,63 @@ class Command(BaseCommand):
             )
             return user, staff
 
+        def create_staff_assignment(user, institution, role_at_unit, title, division=None, department=None, assigned_years=None):
+            assignment, _ = StaffAssignment.objects.update_or_create(
+                user=user,
+                institution=institution,
+                division=division,
+                department=department,
+                defaults={
+                    "role_at_unit": role_at_unit,
+                    "official_title": title,
+                    "assigned_years_of_study": assigned_years or [],
+                    "can_evaluate_milestones": True,
+                    "can_manage_waivers": role_at_unit in [StaffRoleAtUnit.HOD, StaffRoleAtUnit.DEAN, StaffRoleAtUnit.SUPERADMIN],
+                    "is_primary": True,
+                    "is_active": True,
+                },
+            )
+            return assignment
+
+        def create_student_profile(email, name, institution, program, session, matric_number, year_of_study, cgpa=None, entry_mode=EntryMode.UTME, siwes_status=SIWESClearanceStatus.NOT_ELIGIBLE, phone="", active_pathway=None):
+            user, _ = User.objects.get_or_create(
+                email=email,
+                defaults={"name": name, "is_active": True},
+            )
+            user.set_password(DEFAULT_PASSWORD)
+            user.name = name
+            user.save()
+
+            student, _ = StudentProfile.objects.update_or_create(
+                user=user,
+                defaults={
+                    "institution": institution,
+                    "program": program,
+                    "matric_number": matric_number,
+                    "entry_session": session,
+                    "entry_mode": entry_mode,
+                    "year_of_study": year_of_study,
+                    "cgpa": cgpa,
+                    "academic_standing": AcademicStanding.IN_GOOD_STANDING,
+                    "siwes_clearance_status": siwes_status,
+                    "phone_number": phone,
+                    "is_verified_student": True,
+                    "active_pathway": active_pathway,
+                },
+            )
+            if active_pathway and student.active_pathway != active_pathway:
+                student.active_pathway = active_pathway
+                student.save(update_fields=["active_pathway"])
+
+            student.recalculate_employability()
+
+            self.stdout.write(
+                f"    [Student Account] {email} ({matric_number}) -> {name} | {program.name} [{student.get_level_display()}]"
+            )
+            return student
+
+
+
         # =====================================================================
         # 1. NUC Federal University Archetype: Federal University of Technology, Minna
         # =====================================================================
@@ -85,7 +160,7 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"  {'Created' if created else 'Found'} University: {futminna.name}")
 
-        AcademicSession.objects.get_or_create(
+        sess_futm, _ = AcademicSession.objects.get_or_create(
             institution=futminna,
             session_label="2025/2026",
             defaults={
@@ -130,7 +205,7 @@ class Command(BaseCommand):
                 "is_active": True,
             },
         )
-        AcademicProgram.objects.get_or_create(
+        prog_swe_btech = AcademicProgram.objects.get_or_create(
             institution=futminna,
             department=swe,
             name="B.Tech Software Engineering",
@@ -140,7 +215,7 @@ class Command(BaseCommand):
                 "duration_years": 5,
                 "siwes_duration_months": 6,
             },
-        )
+        )[0]
 
         csc, _ = Department.objects.get_or_create(
             institution=futminna,
@@ -196,35 +271,155 @@ class Command(BaseCommand):
             defaults={
                 "division": sict,
                 "department": swe,
+                "session": sess_futm,
                 "doc_type": DocumentType.SIWES_CALENDAR,
                 "file_path": "documents/futminna_siwes_2026.pdf",
                 "content_hash": "sha256:4f8a91bc732e67df8120b08dc66291e1f5c8feb105bba042ebf2f0ea59a9df7f",
-                "chunk_count": 2,
+                "chunk_count": 3,
                 "embedding_status": EmbeddingStatus.INDEXED,
                 "raw_text": "FUTMinna Industrial Training Coordinating Centre (ITCC). All 300-level and 400-level candidates must complete verified departmental milestone requirements prior to placement dispatch.",
             },
         )
-        InstitutionalDocumentChunk.objects.get_or_create(
+        
+        c0_text = "Pre-placement requirement: 300-level candidates must have signed endorsements in Relational Databases and Modular System Design prior to institutional referral. Students on academic probation are deferred."
+        chunk0, _ = InstitutionalDocumentChunk.objects.get_or_create(
             document=doc_futm,
             chunk_index=0,
             defaults={
                 "page_number": 4,
-                "section_reference": "Section 4.2: Placement Prerequisites",
-                "content": "Pre-placement requirement: 300-level candidates must have signed endorsements in Relational Databases and Modular System Design prior to institutional referral.",
+                "section_reference": "Section 4.2: Placement Prerequisites & CGPA Floor",
+                "content": c0_text,
+                "embedding": EmbeddingService.embed_query(c0_text),
             },
         )
-        InstitutionalDocumentChunk.objects.get_or_create(
+        if not chunk0.embedding:
+            chunk0.embedding = EmbeddingService.embed_query(chunk0.content)
+            chunk0.save(update_fields=["embedding"])
+
+        c1_text = "The National SIWES attachment cycle commences in July annually and spans 24 continuous weeks. Students must log weekly progress with their assigned faculty supervisor and submit monthly ITCC Form 08."
+        chunk1, _ = InstitutionalDocumentChunk.objects.get_or_create(
             document=doc_futm,
             chunk_index=1,
             defaults={
                 "page_number": 7,
-                "section_reference": "Section 5.1: SIWES Window Schedule",
-                "content": "The National SIWES attachment cycle commences in July annually and spans 24 continuous weeks. Students must log weekly progress with their assigned faculty supervisor.",
+                "section_reference": "Section 5.1: SIWES Window Schedule & Form 08",
+                "content": c1_text,
+                "embedding": EmbeddingService.embed_query(c1_text),
+            },
+        )
+        if not chunk1.embedding:
+            chunk1.embedding = EmbeddingService.embed_query(chunk1.content)
+            chunk1.save(update_fields=["embedding"])
+
+        c2_text = "500-level Software Engineering Capstone Project: Candidates must build, document, and defend an end-to-end software system with CI/CD pipelines, automated testing, and comprehensive technical documentation."
+        chunk2, _ = InstitutionalDocumentChunk.objects.get_or_create(
+            document=doc_futm,
+            chunk_index=2,
+            defaults={
+                "page_number": 12,
+                "section_reference": "Section 6.3: Final Year Capstone Project Defense",
+                "content": c2_text,
+                "embedding": EmbeddingService.embed_query(c2_text),
+            },
+        )
+        if not chunk2.embedding:
+            chunk2.embedding = EmbeddingService.embed_query(chunk2.content)
+            chunk2.save(update_fields=["embedding"])
+
+        # FUTMinna Pathway Blueprint: Full-Stack Cloud & DevOps Engineering (B.Tech SWE)
+        pw_swe, _ = Pathway.objects.get_or_create(
+            institution=futminna,
+            program=prog_swe_btech,
+            title="Full-Stack Cloud & DevOps Engineering",
+            defaults={
+                "career_role": "Full-Stack Software & Cloud Engineer",
+                "industry_sector": "Information Technology / Fintech",
+                "description": "Progressive 5-year software engineering roadmap spanning foundational algorithms, relational databases, containerized microservices, 24-week SIWES attachment, and production capstone architecture.",
+                "target_cgpa_recommendation": 3.00,
+                "is_active": True,
+                "is_template": True,
+                "template_visibility": TemplateVisibility.NATIONAL_CATALOG,
             },
         )
 
-        # FUTMinna Accounts (password: 1234!@#$)
-        create_or_update_staff_user(
+        swe_milestones_data = [
+            {
+                "order_index": 0,
+                "year_of_study": 1,
+                "target_level_code": "100",
+                "target_semester": "FIRST",
+                "title": "Version Control (Git/GitHub) & Terminal Mastery",
+                "description": "Establish professional Git workflow, branch management, semantic commit history, and automated GitHub actions.",
+                "milestone_type": MilestoneType.TECHNICAL_SKILL,
+                "points": 50,
+                "verification_method": VerificationMethod.URL_VERIFICATION,
+                "required_evidence_type": RequiredEvidenceType.GITHUB_REPO,
+                "competency_tags": ["Git", "GitHub", "Bash", "Linux"],
+            },
+            {
+                "order_index": 1,
+                "year_of_study": 2,
+                "target_level_code": "200",
+                "target_semester": "SECOND",
+                "title": "Relational Database Normalization & PostgreSQL Design",
+                "description": "Design 3NF relational schemas, write optimized SQL queries, indexes, and database migrations for high-concurrency systems.",
+                "milestone_type": MilestoneType.TECHNICAL_SKILL,
+                "points": 100,
+                "verification_method": VerificationMethod.URL_VERIFICATION,
+                "required_evidence_type": RequiredEvidenceType.GITHUB_REPO,
+                "competency_tags": ["PostgreSQL", "Database Normalization", "SQL", "Schema Design"],
+            },
+            {
+                "order_index": 2,
+                "year_of_study": 3,
+                "target_level_code": "300",
+                "target_semester": "FIRST",
+                "title": "Containerization (Docker) & RESTful Microservices",
+                "description": "Build multi-tier REST API with Django / FastAPI, containerize with Docker compose, and write automated Pytest suites.",
+                "milestone_type": MilestoneType.SIWES_PREREQUISITE,
+                "points": 150,
+                "verification_method": VerificationMethod.SUPERVISOR_SIGN_OFF,
+                "required_evidence_type": RequiredEvidenceType.GITHUB_REPO,
+                "competency_tags": ["Docker", "Django", "FastAPI", "REST APIs", "Pytest"],
+            },
+            {
+                "order_index": 3,
+                "year_of_study": 4,
+                "target_level_code": "400",
+                "target_semester": "FIRST",
+                "title": "24-Week Industrial SIWES Attachment with Signed Logbook",
+                "description": "Complete continuous 6-month off-campus industrial training, submit verified monthly ITCC Form 08, and receive industry supervisor evaluation.",
+                "milestone_type": MilestoneType.INTERNSHIP_EXPERIENCE,
+                "points": 300,
+                "verification_method": VerificationMethod.SUPERVISOR_SIGN_OFF,
+                "required_evidence_type": RequiredEvidenceType.SUPERVISOR_ENDORSEMENT,
+                "competency_tags": ["SIWES", "Industrial Experience", "Technical Problem Solving"],
+            },
+            {
+                "order_index": 4,
+                "year_of_study": 5,
+                "target_level_code": "500",
+                "target_semester": "SECOND",
+                "title": "Production Capstone System with CI/CD & Security Audit",
+                "description": "Defend end-to-end cloud-native system with live deployment, automated testing pipeline, and comprehensive architecture documentation.",
+                "milestone_type": MilestoneType.CAPSTONE_PROJECT,
+                "points": 250,
+                "verification_method": VerificationMethod.SUPERVISOR_SIGN_OFF,
+                "required_evidence_type": RequiredEvidenceType.LIVE_URL,
+                "competency_tags": ["CI/CD", "Production Deployment", "Architecture Defense", "Cloud Infrastructure"],
+            },
+        ]
+
+        for m_data in swe_milestones_data:
+            PathwayMilestone.objects.update_or_create(
+                pathway=pw_swe,
+                title=m_data["title"],
+                defaults=m_data,
+            )
+        pw_swe.recalculate_totals()
+
+        # FUTMinna Accounts & Staff Assignments (password: 1234!@#$)
+        u_dean, _ = create_or_update_staff_user(
             email="csc@futminna.edu.ng",
             name="Prof. Mohammed Bashir",
             institution=futminna,
@@ -233,12 +428,149 @@ class Command(BaseCommand):
             division=sict,
             department=csc,
         )
-        create_or_update_staff_user(
+        create_staff_assignment(
+            user=u_dean,
+            institution=futminna,
+            role_at_unit=StaffRoleAtUnit.DEAN,
+            title="Dean of SICT",
+            division=sict,
+        )
+
+        u_admin, _ = create_or_update_staff_user(
             email="admin@futminna.edu.ng",
             name="Directorate of Career Services",
             institution=futminna,
             role=InstitutionRole.DIRECTOR_CAREER_SERVICES,
             title="Director, ITCC & Student Placement Office",
+        )
+        create_staff_assignment(
+            user=u_admin,
+            institution=futminna,
+            role_at_unit=StaffRoleAtUnit.DIRECTOR_CAREER_SERVICES,
+            title="Director of Career Services & ITCC",
+        )
+
+        u_hod_swe, _ = create_or_update_staff_user(
+            email="hod.swe@futminna.edu.ng",
+            name="Dr. Aminu Adebayo",
+            institution=futminna,
+            role=InstitutionRole.HOD,
+            title="Head of Department, Software Engineering",
+            division=sict,
+            department=swe,
+        )
+        create_staff_assignment(
+            user=u_hod_swe,
+            institution=futminna,
+            role_at_unit=StaffRoleAtUnit.HOD,
+            title="HOD Software Engineering",
+            division=sict,
+            department=swe,
+        )
+
+        prog_swe = AcademicProgram.objects.get(department=swe, name="B.Tech Software Engineering")
+        prog_csc = AcademicProgram.objects.get(department=csc, name="B.Tech Computer Science")
+        session_futm = AcademicSession.objects.filter(institution=futminna, is_current=True).first()
+
+        # FUTMinna Students (5-Year Duration Programs)
+        sp_amina = create_student_profile(
+            email="student.swe@futminna.edu.ng",
+            name="Amina Bello",
+            institution=futminna,
+            program=prog_swe,
+            session=session_futm,
+            matric_number="2021/1/74892SWE",
+            year_of_study=4,  # Year 4 of 5 = 400L (SIWES Year)
+            cgpa=4.35,
+            entry_mode=EntryMode.UTME,
+            siwes_status=SIWESClearanceStatus.QUALIFYING,
+            phone="+234 803 111 2233",
+            active_pathway=pw_swe,
+        )
+
+        # Seed verified submissions for Amina Bello to demonstrate live employability score calculation
+        swe_m1 = pw_swe.milestones.filter(order_index=0).first()
+        swe_m2 = pw_swe.milestones.filter(order_index=1).first()
+        swe_m3 = pw_swe.milestones.filter(order_index=2).first()
+        swe_m4 = pw_swe.milestones.filter(order_index=3).first()
+
+        if swe_m1:
+            StudentMilestoneSubmission.objects.get_or_create(
+                student=sp_amina,
+                milestone=swe_m1,
+                defaults={
+                    "status": SubmissionStatus.VERIFIED,
+                    "evidence_url": "https://github.com/aminabello/git-devops-mastery",
+                    "submission_notes": "Completed Git terminal workflows, branching strategies, and automated CI pipelines.",
+                    "points_awarded": swe_m1.points,
+                    "review_feedback": "Excellent Git branching history and README documentation.",
+                    "reviewed_by": u_hod_swe,
+                },
+            )
+        if swe_m2:
+            StudentMilestoneSubmission.objects.get_or_create(
+                student=sp_amina,
+                milestone=swe_m2,
+                defaults={
+                    "status": SubmissionStatus.VERIFIED,
+                    "evidence_url": "https://github.com/aminabello/postgresql-schema-opt",
+                    "submission_notes": "Designed 3NF database architecture for university portal with indexing.",
+                    "points_awarded": swe_m2.points,
+                    "review_feedback": "Relational schemas and migration integrity verified.",
+                    "reviewed_by": u_hod_swe,
+                },
+            )
+        if swe_m3:
+            StudentMilestoneSubmission.objects.get_or_create(
+                student=sp_amina,
+                milestone=swe_m3,
+                defaults={
+                    "status": SubmissionStatus.VERIFIED,
+                    "evidence_url": "https://github.com/aminabello/edusal-microservices-fastapi",
+                    "submission_notes": "Containerized microservice API with Docker compose and automated Pytest test suite.",
+                    "points_awarded": swe_m3.points,
+                    "review_feedback": "Microservices and dockerized API pass all integration checks.",
+                    "reviewed_by": u_hod_swe,
+                },
+            )
+        if swe_m4:
+            StudentMilestoneSubmission.objects.get_or_create(
+                student=sp_amina,
+                milestone=swe_m4,
+                defaults={
+                    "status": SubmissionStatus.PENDING_REVIEW,
+                    "submission_notes": "Submitted verified monthly ITCC Form 08 signed by MainOne Cable IT supervisor.",
+                    "points_awarded": 0,
+                },
+            )
+        sp_amina.recalculate_employability()
+
+        create_student_profile(
+            email="student2.swe@futminna.edu.ng",
+            name="Emeka Nwosu",
+            institution=futminna,
+            program=prog_swe,
+            session=session_futm,
+            matric_number="2020/1/69201SWE",
+            year_of_study=5,  # Year 5 of 5 = 500L (Final Year)
+            cgpa=4.60,
+            entry_mode=EntryMode.UTME,
+            siwes_status=SIWESClearanceStatus.COMPLETED,
+            phone="+234 803 222 3344",
+            active_pathway=pw_swe,
+        )
+        create_student_profile(
+            email="student.csc@futminna.edu.ng",
+            name="Zainab Usman",
+            institution=futminna,
+            program=prog_csc,
+            session=session_futm,
+            matric_number="2024/1/88391CSC",
+            year_of_study=1,  # Year 1 of 5 = 100L
+            cgpa=3.90,
+            entry_mode=EntryMode.UTME,
+            siwes_status=SIWESClearanceStatus.NOT_ELIGIBLE,
+            phone="+234 803 333 4455",
         )
 
         # =====================================================================
@@ -319,18 +651,23 @@ class Command(BaseCommand):
                 "raw_text": "Gombe State University Department of Computer Science. All candidates must complete core practical units in Data Structures and Algorithms with verified GitHub repositories before SIWES clearance.",
             },
         )
-        InstitutionalDocumentChunk.objects.get_or_create(
+        gsu_chunk_text = "All candidates must complete core practical units in Data Structures and Algorithms with verified GitHub repositories before SIWES clearance."
+        gsu_chunk0, _ = InstitutionalDocumentChunk.objects.get_or_create(
             document=doc_gsu,
             chunk_index=0,
             defaults={
                 "page_number": 15,
                 "section_reference": "Section 3.4: Practical Repository Clearance",
-                "content": "All candidates must complete core practical units in Data Structures and Algorithms with verified GitHub repositories before SIWES clearance.",
+                "content": gsu_chunk_text,
+                "embedding": EmbeddingService.embed_query(gsu_chunk_text),
             },
         )
+        if not gsu_chunk0.embedding:
+            gsu_chunk0.embedding = EmbeddingService.embed_query(gsu_chunk0.content)
+            gsu_chunk0.save(update_fields=["embedding"])
 
-        # GSU Accounts (password: 1234!@#$)
-        create_or_update_staff_user(
+        # GSU Accounts & Staff Assignments (password: 1234!@#$)
+        u_gsu_hod, _ = create_or_update_staff_user(
             email="csc@gsu.edu.ng",
             name="Dr. Umar Faruk",
             institution=gsu,
@@ -339,12 +676,58 @@ class Command(BaseCommand):
             division=faculty_science_gsu,
             department=dept_cs_gsu,
         )
-        create_or_update_staff_user(
+        create_staff_assignment(
+            user=u_gsu_hod,
+            institution=gsu,
+            role_at_unit=StaffRoleAtUnit.HOD,
+            title="HOD Computer Science",
+            division=faculty_science_gsu,
+            department=dept_cs_gsu,
+        )
+
+        u_gsu_admin, _ = create_or_update_staff_user(
             email="admin@gsu.edu.ng",
             name="Directorate of Academic Planning & Career Services",
             institution=gsu,
             role=InstitutionRole.SUPERADMIN,
             title="Director of Academic Planning, GSU",
+        )
+        create_staff_assignment(
+            user=u_gsu_admin,
+            institution=gsu,
+            role_at_unit=StaffRoleAtUnit.SUPERADMIN,
+            title="Director of Academic Planning",
+        )
+
+        prog_gsu_cs = AcademicProgram.objects.get(department=dept_cs_gsu, name="B.Sc. Computer Science")
+        session_gsu = AcademicSession.objects.filter(institution=gsu, is_current=True).first()
+
+        # GSU Students (4-Year Duration Program)
+        create_student_profile(
+            email="student.cs@gsu.edu.ng",
+            name="Chinedu Eze",
+            institution=gsu,
+            program=prog_gsu_cs,
+            session=session_gsu,
+            matric_number="GSU/SCI/CSC/22/0104",
+            year_of_study=4,  # Year 4 of 4 = 400L (Final Year)
+            cgpa=3.85,
+            entry_mode=EntryMode.UTME,
+            siwes_status=SIWESClearanceStatus.COMPLETED,
+            phone="+234 802 444 5566",
+        )
+        create_student_profile(
+            email="student2.cs@gsu.edu.ng",
+            name="Halima Bello",
+            institution=gsu,
+            program=prog_gsu_cs,
+            session=session_gsu,
+            matric_number="GSU/SCI/CSC/23/0219",
+            year_of_study=3,  # Year 3 of 4 = 300L (SIWES Year)
+            cgpa=4.12,
+            entry_mode=EntryMode.UTME,
+            siwes_status=SIWESClearanceStatus.QUALIFYING,
+            phone="+234 802 555 6677",
         )
 
         # =====================================================================
@@ -399,7 +782,7 @@ class Command(BaseCommand):
                 "siwes_eligible": True,
             },
         )
-        AcademicProgram.objects.get_or_create(
+        prog_nd = AcademicProgram.objects.get_or_create(
             institution=yabatech,
             department=dept_cs_yaba,
             name="National Diploma (ND) Computer Science",
@@ -409,8 +792,8 @@ class Command(BaseCommand):
                 "duration_years": 2,
                 "siwes_duration_months": 4,
             },
-        )
-        AcademicProgram.objects.get_or_create(
+        )[0]
+        prog_hnd = AcademicProgram.objects.get_or_create(
             institution=yabatech,
             department=dept_cs_yaba,
             name="Higher National Diploma (HND) Computer Science (Software Track)",
@@ -420,10 +803,89 @@ class Command(BaseCommand):
                 "duration_years": 2,
                 "siwes_duration_months": 12,
             },
+        )[0]
+
+        # YabaTech Pathway Blueprint: Frontend Web & React UI/UX Engineering (ND Computer Science)
+        pw_yaba, _ = Pathway.objects.get_or_create(
+            institution=yabatech,
+            program=prog_nd,
+            title="Frontend Web & React UI/UX Engineering",
+            defaults={
+                "career_role": "Junior Frontend Developer / UI Specialist",
+                "industry_sector": "Information Technology / Digital Agency",
+                "description": "Intensive 2-year polytechnic National Diploma roadmap covering modern HTML/CSS responsive design, client-side JavaScript, React component state, 16-week SIWES placement, and live portfolio defense.",
+                "target_cgpa_recommendation": 2.80,
+                "is_active": True,
+                "is_template": True,
+                "template_visibility": TemplateVisibility.NATIONAL_CATALOG,
+            },
         )
 
-        # YabaTech Accounts (password: 1234!@#$)
-        create_or_update_staff_user(
+        yaba_milestones_data = [
+            {
+                "order_index": 0,
+                "year_of_study": 1,
+                "target_level_code": "ND_I",
+                "target_semester": "FIRST",
+                "title": "Responsive Web Development & Semantic UI Architecture",
+                "description": "Construct accessible, responsive multi-page web layouts using semantic HTML5, CSS Grid, Flexbox, and CSS custom properties.",
+                "milestone_type": MilestoneType.TECHNICAL_SKILL,
+                "points": 100,
+                "verification_method": VerificationMethod.URL_VERIFICATION,
+                "required_evidence_type": RequiredEvidenceType.LIVE_URL,
+                "competency_tags": ["HTML5", "CSS3", "Responsive Design", "Flexbox"],
+            },
+            {
+                "order_index": 1,
+                "year_of_study": 1,
+                "target_level_code": "ND_I",
+                "target_semester": "SECOND",
+                "title": "Client-Side JavaScript & React State Management",
+                "description": "Build interactive single-page applications with React, TypeScript hooks, REST API data consumption, and form validations.",
+                "milestone_type": MilestoneType.TECHNICAL_SKILL,
+                "points": 150,
+                "verification_method": VerificationMethod.URL_VERIFICATION,
+                "required_evidence_type": RequiredEvidenceType.GITHUB_REPO,
+                "competency_tags": ["JavaScript", "React", "TypeScript", "State Management"],
+            },
+            {
+                "order_index": 2,
+                "year_of_study": 2,
+                "target_level_code": "ND_II",
+                "target_semester": "FIRST",
+                "title": "16-Week Polytechnic SIWES Industrial Attachment",
+                "description": "Complete 4-month industry attachment at verified IT firm, log weekly competencies in SIWES logbook, and pass departmental supervisor inspection.",
+                "milestone_type": MilestoneType.INTERNSHIP_EXPERIENCE,
+                "points": 250,
+                "verification_method": VerificationMethod.SUPERVISOR_SIGN_OFF,
+                "required_evidence_type": RequiredEvidenceType.SUPERVISOR_ENDORSEMENT,
+                "competency_tags": ["SIWES", "Industry Logbook", "Workplace Readiness"],
+            },
+            {
+                "order_index": 3,
+                "year_of_study": 2,
+                "target_level_code": "ND_II",
+                "target_semester": "SECOND",
+                "title": "Interactive Web Application Capstone Defense",
+                "description": "Deploy full frontend web application to Vercel/Netlify with live backend API integration, user authentication, and departmental defense.",
+                "milestone_type": MilestoneType.CAPSTONE_PROJECT,
+                "points": 200,
+                "verification_method": VerificationMethod.SUPERVISOR_SIGN_OFF,
+                "required_evidence_type": RequiredEvidenceType.LIVE_URL,
+                "competency_tags": ["React", "Vite", "REST APIs", "Project Defense"],
+            },
+        ]
+
+        for m_data in yaba_milestones_data:
+            PathwayMilestone.objects.update_or_create(
+                pathway=pw_yaba,
+                title=m_data["title"],
+                defaults=m_data,
+            )
+        pw_yaba.recalculate_totals()
+
+        # YabaTech Accounts & Staff Assignments (password: 1234!@#$)
+        u_yaba_hod, _ = create_or_update_staff_user(
             email="csc@yabatech.edu.ng",
             name="Mrs. O. A. Adeleke",
             institution=yabatech,
@@ -432,12 +894,58 @@ class Command(BaseCommand):
             division=st,
             department=dept_cs_yaba,
         )
-        create_or_update_staff_user(
+        create_staff_assignment(
+            user=u_yaba_hod,
+            institution=yabatech,
+            role_at_unit=StaffRoleAtUnit.HOD,
+            title="HOD Computer Technology",
+            division=st,
+            department=dept_cs_yaba,
+        )
+
+        u_yaba_admin, _ = create_or_update_staff_user(
             email="admin@yabatech.edu.ng",
             name="Centre for Applied Research & Industry Linkages",
             institution=yabatech,
             role=InstitutionRole.SUPERADMIN,
             title="Director, Centre for Linkages & Career Services",
+        )
+        create_staff_assignment(
+            user=u_yaba_admin,
+            institution=yabatech,
+            role_at_unit=StaffRoleAtUnit.SUPERADMIN,
+            title="Director of Linkages & Career Services",
+        )
+
+        session_yaba = AcademicSession.objects.filter(institution=yabatech, is_current=True).first()
+
+        # YabaTech Students (2-Year ND and 2-Year HND Programs)
+        create_student_profile(
+            email="student.nd@yabatech.edu.ng",
+            name="Babatunde Adeleke",
+            institution=yabatech,
+            program=prog_nd,
+            session=session_yaba,
+            matric_number="F/ND/23/3820019",
+            year_of_study=2,  # Year 2 of 2 = ND II (Final Year)
+            cgpa=3.60,
+            entry_mode=EntryMode.UTME,
+            siwes_status=SIWESClearanceStatus.QUALIFYING,
+            phone="+234 801 666 7788",
+            active_pathway=pw_yaba,
+        )
+        create_student_profile(
+            email="student.hnd@yabatech.edu.ng",
+            name="Folake Adeleke",
+            institution=yabatech,
+            program=prog_hnd,
+            session=session_yaba,
+            matric_number="F/HND/24/4910082",
+            year_of_study=2,  # Year 2 of 2 = HND II (Final Year)
+            cgpa=3.75,
+            entry_mode=EntryMode.CONVERSION,
+            siwes_status=SIWESClearanceStatus.COMPLETED,
+            phone="+234 801 777 8899",
         )
 
         # =====================================================================
@@ -492,7 +1000,7 @@ class Command(BaseCommand):
                 "siwes_eligible": False,
             },
         )
-        AcademicProgram.objects.get_or_create(
+        prog_nce = AcademicProgram.objects.get_or_create(
             institution=fce_zaria,
             department=dept_maths,
             name="NCE Mathematics / Computer Science Combination",
@@ -502,10 +1010,76 @@ class Command(BaseCommand):
                 "duration_years": 3,
                 "siwes_duration_months": 0,
             },
+        )[0]
+
+        # FCE Zaria Pathway Blueprint: Educational Technology & Digital Pedagogy (NCE)
+        pw_fce, _ = Pathway.objects.get_or_create(
+            institution=fce_zaria,
+            program=prog_nce,
+            title="Educational Technology & Digital Pedagogy",
+            defaults={
+                "career_role": "Certified STEM Educator / EdTech Specialist",
+                "industry_sector": "Basic & Secondary Education / EdTech",
+                "description": "Comprehensive 3-year teacher education pathway preparing future educators in digital instructional authoring, virtual classroom delivery, STEM pedagogy, and teaching practice portfolio defense.",
+                "target_cgpa_recommendation": 3.00,
+                "is_active": True,
+                "is_template": True,
+                "template_visibility": TemplateVisibility.NATIONAL_CATALOG,
+            },
         )
 
-        # FCE Zaria Accounts (password: 1234!@#$)
-        create_or_update_staff_user(
+        fce_milestones_data = [
+            {
+                "order_index": 0,
+                "year_of_study": 1,
+                "target_level_code": "NCE_I",
+                "target_semester": "FIRST",
+                "title": "Interactive Digital Courseware Authoring",
+                "description": "Author structured digital learning modules incorporating interactive multimedia, formative quizzes, and curriculum lesson plans.",
+                "milestone_type": MilestoneType.TECHNICAL_SKILL,
+                "points": 100,
+                "verification_method": VerificationMethod.URL_VERIFICATION,
+                "required_evidence_type": RequiredEvidenceType.PORTFOLIO_LINK,
+                "competency_tags": ["Digital Pedagogy", "Interactive Learning", "Lesson Planning"],
+            },
+            {
+                "order_index": 1,
+                "year_of_study": 2,
+                "target_level_code": "NCE_II",
+                "target_semester": "SECOND",
+                "title": "LMS Platform Administration & Online Assessment",
+                "description": "Configure digital learning management courses, automated grading rubrics, and virtual classroom engagement analytics.",
+                "milestone_type": MilestoneType.TECHNICAL_SKILL,
+                "points": 150,
+                "verification_method": VerificationMethod.DOCUMENT_UPLOAD,
+                "required_evidence_type": RequiredEvidenceType.CERTIFICATE_PDF,
+                "competency_tags": ["Moodle", "Canvas", "Assessment Rubrics", "Educational Analytics"],
+            },
+            {
+                "order_index": 2,
+                "year_of_study": 3,
+                "target_level_code": "NCE_III",
+                "target_semester": "FIRST",
+                "title": "Teaching Practice School Attachment & Portfolio Defense",
+                "description": "Complete 12-week supervised classroom teaching practice in an accredited secondary school with signed teaching practice portfolio.",
+                "milestone_type": MilestoneType.INTERNSHIP_EXPERIENCE,
+                "points": 300,
+                "verification_method": VerificationMethod.SUPERVISOR_SIGN_OFF,
+                "required_evidence_type": RequiredEvidenceType.SUPERVISOR_ENDORSEMENT,
+                "competency_tags": ["Teaching Practice", "Classroom Management", "TRCN Certification"],
+            },
+        ]
+
+        for m_data in fce_milestones_data:
+            PathwayMilestone.objects.update_or_create(
+                pathway=pw_fce,
+                title=m_data["title"],
+                defaults=m_data,
+            )
+        pw_fce.recalculate_totals()
+
+        # FCE Zaria Accounts & Staff Assignments (password: 1234!@#$)
+        u_fce_hod, _ = create_or_update_staff_user(
             email="csc@fcezaria.edu.ng",
             name="Dr. Aisha Garba",
             institution=fce_zaria,
@@ -514,12 +1088,46 @@ class Command(BaseCommand):
             division=school_sciences,
             department=dept_maths,
         )
-        create_or_update_staff_user(
+        create_staff_assignment(
+            user=u_fce_hod,
+            institution=fce_zaria,
+            role_at_unit=StaffRoleAtUnit.HOD,
+            title="HOD Mathematics Education",
+            division=school_sciences,
+            department=dept_maths,
+        )
+
+        u_fce_admin, _ = create_or_update_staff_user(
             email="admin@fcezaria.edu.ng",
             name="Provost Academic Planning Directorate",
             institution=fce_zaria,
             role=InstitutionRole.SUPERADMIN,
             title="Director of Academic Planning, FCE Zaria",
         )
+        create_staff_assignment(
+            user=u_fce_admin,
+            institution=fce_zaria,
+            role_at_unit=StaffRoleAtUnit.SUPERADMIN,
+            title="Director of Academic Planning",
+        )
 
-        self.stdout.write(self.style.SUCCESS("✓ Successfully seeded all 4 institutions & institutional user accounts with password: '1234!@#$'!"))
+        session_fce = AcademicSession.objects.filter(institution=fce_zaria, is_current=True).first()
+
+        # FCE Zaria Students (3-Year NCE Program)
+        create_student_profile(
+            email="student.nce@fcezaria.edu.ng",
+            name="Fatima Garba",
+            institution=fce_zaria,
+            program=prog_nce,
+            session=session_fce,
+            matric_number="NCE/2023/MTH/0491",
+            year_of_study=3,  # Year 3 of 3 = NCE III (Final Year)
+            cgpa=4.10,
+            entry_mode=EntryMode.UTME,
+            siwes_status=SIWESClearanceStatus.NOT_ELIGIBLE,
+            phone="+234 809 888 9900",
+            active_pathway=pw_fce,
+        )
+
+
+        self.stdout.write(self.style.SUCCESS("✓ Successfully seeded all 4 institutions, scoped staff assignments, and multi-year duration students with password: '1234!@#$'!"))

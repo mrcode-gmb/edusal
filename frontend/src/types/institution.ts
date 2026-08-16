@@ -85,9 +85,13 @@ export interface InstitutionalDocument {
   division_name?: string;
   department?: string;
   department_name?: string;
+  session?: string;
+  session_label?: string;
   title: string;
   doc_type: DocumentType;
   doc_type_display?: string;
+  file?: string;
+  file_url?: string;
   file_path: string;
   content_hash: string;
   chunk_count: number;
@@ -97,6 +101,35 @@ export interface InstitutionalDocument {
   chunks?: InstitutionalDocumentChunk[];
   created_at: string;
   updated_at: string;
+}
+
+export interface AIAdvisorCitation {
+  source_index: number;
+  citation_label: string;
+  chunk_id: string;
+  document_id: string;
+  document_title: string;
+  doc_type_display: string;
+  page_number: number;
+  section_reference: string;
+  content_snippet: string;
+  relevance_score: number;
+}
+
+export interface AIAdvisorResponse {
+  answer: string;
+  citations: AIAdvisorCitation[];
+  telemetry: {
+    model: string;
+    latency_ms: number;
+    total_tokens: number;
+    chunks_retrieved: number;
+  };
+  scope: {
+    institution: string;
+    division?: string | null;
+    department?: string | null;
+  };
 }
 
 export interface InstitutionSummary {
@@ -240,15 +273,296 @@ export interface InstitutionStaff {
   updated_at: string;
 }
 
+export type StaffRoleAtUnit =
+  | 'DEAN'
+  | 'SUB_DEAN'
+  | 'HOD'
+  | 'DEPARTMENTAL_COUNSELLOR'
+  | 'FACULTY_COUNSELLOR'
+  | 'SIWES_COORDINATOR'
+  | 'ACADEMIC_ADVISER'
+  | 'FACULTY_EVALUATOR'
+  | 'DIRECTOR_CAREER_SERVICES'
+  | 'SUPERADMIN';
+
+export interface StaffAssignment {
+  id: string;
+  user: number;
+  user_email: string;
+  user_name: string;
+  institution: string;
+  institution_name: string;
+  institution_short_name: string;
+  division?: string;
+  division_name?: string;
+  department?: string;
+  department_name?: string;
+  role_at_unit: StaffRoleAtUnit;
+  role_at_unit_display: string;
+  official_title: string;
+  assigned_years_of_study: number[];
+  can_evaluate_milestones: boolean;
+  can_manage_waivers: boolean;
+  max_caseload: number;
+  is_primary: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type EntryMode = 'UTME' | 'DIRECT_ENTRY' | 'TRANSFER' | 'CONVERSION';
+
+export type AcademicStanding =
+  | 'IN_GOOD_STANDING'
+  | 'PROBATION'
+  | 'SIWES_SUSPENDED'
+  | 'GRADUATED'
+  | 'ALUMNI'
+  | 'DEFERRED';
+
+export type SIWESClearanceStatus =
+  | 'NOT_ELIGIBLE'
+  | 'QUALIFYING'
+  | 'CLEARED'
+  | 'ON_ATTACHMENT'
+  | 'COMPLETED';
+
+export interface StudentProfile {
+  id: string;
+  user: number;
+  user_email: string;
+  user_name: string;
+  institution: string;
+  institution_name: string;
+  institution_short_name: string;
+  program: string;
+  program_name: string;
+  program_code: string;
+  program_duration_years: number;
+  award_level_display: string;
+  department_id: string;
+  department_name: string;
+  division_id: string;
+  division_name: string;
+  matric_number: string;
+  jamb_reg_number?: string;
+  entry_session: string;
+  entry_session_label: string;
+  entry_mode: EntryMode;
+  entry_mode_display: string;
+  year_of_study: number;
+  level_code: string;
+  level_display: string;
+  is_final_year: boolean;
+  is_siwes_year: boolean;
+  is_spillover: boolean;
+  active_pathway?: string | null;
+  active_pathway_title?: string | null;
+  active_pathway_career_role?: string | null;
+  employability_score: number;
+  verified_points_total: number;
+  milestones_completed_count: number;
+  cgpa?: number | null;
+  academic_standing: AcademicStanding;
+  academic_standing_display: string;
+  siwes_clearance_status: SIWESClearanceStatus;
+  siwes_clearance_status_display: string;
+  phone_number?: string;
+  state_of_origin?: string;
+  gender?: string;
+  bio?: string;
+  portfolio_url?: string;
+  linkedin_url?: string;
+  is_verified_student: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AuthUser {
   id: number;
   email: string;
   name: string;
   staff_profile: InstitutionStaff | null;
+  staff_assignments?: StaffAssignment[];
+  student_profile?: StudentProfile | null;
 }
 
 export interface LoginResponse {
   token: string;
   user: AuthUser;
 }
+
+export type TemplateVisibility = 'DEPARTMENT' | 'INSTITUTION' | 'NATIONAL_CATALOG';
+
+export type MilestoneType =
+  | 'FOUNDATIONAL_COURSEWORK'
+  | 'TECHNICAL_SKILL'
+  | 'GITHUB_PROJECT'
+  | 'INDUSTRY_CERTIFICATION'
+  | 'SIWES_PREREQUISITE'
+  | 'INTERNSHIP_EXPERIENCE'
+  | 'CAPSTONE_PROJECT'
+  | 'CAREER_READINESS';
+
+export type VerificationMethod =
+  | 'SUPERVISOR_SIGN_OFF'
+  | 'URL_VERIFICATION'
+  | 'DOCUMENT_UPLOAD'
+  | 'AUTOMATED_ASSESSMENT';
+
+export type RequiredEvidenceType =
+  | 'GITHUB_REPO'
+  | 'LIVE_URL'
+  | 'CERTIFICATE_PDF'
+  | 'PORTFOLIO_LINK'
+  | 'SUPERVISOR_ENDORSEMENT';
+
+export interface PathwayMilestone {
+  id: string;
+  pathway: string;
+  order_index: number;
+  year_of_study: number;
+  target_level_code: string;
+  target_semester: 'FIRST' | 'SECOND' | 'BOTH';
+  title: string;
+  description: string;
+  milestone_type: MilestoneType;
+  milestone_type_display?: string;
+  points: number;
+  is_mandatory: boolean;
+  verification_method: VerificationMethod;
+  verification_method_display?: string;
+  required_evidence_type: RequiredEvidenceType;
+  required_evidence_type_display?: string;
+  competency_tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Pathway {
+  id: string;
+  institution: string;
+  program: string;
+  program_name: string;
+  program_code: string;
+  award_level: string;
+  award_level_display: string;
+  duration_years: number;
+  department_id: string;
+  department_name: string;
+  division_name: string;
+  title: string;
+  career_role: string;
+  industry_sector?: string;
+  description: string;
+  target_cgpa_recommendation?: number | null;
+  total_milestones_count: number;
+  total_points: number;
+  is_active: boolean;
+  is_template: boolean;
+  template_visibility: TemplateVisibility;
+  cloned_from?: string | null;
+  cloned_from_title?: string | null;
+  version: number;
+  created_by?: number | null;
+  created_by_name?: string | null;
+  milestones?: PathwayMilestone[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PathwayCreatePayload {
+  institution: string;
+  program: string;
+  title: string;
+  career_role: string;
+  industry_sector?: string;
+  description: string;
+  target_cgpa_recommendation?: number | null;
+  is_active?: boolean;
+  is_template?: boolean;
+  template_visibility?: TemplateVisibility;
+}
+
+export interface PathwayClonePayload {
+  target_program: string;
+  custom_title?: string;
+  custom_description?: string;
+}
+
+export type SubmissionStatus =
+  | 'PENDING_REVIEW'
+  | 'VERIFIED'
+  | 'CHANGES_REQUESTED'
+  | 'REJECTED';
+
+export interface StudentMilestoneSubmission {
+  id: string;
+  student: string;
+  student_matric: string;
+  student_name: string;
+  milestone: string;
+  milestone_title: string;
+  milestone_points: number;
+  milestone_type: MilestoneType;
+  milestone_type_display?: string;
+  year_of_study: number;
+  target_level_code: string;
+  target_semester: string;
+  required_evidence_type: RequiredEvidenceType;
+  verification_method: VerificationMethod;
+  status: SubmissionStatus;
+  status_display: string;
+  evidence_url?: string | null;
+  evidence_file?: string | null;
+  submission_notes?: string;
+  points_awarded: number;
+  reviewed_by?: number | null;
+  reviewed_by_name?: string | null;
+  reviewed_at?: string | null;
+  review_feedback?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudentSubmissionCreatePayload {
+  milestone: string;
+  evidence_url?: string;
+  submission_notes?: string;
+}
+
+export interface StudentSubmissionReviewPayload {
+  status: 'VERIFIED' | 'CHANGES_REQUESTED' | 'REJECTED';
+  points_awarded?: number;
+  review_feedback?: string;
+}
+
+export interface StudentCredentialResult {
+  student_id: string;
+  matric_number: string;
+  email: string;
+  plain_password: string;
+  email_sent: boolean;
+  recipient: string;
+}
+
+export interface EmployabilitySummary {
+  employability_score: number;
+  tier: string;
+  milestone_component: number;
+  cgpa_component: number;
+  verified_points: number;
+  target_points: number;
+  milestones_completed: number;
+}
+
+export interface StudentDashboardData {
+  profile: StudentProfile;
+  active_pathway: Pathway | null;
+  submissions: StudentMilestoneSubmission[];
+  employability_summary: EmployabilitySummary;
+}
+
+
+
 

@@ -173,6 +173,56 @@ export const institutionApi = {
     if (!res.ok) throw new Error(`HTTP ${res.status}: Ingestion failed`);
   },
 
+  async uploadDocumentFile(
+    formData: FormData,
+    token?: string
+  ): Promise<InstitutionalDocument> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/documents/upload/`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${res.status}: Failed to upload document`);
+    }
+    const data = await res.json();
+    return data.document || data;
+  },
+
+  async askAdvisor(
+    institutionId: string,
+    payload: {
+      query: string;
+      division?: string;
+      department?: string;
+      session?: string;
+      doc_type?: string;
+      top_k?: number;
+    },
+    token?: string
+  ): Promise<import('../types/institution').AIAdvisorResponse> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/institutions/${institutionId}/ask-advisor/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${res.status}: Advisor query failed`);
+    }
+    return res.json();
+  },
+
+
   // Authentication Endpoints
   async login(email: string, password: string):Promise<import('../types/institution').LoginResponse> {
     const res = await fetch(`${API_BASE}/api/auth/login/`, {
@@ -235,5 +285,371 @@ export const institutionApi = {
     }
     return res.json();
   },
+
+  // Scoped Staff Assignments
+  async getStaffAssignments(params?: {
+    institution?: string;
+    division?: string;
+    department?: string;
+  }): Promise<import('../types/institution').StaffAssignment[]> {
+    const query = new URLSearchParams();
+    if (params?.institution) query.append('institution', params.institution);
+    if (params?.division) query.append('division', params.division);
+    if (params?.department) query.append('department', params.department);
+    const res = await fetch(`${API_BASE}/api/staff-assignments/?${query.toString()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch staff assignments`);
+    return res.json();
+  },
+
+  async createStaffAssignment(data: {
+    user: number;
+    institution: string;
+    division?: string;
+    department?: string;
+    role_at_unit: string;
+    official_title?: string;
+    assigned_years_of_study?: number[];
+  }): Promise<import('../types/institution').StaffAssignment> {
+    const res = await fetch(`${API_BASE}/api/staff-assignments/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to create staff assignment`);
+    return res.json();
+  },
+
+  async getMyCaseload(token: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/api/staff-assignments/my-caseload/`, {
+      headers: { Authorization: `Token ${token}` },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch caseload`);
+    return res.json();
+  },
+
+  // Student Directory & Cohorts
+  async getStudents(params?: {
+    institution?: string;
+    department?: string;
+    program?: string;
+    year_of_study?: number;
+    search?: string;
+  }, token?: string): Promise<import('../types/institution').StudentProfile[]> {
+    const query = new URLSearchParams();
+    if (params?.institution) query.append('institution', params.institution);
+    if (params?.department) query.append('department', params.department);
+    if (params?.program) query.append('program', params.program);
+    if (params?.year_of_study) query.append('year_of_study', String(params.year_of_study));
+    if (params?.search) query.append('search', params.search);
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Token ${token}`;
+    }
+
+    const res = await fetch(`${API_BASE}/api/students/?${query.toString()}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch students`);
+    return res.json();
+  },
+
+  async createStudent(data: {
+    email: string;
+    name: string;
+    institution: string;
+    program: string;
+    matric_number: string;
+    jamb_reg_number?: string;
+    entry_session: string;
+    entry_mode?: string;
+    year_of_study?: number;
+    cgpa?: number | null;
+    phone_number?: string;
+  }, token?: string): Promise<import('../types/institution').StudentProfile> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers.Authorization = `Token ${token}`;
+    }
+
+    const res = await fetch(`${API_BASE}/api/students/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Failed to register student`);
+    }
+    return res.json();
+  },
+
+  // Pathways & Blueprint Templates
+  async getPathways(
+    params: {
+      institution?: string;
+      program?: string;
+      department?: string;
+      division?: string;
+      is_template?: boolean;
+      search?: string;
+    },
+    token?: string
+  ): Promise<import('../types/institution').Pathway[]> {
+    const query = new URLSearchParams();
+    if (params.institution) query.append('institution', params.institution);
+    if (params.program) query.append('program', params.program);
+    if (params.department) query.append('department', params.department);
+    if (params.division) query.append('division', params.division);
+    if (params.is_template !== undefined) query.append('is_template', String(params.is_template));
+    if (params.search) query.append('search', params.search);
+
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/pathways/?${query.toString()}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch pathways`);
+    return res.json();
+  },
+
+  async getPathwayDetail(
+    pathwayId: string,
+    token?: string
+  ): Promise<import('../types/institution').Pathway> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/pathways/${pathwayId}/`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch pathway detail`);
+    return res.json();
+  },
+
+  async createPathway(
+    payload: import('../types/institution').PathwayCreatePayload,
+    token?: string
+  ): Promise<import('../types/institution').Pathway> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/pathways/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Failed to create pathway`);
+    }
+    return res.json();
+  },
+
+  async clonePathway(
+    pathwayId: string,
+    payload: import('../types/institution').PathwayClonePayload,
+    token?: string
+  ): Promise<import('../types/institution').Pathway> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/pathways/${pathwayId}/clone/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Failed to clone template`);
+    }
+    return res.json();
+  },
+
+  async publishPathwayTemplate(
+    pathwayId: string,
+    visibility = 'INSTITUTION',
+    token?: string
+  ): Promise<import('../types/institution').Pathway> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/pathways/${pathwayId}/publish-as-template/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ visibility }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to publish template`);
+    return res.json();
+  },
+
+  async getTemplateBlueprints(
+    awardLevel?: string,
+    token?: string
+  ): Promise<import('../types/institution').Pathway[]> {
+    const query = new URLSearchParams();
+    if (awardLevel) query.append('award_level', awardLevel);
+
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/pathways/templates/?${query.toString()}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch template blueprints`);
+    return res.json();
+  },
+
+  // Milestones CRUD
+  async createMilestone(
+    payload: Partial<import('../types/institution').PathwayMilestone>,
+    token?: string
+  ): Promise<import('../types/institution').PathwayMilestone> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/milestones/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Failed to create milestone`);
+    }
+    return res.json();
+  },
+
+  async updateMilestone(
+    milestoneId: string,
+    payload: Partial<import('../types/institution').PathwayMilestone>,
+    token?: string
+  ): Promise<import('../types/institution').PathwayMilestone> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/milestones/${milestoneId}/`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to update milestone`);
+    return res.json();
+  },
+
+  async deleteMilestone(
+    milestoneId: string,
+    token?: string
+  ): Promise<void> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/milestones/${milestoneId}/`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to delete milestone`);
+  },
+
+  // Student Credential Dispatch & Portal
+  async generateStudentCredentials(
+    studentId: string,
+    payload?: { custom_password?: string; login_url?: string },
+    token?: string
+  ): Promise<import('../types/institution').StudentCredentialResult> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/students/${studentId}/generate-credentials/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload || {}),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Failed to generate credentials`);
+    }
+    return res.json();
+  },
+
+  async enrollStudentPathway(
+    studentId: string,
+    pathwayId: string,
+    token?: string
+  ): Promise<import('../types/institution').StudentProfile> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/students/${studentId}/enroll-pathway/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ pathway: pathwayId }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to enroll pathway`);
+    return res.json();
+  },
+
+  async getStudentDashboard(
+    token?: string
+  ): Promise<import('../types/institution').StudentDashboardData> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/students/me/dashboard/`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch student dashboard`);
+    return res.json();
+  },
+
+  async getStudentSubmissions(
+    params?: { student?: string; milestone?: string; pathway?: string; status?: string },
+    token?: string
+  ): Promise<import('../types/institution').StudentMilestoneSubmission[]> {
+    const query = new URLSearchParams();
+    if (params?.student) query.append('student', params.student);
+    if (params?.milestone) query.append('milestone', params.milestone);
+    if (params?.pathway) query.append('pathway', params.pathway);
+    if (params?.status) query.append('status', params.status);
+
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/student-submissions/?${query.toString()}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch student submissions`);
+    return res.json();
+  },
+
+  async submitMilestoneEvidence(
+    payload: import('../types/institution').StudentSubmissionCreatePayload,
+    token?: string
+  ): Promise<import('../types/institution').StudentMilestoneSubmission> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/student-submissions/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Failed to submit evidence`);
+    }
+    return res.json();
+  },
+
+  async reviewStudentSubmission(
+    submissionId: string,
+    payload: import('../types/institution').StudentSubmissionReviewPayload,
+    token?: string
+  ): Promise<import('../types/institution').StudentMilestoneSubmission> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/student-submissions/${submissionId}/review/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to review submission`);
+    return res.json();
+  },
 };
+
+
+
 
