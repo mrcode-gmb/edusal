@@ -27,6 +27,8 @@ from edusal.institutions.models import (
     AcademicStanding,
     SIWESClearanceStatus,
 )
+from edusal.institutions.services.embedding_service import EmbeddingService
+
 
 User = get_user_model()
 
@@ -140,7 +142,7 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"  {'Created' if created else 'Found'} University: {futminna.name}")
 
-        AcademicSession.objects.get_or_create(
+        sess_futm, _ = AcademicSession.objects.get_or_create(
             institution=futminna,
             session_label="2025/2026",
             defaults={
@@ -251,32 +253,60 @@ class Command(BaseCommand):
             defaults={
                 "division": sict,
                 "department": swe,
+                "session": sess_futm,
                 "doc_type": DocumentType.SIWES_CALENDAR,
                 "file_path": "documents/futminna_siwes_2026.pdf",
                 "content_hash": "sha256:4f8a91bc732e67df8120b08dc66291e1f5c8feb105bba042ebf2f0ea59a9df7f",
-                "chunk_count": 2,
+                "chunk_count": 3,
                 "embedding_status": EmbeddingStatus.INDEXED,
                 "raw_text": "FUTMinna Industrial Training Coordinating Centre (ITCC). All 300-level and 400-level candidates must complete verified departmental milestone requirements prior to placement dispatch.",
             },
         )
-        InstitutionalDocumentChunk.objects.get_or_create(
+        
+        c0_text = "Pre-placement requirement: 300-level candidates must have signed endorsements in Relational Databases and Modular System Design prior to institutional referral. Students on academic probation are deferred."
+        chunk0, _ = InstitutionalDocumentChunk.objects.get_or_create(
             document=doc_futm,
             chunk_index=0,
             defaults={
                 "page_number": 4,
-                "section_reference": "Section 4.2: Placement Prerequisites",
-                "content": "Pre-placement requirement: 300-level candidates must have signed endorsements in Relational Databases and Modular System Design prior to institutional referral.",
+                "section_reference": "Section 4.2: Placement Prerequisites & CGPA Floor",
+                "content": c0_text,
+                "embedding": EmbeddingService.embed_query(c0_text),
             },
         )
-        InstitutionalDocumentChunk.objects.get_or_create(
+        if not chunk0.embedding:
+            chunk0.embedding = EmbeddingService.embed_query(chunk0.content)
+            chunk0.save(update_fields=["embedding"])
+
+        c1_text = "The National SIWES attachment cycle commences in July annually and spans 24 continuous weeks. Students must log weekly progress with their assigned faculty supervisor and submit monthly ITCC Form 08."
+        chunk1, _ = InstitutionalDocumentChunk.objects.get_or_create(
             document=doc_futm,
             chunk_index=1,
             defaults={
                 "page_number": 7,
-                "section_reference": "Section 5.1: SIWES Window Schedule",
-                "content": "The National SIWES attachment cycle commences in July annually and spans 24 continuous weeks. Students must log weekly progress with their assigned faculty supervisor.",
+                "section_reference": "Section 5.1: SIWES Window Schedule & Form 08",
+                "content": c1_text,
+                "embedding": EmbeddingService.embed_query(c1_text),
             },
         )
+        if not chunk1.embedding:
+            chunk1.embedding = EmbeddingService.embed_query(chunk1.content)
+            chunk1.save(update_fields=["embedding"])
+
+        c2_text = "500-level Software Engineering Capstone Project: Candidates must build, document, and defend an end-to-end software system with CI/CD pipelines, automated testing, and comprehensive technical documentation."
+        chunk2, _ = InstitutionalDocumentChunk.objects.get_or_create(
+            document=doc_futm,
+            chunk_index=2,
+            defaults={
+                "page_number": 12,
+                "section_reference": "Section 6.3: Final Year Capstone Project Defense",
+                "content": c2_text,
+                "embedding": EmbeddingService.embed_query(c2_text),
+            },
+        )
+        if not chunk2.embedding:
+            chunk2.embedding = EmbeddingService.embed_query(chunk2.content)
+            chunk2.save(update_fields=["embedding"])
 
         # FUTMinna Accounts & Staff Assignments (password: 1234!@#$)
         u_dean, _ = create_or_update_staff_user(
@@ -451,15 +481,20 @@ class Command(BaseCommand):
                 "raw_text": "Gombe State University Department of Computer Science. All candidates must complete core practical units in Data Structures and Algorithms with verified GitHub repositories before SIWES clearance.",
             },
         )
-        InstitutionalDocumentChunk.objects.get_or_create(
+        gsu_chunk_text = "All candidates must complete core practical units in Data Structures and Algorithms with verified GitHub repositories before SIWES clearance."
+        gsu_chunk0, _ = InstitutionalDocumentChunk.objects.get_or_create(
             document=doc_gsu,
             chunk_index=0,
             defaults={
                 "page_number": 15,
                 "section_reference": "Section 3.4: Practical Repository Clearance",
-                "content": "All candidates must complete core practical units in Data Structures and Algorithms with verified GitHub repositories before SIWES clearance.",
+                "content": gsu_chunk_text,
+                "embedding": EmbeddingService.embed_query(gsu_chunk_text),
             },
         )
+        if not gsu_chunk0.embedding:
+            gsu_chunk0.embedding = EmbeddingService.embed_query(gsu_chunk0.content)
+            gsu_chunk0.save(update_fields=["embedding"])
 
         # GSU Accounts & Staff Assignments (password: 1234!@#$)
         u_gsu_hod, _ = create_or_update_staff_user(

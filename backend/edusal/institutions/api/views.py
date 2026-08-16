@@ -23,6 +23,10 @@ from edusal.institutions.models import (
     StudentProfile,
     EmbeddingStatus,
 )
+from ..services.document_parser import DocumentParserService
+from ..services.embedding_service import EmbeddingService
+from ..services.vector_search_service import VectorSearchService
+from ..services.groq_advisor_service import GroqAdvisorService
 from .serializers import (
     InstitutionListSerializer,
     InstitutionDetailSerializer,
@@ -33,6 +37,8 @@ from .serializers import (
     InstitutionalDocumentSerializer,
     InstitutionalDocumentChunkSerializer,
     DocumentSearchQuerySerializer,
+    DocumentUploadSerializer,
+    AIAdvisorQuerySerializer,
     InstitutionStaffSerializer,
     StaffAssignmentSerializer,
     StudentProfileSerializer,
@@ -42,6 +48,7 @@ from .serializers import (
 )
 
 User = get_user_model()
+
 
 
 class InstitutionViewSet(viewsets.ModelViewSet):
@@ -176,7 +183,7 @@ class InstitutionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="search-documents")
     def search_documents(self, request, id=None):
-        """Zero-hallucination semantic & keyword search across ingested institutional documents."""
+        """Zero-hallucination hybrid semantic & keyword search across ingested institutional documents."""
         institution = self.get_object()
         serializer = DocumentSearchQuerySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -184,41 +191,12 @@ class InstitutionViewSet(viewsets.ModelViewSet):
         top_k = serializer.validated_data.get("top_k", 5)
         doc_type = serializer.validated_data.get("doc_type")
 
-        chunks_qs = InstitutionalDocumentChunk.objects.filter(
-            document__institution=institution
-        ).select_related("document")
-
-        if doc_type:
-            chunks_qs = chunks_qs.filter(document__doc_type=doc_type)
-
-        # Keyword / token ranking across document chunks
-        query_words = query.lower().split()
-        scored_results = []
-
-        for chunk in chunks_qs:
-            text_lower = chunk.content.lower()
-            match_score = 0
-            for word in query_words:
-                if word in text_lower:
-                    match_score += 1
-
-            if match_score > 0 or len(query_words) == 0:
-                scored_results.append({
-                    "chunk_id": str(chunk.id),
-                    "document_id": str(chunk.document.id),
-                    "document_title": chunk.document.title,
-                    "doc_type": chunk.document.doc_type,
-                    "doc_type_display": chunk.document.get_doc_type_display(),
-                    "page_number": chunk.page_number,
-                    "section_reference": chunk.section_reference,
-                    "content": chunk.content,
-                    "relevance_score": match_score,
-                    "citation": f"{chunk.document.title} (p. {chunk.page_number}, {chunk.section_reference or 'General'})",
-                })
-
-        # Sort by relevance score descending
-        scored_results.sort(key=lambda x: x["relevance_score"], reverse=True)
-        results = scored_results[:top_k]
+        results = VectorSearchService.search_chunks(
+            query=query,
+            institution_id=str(institution.id),
+            doc_type=doc_type or None,
+            top_k=top_k,
+        )
 
         return Response({
             "query": query,
@@ -227,6 +205,37 @@ class InstitutionViewSet(viewsets.ModelViewSet):
             "total_matches": len(results),
             "results": results,
         })
+
+    @action(detail=True, methods=["post"], url_path="ask-advisor")
+    def ask_advisor(self, request, id=None):
+        """Zero-hallucination institutional AI advisor synthesizing verified policy answers using Groq Cloud."""
+        institution = self.get_object()
+        serializer = AIAdvisorQuerySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        division = None
+        department = None
+        session = None
+
+        if data.get("division"):
+            division = AcademicDivision.objects.filter(id=data["division"]).first()
+        if data.get("department"):
+            department = Department.objects.filter(id=data["department"]).first()
+        if data.get("session"):
+            session = AcademicSession.objects.filter(id=data["session"]).first()
+
+        response_data = GroqAdvisorService.ask_advisor(
+            query=data["query"],
+            institution=institution,
+            division=division,
+            department=department,
+            session=session,
+            doc_type=data.get("doc_type") or None,
+            top_k=data.get("top_k", 5),
+        )
+        return Response(response_data)
+
 
 
 class AcademicDivisionViewSet(viewsets.ModelViewSet):
@@ -333,9 +342,81 @@ class InstitutionalDocumentViewSet(viewsets.ModelViewSet):
             qs = qs.filter(doc_type=doc_type)
         return qs
 
+    @action(detail=False, methods=["post"], url_path="upload")
+    def upload_document(self, request):
+        """Uploads a PDF, DOCX, or TXT file, parses and chunks it, generates vector embeddings, and indexes into pgvector."""
+        serializer = DocumentUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            institution = Institution.objects.get(id=data["institution"])
+        except Institution.DoesNotExist:
+            return Response({"error": "Institution not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        division = AcademicDivision.objects.filter(id=data.get("division")).first() if data.get("division") else None
+        department = Department.objects.filter(id=data.get("department")).first() if data.get("department") else None
+        session = AcademicSession.objects.filter(id=data.get("session")).first() if data.get("session") else None
+
+        file_obj = request.FILES.get("file")
+        if file_obj:
+            file_content = file_obj.read()
+            raw_text, chunks_data, content_hash = DocumentParserService.parse_and_chunk(file_content, file_obj.name)
+        elif data.get("raw_text"):
+            raw_text = data["raw_text"]
+            file_content = raw_text.encode("utf-8")
+            raw_text, chunks_data, content_hash = DocumentParserService.parse_and_chunk(file_content, f"{data['title']}.txt")
+        else:
+            return Response({"error": "Either file or raw_text must be provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            doc = InstitutionalDocument.objects.create(
+                institution=institution,
+                division=division,
+                department=department,
+                session=session,
+                title=data["title"],
+                doc_type=data["doc_type"],
+                file=file_obj if file_obj else None,
+                file_path=file_obj.name if file_obj else "",
+                content_hash=content_hash,
+                chunk_count=len(chunks_data),
+                embedding_status=EmbeddingStatus.INDEXED,
+                raw_text=raw_text,
+            )
+
+            # Generate vector embeddings for all chunks
+            chunk_texts = [c["content"] for c in chunks_data]
+            embeddings = EmbeddingService.embed_texts(chunk_texts)
+
+            created_chunks = []
+            for idx, c in enumerate(chunks_data):
+                emb = embeddings[idx] if idx < len(embeddings) else None
+                created_chunks.append(
+                    InstitutionalDocumentChunk(
+                        document=doc,
+                        chunk_index=c["chunk_index"],
+                        page_number=c["page_number"],
+                        section_reference=c["section_reference"],
+                        content=c["content"],
+                        embedding=emb,
+                        is_header=c.get("is_header", False),
+                    )
+                )
+            InstitutionalDocumentChunk.objects.bulk_create(created_chunks)
+
+        return Response(
+            {
+                "status": "ok",
+                "message": f"Successfully parsed and indexed {len(created_chunks)} citation-ready chunks into pgvector.",
+                "document": InstitutionalDocumentSerializer(doc).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
     @action(detail=True, methods=["post"], url_path="ingest-text")
     def ingest_text(self, request, id=None):
-        """Processes raw text for a document, splitting into citation-ready chunks."""
+        """Processes raw text for a document, splitting into citation-ready chunks and generating vector embeddings."""
         doc = self.get_object()
         raw_text = request.data.get("raw_text") or doc.raw_text
 
@@ -345,29 +426,34 @@ class InstitutionalDocumentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Simple paragraphs / section splitter for chunking
-        paragraphs = [p.strip() for p in raw_text.split("\n\n") if p.strip()]
-        if not paragraphs:
-            paragraphs = [raw_text.strip()]
+        _, chunks_data, content_hash = DocumentParserService.parse_and_chunk(
+            raw_text.encode("utf-8"), f"{doc.title}.txt"
+        )
 
         with transaction.atomic():
             doc.chunks.all().delete()
+
+            chunk_texts = [c["content"] for c in chunks_data]
+            embeddings = EmbeddingService.embed_texts(chunk_texts)
+
             created_chunks = []
-            for idx, p in enumerate(paragraphs):
-                chunk = InstitutionalDocumentChunk(
-                    document=doc,
-                    chunk_index=idx,
-                    page_number=(idx // 3) + 1,
-                    section_reference=f"Section {idx + 1}",
-                    content=p,
+            for idx, c in enumerate(chunks_data):
+                emb = embeddings[idx] if idx < len(embeddings) else None
+                created_chunks.append(
+                    InstitutionalDocumentChunk(
+                        document=doc,
+                        chunk_index=c["chunk_index"],
+                        page_number=c["page_number"],
+                        section_reference=c["section_reference"],
+                        content=c["content"],
+                        embedding=emb,
+                        is_header=c.get("is_header", False),
+                    )
                 )
-                created_chunks.append(chunk)
 
             InstitutionalDocumentChunk.objects.bulk_create(created_chunks)
 
-            # Compute content hash
-            content_hash = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
-            doc.content_hash = f"sha256:{content_hash}"
+            doc.content_hash = content_hash
             doc.chunk_count = len(created_chunks)
             doc.embedding_status = EmbeddingStatus.INDEXED
             doc.raw_text = raw_text
@@ -375,9 +461,10 @@ class InstitutionalDocumentViewSet(viewsets.ModelViewSet):
 
         return Response({
             "status": "ok",
-            "message": f"Successfully ingested and indexed {len(created_chunks)} chunks.",
+            "message": f"Successfully ingested and indexed {len(created_chunks)} chunks into pgvector.",
             "document": InstitutionalDocumentSerializer(doc).data,
         })
+
 
 
 class InstitutionStaffViewSet(viewsets.ModelViewSet):

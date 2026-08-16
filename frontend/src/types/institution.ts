@@ -85,9 +85,13 @@ export interface InstitutionalDocument {
   division_name?: string;
   department?: string;
   department_name?: string;
+  session?: string;
+  session_label?: string;
   title: string;
   doc_type: DocumentType;
   doc_type_display?: string;
+  file?: string;
+  file_url?: string;
   file_path: string;
   content_hash: string;
   chunk_count: number;
@@ -97,6 +101,35 @@ export interface InstitutionalDocument {
   chunks?: InstitutionalDocumentChunk[];
   created_at: string;
   updated_at: string;
+}
+
+export interface AIAdvisorCitation {
+  source_index: number;
+  citation_label: string;
+  chunk_id: string;
+  document_id: string;
+  document_title: string;
+  doc_type_display: string;
+  page_number: number;
+  section_reference: string;
+  content_snippet: string;
+  relevance_score: number;
+}
+
+export interface AIAdvisorResponse {
+  answer: string;
+  citations: AIAdvisorCitation[];
+  telemetry: {
+    model: string;
+    latency_ms: number;
+    total_tokens: number;
+    chunks_retrieved: number;
+  };
+  scope: {
+    institution: string;
+    division?: string | null;
+    department?: string | null;
+  };
 }
 
 export interface InstitutionSummary {

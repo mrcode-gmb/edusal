@@ -132,6 +132,8 @@ class InstitutionalDocumentSerializer(serializers.ModelSerializer):
     embedding_status_display = serializers.CharField(source="get_embedding_status_display", read_only=True)
     division_name = serializers.CharField(source="division.name", read_only=True)
     department_name = serializers.CharField(source="department.name", read_only=True)
+    session_label = serializers.CharField(source="session.session_label", read_only=True)
+    file_url = serializers.SerializerMethodField()
     chunks = InstitutionalDocumentChunkSerializer(many=True, read_only=True)
 
     class Meta:
@@ -143,9 +145,13 @@ class InstitutionalDocumentSerializer(serializers.ModelSerializer):
             "division_name",
             "department",
             "department_name",
+            "session",
+            "session_label",
             "title",
             "doc_type",
             "doc_type_display",
+            "file",
+            "file_url",
             "file_path",
             "content_hash",
             "chunk_count",
@@ -157,6 +163,32 @@ class InstitutionalDocumentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "chunk_count", "embedding_status", "content_hash", "created_at", "updated_at"]
+
+    def get_file_url(self, obj):
+        if obj.file:
+            return obj.file.url
+        return None
+
+
+class DocumentUploadSerializer(serializers.Serializer):
+    institution = serializers.UUIDField(required=True)
+    division = serializers.UUIDField(required=False, allow_null=True)
+    department = serializers.UUIDField(required=False, allow_null=True)
+    session = serializers.UUIDField(required=False, allow_null=True)
+    title = serializers.CharField(required=True, max_length=255)
+    doc_type = serializers.CharField(required=True, max_length=30)
+    file = serializers.FileField(required=False, allow_null=True)
+    raw_text = serializers.CharField(required=False, allow_blank=True)
+
+
+class AIAdvisorQuerySerializer(serializers.Serializer):
+    query = serializers.CharField(required=True, max_length=1000)
+    division = serializers.UUIDField(required=False, allow_null=True)
+    department = serializers.UUIDField(required=False, allow_null=True)
+    session = serializers.UUIDField(required=False, allow_null=True)
+    doc_type = serializers.CharField(required=False, allow_blank=True)
+    top_k = serializers.IntegerField(required=False, default=5, min_value=1, max_value=20)
+
 
 
 class InstitutionListSerializer(serializers.ModelSerializer):

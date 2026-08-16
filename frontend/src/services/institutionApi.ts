@@ -173,6 +173,56 @@ export const institutionApi = {
     if (!res.ok) throw new Error(`HTTP ${res.status}: Ingestion failed`);
   },
 
+  async uploadDocumentFile(
+    formData: FormData,
+    token?: string
+  ): Promise<InstitutionalDocument> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/documents/upload/`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${res.status}: Failed to upload document`);
+    }
+    const data = await res.json();
+    return data.document || data;
+  },
+
+  async askAdvisor(
+    institutionId: string,
+    payload: {
+      query: string;
+      division?: string;
+      department?: string;
+      session?: string;
+      doc_type?: string;
+      top_k?: number;
+    },
+    token?: string
+  ): Promise<import('../types/institution').AIAdvisorResponse> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/institutions/${institutionId}/ask-advisor/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${res.status}: Advisor query failed`);
+    }
+    return res.json();
+  },
+
+
   // Authentication Endpoints
   async login(email: string, password: string):Promise<import('../types/institution').LoginResponse> {
     const res = await fetch(`${API_BASE}/api/auth/login/`, {

@@ -12,3 +12,8 @@ REDIS_URL=redis://redis:6379/0
 # Flower
 CELERY_FLOWER_USER=NJGbvBXarLGYTRlkVoxkTHJmWWlbNkVo
 CELERY_FLOWER_PASSWORD=OLRIjlJ7RSIoAcE7BqUJo7aI5BH5PQ5UqpjsiixPZXh7TkVSZVMwFim6AzbzDYAV
+
+# Groq Cloud AI LLM
+# ------------------------------------------------------------------------------
+GROQ_API_KEY=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
+

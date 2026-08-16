@@ -375,3 +375,7 @@ SPECTACULAR_SETTINGS = {
 }
 # Your stuff...
 # ------------------------------------------------------------------------------
+GROQ_API_KEY = env("GROQ_API_KEY", default="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")
+GROQ_DEFAULT_MODEL = env("GROQ_DEFAULT_MODEL", default="llama-3.3-70b-versatile")
+GROQ_FAST_MODEL = env("GROQ_FAST_MODEL", default="llama-3.1-8b-instant")
+

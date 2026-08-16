@@ -343,8 +343,12 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
             <KnowledgeBaseManager
               institutionId={selectedInst.id}
               institutionName={selectedInst.name}
+              tierTwoTerm={selectedInst.tier_two_term === 'SCHOOL' ? 'School' : 'Faculty'}
+              tree={tree}
+              sessions={sessions}
               documents={documents}
               loading={loading}
+              authToken={authToken}
               onRefresh={() => loadInstitutionData(selectedInst.id)}
             />
           )}

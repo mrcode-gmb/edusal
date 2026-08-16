@@ -300,11 +300,25 @@ class InstitutionalDocument(models.Model):
         blank=True,
         related_name="documents",
     )
+    session = models.ForeignKey(
+        AcademicSession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="documents",
+        help_text="Academic session this document applies to (e.g. 2025/2026)",
+    )
     title = models.CharField(max_length=255, help_text="e.g. FUTMinna 2025/2026 SIWES Operational Guidelines")
     doc_type = models.CharField(
         max_length=30,
         choices=DocumentType.choices,
         default=DocumentType.STUDENT_HANDBOOK,
+    )
+    file = models.FileField(
+        upload_to="institutional_documents/%Y/%m/",
+        null=True,
+        blank=True,
+        help_text="Uploaded handbook or guidelines document (PDF, DOCX, TXT)",
     )
     file_path = models.CharField(max_length=500, blank=True, help_text="Relative storage or media path")
     content_hash = models.CharField(max_length=128, blank=True, help_text="SHA-256 hash of document for auditability")
@@ -345,10 +359,14 @@ class InstitutionalDocumentChunk(models.Model):
     )
     content = models.TextField()
     embedding = VectorField(
-        dimensions=1536,
+        dimensions=384,
         null=True,
         blank=True,
-        help_text="1536-dimensional vector embedding for cosine similarity search in PostgreSQL",
+        help_text="384-dimensional vector embedding (bge-small-en-v1.5 / all-MiniLM-L6-v2) for cosine similarity search in PostgreSQL",
+    )
+    is_header = models.BooleanField(
+        default=False,
+        help_text="Indicates whether this chunk represents a major section heading or table of contents",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
