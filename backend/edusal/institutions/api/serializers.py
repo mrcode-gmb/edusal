@@ -10,6 +10,8 @@ from edusal.institutions.models import (
     InstitutionStaff,
     StaffAssignment,
     StudentProfile,
+    Pathway,
+    PathwayMilestone,
 )
 
 
@@ -465,4 +467,141 @@ class AuthUserSerializer(serializers.Serializer):
         if hasattr(obj, "student_profile") and obj.student_profile:
             return StudentProfileSerializer(obj.student_profile).data
         return None
+
+
+class PathwayMilestoneSerializer(serializers.ModelSerializer):
+    milestone_type_display = serializers.CharField(source="get_milestone_type_display", read_only=True)
+    verification_method_display = serializers.CharField(source="get_verification_method_display", read_only=True)
+    required_evidence_type_display = serializers.CharField(source="get_required_evidence_type_display", read_only=True)
+
+    class Meta:
+        model = PathwayMilestone
+        fields = [
+            "id",
+            "pathway",
+            "order_index",
+            "year_of_study",
+            "target_level_code",
+            "target_semester",
+            "title",
+            "description",
+            "milestone_type",
+            "milestone_type_display",
+            "points",
+            "is_mandatory",
+            "verification_method",
+            "verification_method_display",
+            "required_evidence_type",
+            "required_evidence_type_display",
+            "competency_tags",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class PathwayMilestoneCreateUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PathwayMilestone
+        fields = [
+            "id",
+            "pathway",
+            "order_index",
+            "year_of_study",
+            "target_level_code",
+            "target_semester",
+            "title",
+            "description",
+            "milestone_type",
+            "points",
+            "is_mandatory",
+            "verification_method",
+            "required_evidence_type",
+            "competency_tags",
+        ]
+        read_only_fields = ["id"]
+
+
+class PathwayListSerializer(serializers.ModelSerializer):
+    program_name = serializers.CharField(source="program.name", read_only=True)
+    program_code = serializers.CharField(source="program.program_code", read_only=True)
+    award_level = serializers.CharField(source="program.award_level", read_only=True)
+    award_level_display = serializers.CharField(source="program.get_award_level_display", read_only=True)
+    duration_years = serializers.IntegerField(source="program.duration_years", read_only=True)
+    department_id = serializers.UUIDField(source="program.department.id", read_only=True)
+    department_name = serializers.CharField(source="program.department.name", read_only=True)
+    division_name = serializers.CharField(source="program.department.division.name", read_only=True)
+    created_by_name = serializers.CharField(source="created_by.name", read_only=True)
+    cloned_from_title = serializers.CharField(source="cloned_from.title", read_only=True)
+
+    class Meta:
+        model = Pathway
+        fields = [
+            "id",
+            "institution",
+            "program",
+            "program_name",
+            "program_code",
+            "award_level",
+            "award_level_display",
+            "duration_years",
+            "department_id",
+            "department_name",
+            "division_name",
+            "title",
+            "career_role",
+            "industry_sector",
+            "description",
+            "target_cgpa_recommendation",
+            "total_milestones_count",
+            "total_points",
+            "is_active",
+            "is_template",
+            "template_visibility",
+            "cloned_from",
+            "cloned_from_title",
+            "version",
+            "created_by",
+            "created_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "total_milestones_count", "total_points", "created_at", "updated_at"]
+
+
+class PathwayDetailSerializer(PathwayListSerializer):
+    milestones = PathwayMilestoneSerializer(many=True, read_only=True)
+
+    class Meta(PathwayListSerializer.Meta):
+        fields = PathwayListSerializer.Meta.fields + ["milestones"]
+
+
+class PathwayCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pathway
+        fields = [
+            "id",
+            "institution",
+            "program",
+            "title",
+            "career_role",
+            "industry_sector",
+            "description",
+            "target_cgpa_recommendation",
+            "is_active",
+            "is_template",
+            "template_visibility",
+        ]
+        read_only_fields = ["id"]
+
+
+class PathwayClonePayloadSerializer(serializers.Serializer):
+    target_program = serializers.UUIDField(required=True)
+    custom_title = serializers.CharField(required=False, allow_blank=True, max_length=200)
+    custom_description = serializers.CharField(required=False, allow_blank=True)
+
+
+class PathwayPublishTemplatePayloadSerializer(serializers.Serializer):
+    visibility = serializers.CharField(required=False, default="INSTITUTION")
+
 

@@ -383,6 +383,169 @@ export const institutionApi = {
     }
     return res.json();
   },
+
+  // Pathways & Blueprint Templates
+  async getPathways(
+    params: {
+      institution?: string;
+      program?: string;
+      department?: string;
+      division?: string;
+      is_template?: boolean;
+      search?: string;
+    },
+    token?: string
+  ): Promise<import('../types/institution').Pathway[]> {
+    const query = new URLSearchParams();
+    if (params.institution) query.append('institution', params.institution);
+    if (params.program) query.append('program', params.program);
+    if (params.department) query.append('department', params.department);
+    if (params.division) query.append('division', params.division);
+    if (params.is_template !== undefined) query.append('is_template', String(params.is_template));
+    if (params.search) query.append('search', params.search);
+
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/pathways/?${query.toString()}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch pathways`);
+    return res.json();
+  },
+
+  async getPathwayDetail(
+    pathwayId: string,
+    token?: string
+  ): Promise<import('../types/institution').Pathway> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/pathways/${pathwayId}/`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch pathway detail`);
+    return res.json();
+  },
+
+  async createPathway(
+    payload: import('../types/institution').PathwayCreatePayload,
+    token?: string
+  ): Promise<import('../types/institution').Pathway> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/pathways/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Failed to create pathway`);
+    }
+    return res.json();
+  },
+
+  async clonePathway(
+    pathwayId: string,
+    payload: import('../types/institution').PathwayClonePayload,
+    token?: string
+  ): Promise<import('../types/institution').Pathway> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/pathways/${pathwayId}/clone/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Failed to clone template`);
+    }
+    return res.json();
+  },
+
+  async publishPathwayTemplate(
+    pathwayId: string,
+    visibility = 'INSTITUTION',
+    token?: string
+  ): Promise<import('../types/institution').Pathway> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/pathways/${pathwayId}/publish-as-template/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ visibility }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to publish template`);
+    return res.json();
+  },
+
+  async getTemplateBlueprints(
+    awardLevel?: string,
+    token?: string
+  ): Promise<import('../types/institution').Pathway[]> {
+    const query = new URLSearchParams();
+    if (awardLevel) query.append('award_level', awardLevel);
+
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/pathways/templates/?${query.toString()}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch template blueprints`);
+    return res.json();
+  },
+
+  // Milestones CRUD
+  async createMilestone(
+    payload: Partial<import('../types/institution').PathwayMilestone>,
+    token?: string
+  ): Promise<import('../types/institution').PathwayMilestone> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/milestones/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Failed to create milestone`);
+    }
+    return res.json();
+  },
+
+  async updateMilestone(
+    milestoneId: string,
+    payload: Partial<import('../types/institution').PathwayMilestone>,
+    token?: string
+  ): Promise<import('../types/institution').PathwayMilestone> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/milestones/${milestoneId}/`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to update milestone`);
+    return res.json();
+  },
+
+  async deleteMilestone(
+    milestoneId: string,
+    token?: string
+  ): Promise<void> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/milestones/${milestoneId}/`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to delete milestone`);
+  },
 };
+
 
 

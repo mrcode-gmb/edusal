@@ -386,4 +386,103 @@ export interface LoginResponse {
   user: AuthUser;
 }
 
+export type TemplateVisibility = 'DEPARTMENT' | 'INSTITUTION' | 'NATIONAL_CATALOG';
+
+export type MilestoneType =
+  | 'FOUNDATIONAL_COURSEWORK'
+  | 'TECHNICAL_SKILL'
+  | 'GITHUB_PROJECT'
+  | 'INDUSTRY_CERTIFICATION'
+  | 'SIWES_PREREQUISITE'
+  | 'INTERNSHIP_EXPERIENCE'
+  | 'CAPSTONE_PROJECT'
+  | 'CAREER_READINESS';
+
+export type VerificationMethod =
+  | 'SUPERVISOR_SIGN_OFF'
+  | 'URL_VERIFICATION'
+  | 'DOCUMENT_UPLOAD'
+  | 'AUTOMATED_ASSESSMENT';
+
+export type RequiredEvidenceType =
+  | 'GITHUB_REPO'
+  | 'LIVE_URL'
+  | 'CERTIFICATE_PDF'
+  | 'PORTFOLIO_LINK'
+  | 'SUPERVISOR_ENDORSEMENT';
+
+export interface PathwayMilestone {
+  id: string;
+  pathway: string;
+  order_index: number;
+  year_of_study: number;
+  target_level_code: string;
+  target_semester: 'FIRST' | 'SECOND' | 'BOTH';
+  title: string;
+  description: string;
+  milestone_type: MilestoneType;
+  milestone_type_display?: string;
+  points: number;
+  is_mandatory: boolean;
+  verification_method: VerificationMethod;
+  verification_method_display?: string;
+  required_evidence_type: RequiredEvidenceType;
+  required_evidence_type_display?: string;
+  competency_tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Pathway {
+  id: string;
+  institution: string;
+  program: string;
+  program_name: string;
+  program_code: string;
+  award_level: string;
+  award_level_display: string;
+  duration_years: number;
+  department_id: string;
+  department_name: string;
+  division_name: string;
+  title: string;
+  career_role: string;
+  industry_sector?: string;
+  description: string;
+  target_cgpa_recommendation?: number | null;
+  total_milestones_count: number;
+  total_points: number;
+  is_active: boolean;
+  is_template: boolean;
+  template_visibility: TemplateVisibility;
+  cloned_from?: string | null;
+  cloned_from_title?: string | null;
+  version: number;
+  created_by?: number | null;
+  created_by_name?: string | null;
+  milestones?: PathwayMilestone[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PathwayCreatePayload {
+  institution: string;
+  program: string;
+  title: string;
+  career_role: string;
+  industry_sector?: string;
+  description: string;
+  target_cgpa_recommendation?: number | null;
+  is_active?: boolean;
+  is_template?: boolean;
+  template_visibility?: TemplateVisibility;
+}
+
+export interface PathwayClonePayload {
+  target_program: string;
+  custom_title?: string;
+  custom_description?: string;
+}
+
+
 

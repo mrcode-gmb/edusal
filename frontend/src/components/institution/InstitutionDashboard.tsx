@@ -15,6 +15,7 @@ import { AcademicHierarchyTree } from './AcademicHierarchyTree';
 import { KnowledgeBaseManager } from './KnowledgeBaseManager';
 import { StaffDirectory } from './StaffDirectory';
 import { StudentRoster } from './StudentRoster';
+import { PathwaysManager } from './PathwaysManager';
 import { AddDivisionModal } from './AddDivisionModal';
 import { AddDepartmentModal } from './AddDepartmentModal';
 import { AddProgramModal } from './AddProgramModal';
@@ -30,6 +31,7 @@ import {
   ShieldCheckIcon,
   FileTextIcon,
   GraduationCapIcon,
+  CompassIcon,
 } from '../icons';
 
 interface InstitutionDashboardProps {
@@ -49,7 +51,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
   // Institution State locked to the logged-in staff member's institution
   const [institution, setInstitution] = useState<InstitutionSummary | null>(null);
   const selectedInstId = currentUser?.staff_profile?.institution || '';
-  const [activeTab, setActiveTab] = useState<'pulse' | 'tree' | 'kb' | 'staff' | 'students'>('pulse');
+  const [activeTab, setActiveTab] = useState<'pulse' | 'tree' | 'kb' | 'staff' | 'students' | 'pathways'>('pulse');
 
   // Hierarchy & Governance Data
   const [tree, setTree] = useState<InstitutionHierarchyTree | null>(null);
@@ -309,6 +311,13 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
               >
                 <GraduationCapIcon size={16} /> Student Roster & Cohorts
               </button>
+              <button
+                type="button"
+                className={`portal-tab ${activeTab === 'pathways' ? 'active' : ''}`}
+                onClick={() => setActiveTab('pathways')}
+              >
+                <CompassIcon size={16} /> Career Pathways & Milestones
+              </button>
             </div>
           </div>
         )}
@@ -367,6 +376,16 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
               institutionName={selectedInst.name}
               tree={tree}
               sessions={sessions}
+              authToken={authToken}
+            />
+          )}
+
+          {activeTab === 'pathways' && selectedInst && (
+            <PathwaysManager
+              institutionId={selectedInst.id}
+              institutionName={selectedInst.name}
+              tierTwoTerm={selectedInst.tier_two_term === 'SCHOOL' ? 'School' : 'Faculty'}
+              tree={tree}
               authToken={authToken}
             />
           )}

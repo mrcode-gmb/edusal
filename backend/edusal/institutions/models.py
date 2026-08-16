@@ -710,3 +710,202 @@ class StudentProfile(models.Model):
 
         return f"{code} Level"
 
+
+class TemplateVisibility(models.TextChoices):
+    DEPARTMENT = "DEPARTMENT", "Department Only"
+    INSTITUTION = "INSTITUTION", "Institution-Wide"
+    NATIONAL_CATALOG = "NATIONAL_CATALOG", "National Open Catalog"
+
+
+class MilestoneType(models.TextChoices):
+    FOUNDATIONAL_COURSEWORK = "FOUNDATIONAL_COURSEWORK", "Foundational Coursework Prerequisite"
+    TECHNICAL_SKILL = "TECHNICAL_SKILL", "Technical Skill Mastery"
+    GITHUB_PROJECT = "GITHUB_PROJECT", "Production Repository / Deployed App"
+    INDUSTRY_CERTIFICATION = "INDUSTRY_CERTIFICATION", "Industry Recognized Certification"
+    SIWES_PREREQUISITE = "SIWES_PREREQUISITE", "SIWES / ITCC Placement Clearance"
+    INTERNSHIP_EXPERIENCE = "INTERNSHIP_EXPERIENCE", "Internship / Work Placement"
+    CAPSTONE_PROJECT = "CAPSTONE_PROJECT", "Final Year Capstone Project Defense"
+    CAREER_READINESS = "CAREER_READINESS", "Portfolio & Technical Interview Readiness"
+
+
+class VerificationMethod(models.TextChoices):
+    SUPERVISOR_SIGN_OFF = "SUPERVISOR_SIGN_OFF", "Counsellor / HOD Sign-Off"
+    URL_VERIFICATION = "URL_VERIFICATION", "Repository / Live URL Review"
+    DOCUMENT_UPLOAD = "DOCUMENT_UPLOAD", "Certificate / Document PDF Upload"
+    AUTOMATED_ASSESSMENT = "AUTOMATED_ASSESSMENT", "Automated Assessment / Quiz"
+
+
+class RequiredEvidenceType(models.TextChoices):
+    GITHUB_REPO = "GITHUB_REPO", "GitHub / GitLab Repository URL"
+    LIVE_URL = "LIVE_URL", "Live Deployed Project URL"
+    CERTIFICATE_PDF = "CERTIFICATE_PDF", "Certificate PDF / Verified Credential Link"
+    PORTFOLIO_LINK = "PORTFOLIO_LINK", "Portfolio Link (Behance, Dribbble, Personal Site)"
+    SUPERVISOR_ENDORSEMENT = "SUPERVISOR_ENDORSEMENT", "Faculty / Industry Supervisor Form"
+
+
+class Pathway(models.Model):
+    """Structured career roadmap for an academic program, containing progressive milestones."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    institution = models.ForeignKey(
+        Institution,
+        on_delete=models.CASCADE,
+        related_name="pathways",
+    )
+    program = models.ForeignKey(
+        AcademicProgram,
+        on_delete=models.CASCADE,
+        related_name="pathways",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_pathways",
+    )
+    title = models.CharField(
+        max_length=200,
+        help_text="e.g. Full-Stack Web & Cloud Architecture",
+    )
+    career_role = models.CharField(
+        max_length=150,
+        help_text="Target role e.g. Full-Stack Software Engineer, DevOps Specialist",
+    )
+    industry_sector = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="e.g. Information Technology / Fintech / Telecommunications",
+    )
+    description = models.TextField(
+        help_text="Comprehensive overview of competencies and expected learning outcomes",
+    )
+    target_cgpa_recommendation = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Recommended minimum CGPA (e.g. 3.00)",
+    )
+    total_milestones_count = models.PositiveIntegerField(default=0)
+    total_points = models.PositiveIntegerField(
+        default=0,
+        help_text="Total employability points accumulated across all milestones",
+    )
+    is_active = models.BooleanField(default=True)
+    is_template = models.BooleanField(
+        default=False,
+        help_text="If True, serves as a master template blueprint in the institutional catalog",
+    )
+    template_visibility = models.CharField(
+        max_length=25,
+        choices=TemplateVisibility.choices,
+        default=TemplateVisibility.INSTITUTION,
+    )
+    cloned_from = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cloned_derivatives",
+        help_text="Master template from which this pathway was cloned",
+    )
+    version = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["program", "title"]
+        verbose_name = "Career Pathway"
+        verbose_name_plural = "Career Pathways"
+
+    def __str__(self) -> str:
+        tag = " [TEMPLATE]" if self.is_template else ""
+        return f"{self.title} ({self.program.name}){tag}"
+
+    def recalculate_totals(self) -> None:
+        """Updates total_milestones_count and total_points from child milestones."""
+        milestones = self.milestones.all()
+        self.total_milestones_count = milestones.count()
+        self.total_points = sum(m.points for m in milestones)
+        self.save(update_fields=["total_milestones_count", "total_points", "updated_at"])
+
+
+class PathwayMilestone(models.Model):
+    """Verifiable progressive requirement within a career pathway."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    pathway = models.ForeignKey(
+        Pathway,
+        on_delete=models.CASCADE,
+        related_name="milestones",
+    )
+    order_index = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Sequence order within the pathway",
+    )
+    year_of_study = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Target academic year (1..5) matching student year of study",
+    )
+    target_level_code = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="e.g. '100', '200', '300', '400', '500', 'ND_I', 'ND_II', 'NCE_I', 'NCE_II', 'NCE_III'",
+    )
+    target_semester = models.CharField(
+        max_length=20,
+        choices=[
+            ("FIRST", "First Semester"),
+            ("SECOND", "Second Semester"),
+            ("BOTH", "Both Semesters / Annual"),
+        ],
+        default="FIRST",
+    )
+    title = models.CharField(
+        max_length=255,
+        help_text="e.g. Deploy Modular Microservice with CI/CD Pipeline",
+    )
+    description = models.TextField(
+        help_text="Specific deliverables, rubric criteria, and requirements",
+    )
+    milestone_type = models.CharField(
+        max_length=30,
+        choices=MilestoneType.choices,
+        default=MilestoneType.TECHNICAL_SKILL,
+    )
+    points = models.PositiveIntegerField(
+        default=100,
+        help_text="Employability weighting score assigned to this milestone",
+    )
+    is_mandatory = models.BooleanField(
+        default=True,
+        help_text="Whether completion is strictly required for pathway badge",
+    )
+    verification_method = models.CharField(
+        max_length=30,
+        choices=VerificationMethod.choices,
+        default=VerificationMethod.SUPERVISOR_SIGN_OFF,
+    )
+    required_evidence_type = models.CharField(
+        max_length=30,
+        choices=RequiredEvidenceType.choices,
+        default=RequiredEvidenceType.GITHUB_REPO,
+    )
+    competency_tags = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of skill keywords, e.g. ['React', 'TypeScript', 'Docker', 'PostgreSQL']",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["pathway", "order_index", "year_of_study"]
+        verbose_name = "Pathway Milestone"
+        verbose_name_plural = "Pathway Milestones"
+
+    def __str__(self) -> str:
+        return f"{self.pathway.title} — Step {self.order_index + 1}: {self.title} ({self.points} pts)"
+
+

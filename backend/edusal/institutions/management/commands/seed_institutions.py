@@ -26,8 +26,15 @@ from edusal.institutions.models import (
     EntryMode,
     AcademicStanding,
     SIWESClearanceStatus,
+    Pathway,
+    PathwayMilestone,
+    TemplateVisibility,
+    MilestoneType,
+    VerificationMethod,
+    RequiredEvidenceType,
 )
 from edusal.institutions.services.embedding_service import EmbeddingService
+
 
 
 User = get_user_model()
@@ -187,7 +194,7 @@ class Command(BaseCommand):
                 "is_active": True,
             },
         )
-        AcademicProgram.objects.get_or_create(
+        prog_swe_btech = AcademicProgram.objects.get_or_create(
             institution=futminna,
             department=swe,
             name="B.Tech Software Engineering",
@@ -197,7 +204,7 @@ class Command(BaseCommand):
                 "duration_years": 5,
                 "siwes_duration_months": 6,
             },
-        )
+        )[0]
 
         csc, _ = Department.objects.get_or_create(
             institution=futminna,
@@ -307,6 +314,98 @@ class Command(BaseCommand):
         if not chunk2.embedding:
             chunk2.embedding = EmbeddingService.embed_query(chunk2.content)
             chunk2.save(update_fields=["embedding"])
+
+        # FUTMinna Pathway Blueprint: Full-Stack Cloud & DevOps Engineering (B.Tech SWE)
+        pw_swe, _ = Pathway.objects.get_or_create(
+            institution=futminna,
+            program=prog_swe_btech,
+            title="Full-Stack Cloud & DevOps Engineering",
+            defaults={
+                "career_role": "Full-Stack Software & Cloud Engineer",
+                "industry_sector": "Information Technology / Fintech",
+                "description": "Progressive 5-year software engineering roadmap spanning foundational algorithms, relational databases, containerized microservices, 24-week SIWES attachment, and production capstone architecture.",
+                "target_cgpa_recommendation": 3.00,
+                "is_active": True,
+                "is_template": True,
+                "template_visibility": TemplateVisibility.NATIONAL_CATALOG,
+            },
+        )
+
+        swe_milestones_data = [
+            {
+                "order_index": 0,
+                "year_of_study": 1,
+                "target_level_code": "100",
+                "target_semester": "FIRST",
+                "title": "Version Control (Git/GitHub) & Terminal Mastery",
+                "description": "Establish professional Git workflow, branch management, semantic commit history, and automated GitHub actions.",
+                "milestone_type": MilestoneType.TECHNICAL_SKILL,
+                "points": 50,
+                "verification_method": VerificationMethod.URL_VERIFICATION,
+                "required_evidence_type": RequiredEvidenceType.GITHUB_REPO,
+                "competency_tags": ["Git", "GitHub", "Bash", "Linux"],
+            },
+            {
+                "order_index": 1,
+                "year_of_study": 2,
+                "target_level_code": "200",
+                "target_semester": "SECOND",
+                "title": "Relational Database Normalization & PostgreSQL Design",
+                "description": "Design 3NF relational schemas, write optimized SQL queries, indexes, and database migrations for high-concurrency systems.",
+                "milestone_type": MilestoneType.TECHNICAL_SKILL,
+                "points": 100,
+                "verification_method": VerificationMethod.URL_VERIFICATION,
+                "required_evidence_type": RequiredEvidenceType.GITHUB_REPO,
+                "competency_tags": ["PostgreSQL", "Database Normalization", "SQL", "Schema Design"],
+            },
+            {
+                "order_index": 2,
+                "year_of_study": 3,
+                "target_level_code": "300",
+                "target_semester": "FIRST",
+                "title": "Containerization (Docker) & RESTful Microservices",
+                "description": "Build multi-tier REST API with Django / FastAPI, containerize with Docker compose, and write automated Pytest suites.",
+                "milestone_type": MilestoneType.SIWES_PREREQUISITE,
+                "points": 150,
+                "verification_method": VerificationMethod.SUPERVISOR_SIGN_OFF,
+                "required_evidence_type": RequiredEvidenceType.GITHUB_REPO,
+                "competency_tags": ["Docker", "Django", "FastAPI", "REST APIs", "Pytest"],
+            },
+            {
+                "order_index": 3,
+                "year_of_study": 4,
+                "target_level_code": "400",
+                "target_semester": "FIRST",
+                "title": "24-Week Industrial SIWES Attachment with Signed Logbook",
+                "description": "Complete continuous 6-month off-campus industrial training, submit verified monthly ITCC Form 08, and receive industry supervisor evaluation.",
+                "milestone_type": MilestoneType.INTERNSHIP_EXPERIENCE,
+                "points": 300,
+                "verification_method": VerificationMethod.SUPERVISOR_SIGN_OFF,
+                "required_evidence_type": RequiredEvidenceType.SUPERVISOR_ENDORSEMENT,
+                "competency_tags": ["SIWES", "Industrial Experience", "Technical Problem Solving"],
+            },
+            {
+                "order_index": 4,
+                "year_of_study": 5,
+                "target_level_code": "500",
+                "target_semester": "SECOND",
+                "title": "Production Capstone System with CI/CD & Security Audit",
+                "description": "Defend end-to-end cloud-native system with live deployment, automated testing pipeline, and comprehensive architecture documentation.",
+                "milestone_type": MilestoneType.CAPSTONE_PROJECT,
+                "points": 250,
+                "verification_method": VerificationMethod.SUPERVISOR_SIGN_OFF,
+                "required_evidence_type": RequiredEvidenceType.LIVE_URL,
+                "competency_tags": ["CI/CD", "Production Deployment", "Architecture Defense", "Cloud Infrastructure"],
+            },
+        ]
+
+        for m_data in swe_milestones_data:
+            PathwayMilestone.objects.get_or_create(
+                pathway=pw_swe,
+                order_index=m_data["order_index"],
+                defaults=m_data,
+            )
+        pw_swe.recalculate_totals()
 
         # FUTMinna Accounts & Staff Assignments (password: 1234!@#$)
         u_dean, _ = create_or_update_staff_user(
@@ -635,6 +734,85 @@ class Command(BaseCommand):
             },
         )[0]
 
+        # YabaTech Pathway Blueprint: Frontend Web & React UI/UX Engineering (ND Computer Science)
+        pw_yaba, _ = Pathway.objects.get_or_create(
+            institution=yabatech,
+            program=prog_nd,
+            title="Frontend Web & React UI/UX Engineering",
+            defaults={
+                "career_role": "Junior Frontend Developer / UI Specialist",
+                "industry_sector": "Information Technology / Digital Agency",
+                "description": "Intensive 2-year polytechnic National Diploma roadmap covering modern HTML/CSS responsive design, client-side JavaScript, React component state, 16-week SIWES placement, and live portfolio defense.",
+                "target_cgpa_recommendation": 2.80,
+                "is_active": True,
+                "is_template": True,
+                "template_visibility": TemplateVisibility.NATIONAL_CATALOG,
+            },
+        )
+
+        yaba_milestones_data = [
+            {
+                "order_index": 0,
+                "year_of_study": 1,
+                "target_level_code": "ND_I",
+                "target_semester": "FIRST",
+                "title": "Responsive Web Development & Semantic UI Architecture",
+                "description": "Construct accessible, responsive multi-page web layouts using semantic HTML5, CSS Grid, Flexbox, and CSS custom properties.",
+                "milestone_type": MilestoneType.TECHNICAL_SKILL,
+                "points": 100,
+                "verification_method": VerificationMethod.URL_VERIFICATION,
+                "required_evidence_type": RequiredEvidenceType.LIVE_URL,
+                "competency_tags": ["HTML5", "CSS3", "Responsive Design", "Flexbox"],
+            },
+            {
+                "order_index": 1,
+                "year_of_study": 1,
+                "target_level_code": "ND_I",
+                "target_semester": "SECOND",
+                "title": "Client-Side JavaScript & React State Management",
+                "description": "Build interactive single-page applications with React, TypeScript hooks, REST API data consumption, and form validations.",
+                "milestone_type": MilestoneType.TECHNICAL_SKILL,
+                "points": 150,
+                "verification_method": VerificationMethod.URL_VERIFICATION,
+                "required_evidence_type": RequiredEvidenceType.GITHUB_REPO,
+                "competency_tags": ["JavaScript", "React", "TypeScript", "State Management"],
+            },
+            {
+                "order_index": 2,
+                "year_of_study": 2,
+                "target_level_code": "ND_II",
+                "target_semester": "FIRST",
+                "title": "16-Week Polytechnic SIWES Industrial Attachment",
+                "description": "Complete 4-month industry attachment at verified IT firm, log weekly competencies in SIWES logbook, and pass departmental supervisor inspection.",
+                "milestone_type": MilestoneType.INTERNSHIP_EXPERIENCE,
+                "points": 250,
+                "verification_method": VerificationMethod.SUPERVISOR_SIGN_OFF,
+                "required_evidence_type": RequiredEvidenceType.SUPERVISOR_ENDORSEMENT,
+                "competency_tags": ["SIWES", "Industry Logbook", "Workplace Readiness"],
+            },
+            {
+                "order_index": 3,
+                "year_of_study": 2,
+                "target_level_code": "ND_II",
+                "target_semester": "SECOND",
+                "title": "Interactive Web Application Capstone Defense",
+                "description": "Deploy full frontend web application to Vercel/Netlify with live backend API integration, user authentication, and departmental defense.",
+                "milestone_type": MilestoneType.CAPSTONE_PROJECT,
+                "points": 200,
+                "verification_method": VerificationMethod.SUPERVISOR_SIGN_OFF,
+                "required_evidence_type": RequiredEvidenceType.LIVE_URL,
+                "competency_tags": ["React", "Vite", "REST APIs", "Project Defense"],
+            },
+        ]
+
+        for m_data in yaba_milestones_data:
+            PathwayMilestone.objects.get_or_create(
+                pathway=pw_yaba,
+                order_index=m_data["order_index"],
+                defaults=m_data,
+            )
+        pw_yaba.recalculate_totals()
+
         # YabaTech Accounts & Staff Assignments (password: 1234!@#$)
         u_yaba_hod, _ = create_or_update_staff_user(
             email="csc@yabatech.edu.ng",
@@ -761,6 +939,72 @@ class Command(BaseCommand):
                 "siwes_duration_months": 0,
             },
         )[0]
+
+        # FCE Zaria Pathway Blueprint: Educational Technology & Digital Pedagogy (NCE)
+        pw_fce, _ = Pathway.objects.get_or_create(
+            institution=fce_zaria,
+            program=prog_nce,
+            title="Educational Technology & Digital Pedagogy",
+            defaults={
+                "career_role": "Certified STEM Educator / EdTech Specialist",
+                "industry_sector": "Basic & Secondary Education / EdTech",
+                "description": "Comprehensive 3-year teacher education pathway preparing future educators in digital instructional authoring, virtual classroom delivery, STEM pedagogy, and teaching practice portfolio defense.",
+                "target_cgpa_recommendation": 3.00,
+                "is_active": True,
+                "is_template": True,
+                "template_visibility": TemplateVisibility.NATIONAL_CATALOG,
+            },
+        )
+
+        fce_milestones_data = [
+            {
+                "order_index": 0,
+                "year_of_study": 1,
+                "target_level_code": "NCE_I",
+                "target_semester": "FIRST",
+                "title": "Interactive Digital Courseware Authoring",
+                "description": "Author structured digital learning modules incorporating interactive multimedia, formative quizzes, and curriculum lesson plans.",
+                "milestone_type": MilestoneType.TECHNICAL_SKILL,
+                "points": 100,
+                "verification_method": VerificationMethod.URL_VERIFICATION,
+                "required_evidence_type": RequiredEvidenceType.PORTFOLIO_LINK,
+                "competency_tags": ["Digital Pedagogy", "Interactive Learning", "Lesson Planning"],
+            },
+            {
+                "order_index": 1,
+                "year_of_study": 2,
+                "target_level_code": "NCE_II",
+                "target_semester": "SECOND",
+                "title": "LMS Platform Administration & Online Assessment",
+                "description": "Configure digital learning management courses, automated grading rubrics, and virtual classroom engagement analytics.",
+                "milestone_type": MilestoneType.TECHNICAL_SKILL,
+                "points": 150,
+                "verification_method": VerificationMethod.DOCUMENT_UPLOAD,
+                "required_evidence_type": RequiredEvidenceType.CERTIFICATE_PDF,
+                "competency_tags": ["Moodle", "Canvas", "Assessment Rubrics", "Educational Analytics"],
+            },
+            {
+                "order_index": 2,
+                "year_of_study": 3,
+                "target_level_code": "NCE_III",
+                "target_semester": "FIRST",
+                "title": "Teaching Practice School Attachment & Portfolio Defense",
+                "description": "Complete 12-week supervised classroom teaching practice in an accredited secondary school with signed teaching practice portfolio.",
+                "milestone_type": MilestoneType.INTERNSHIP_EXPERIENCE,
+                "points": 300,
+                "verification_method": VerificationMethod.SUPERVISOR_SIGN_OFF,
+                "required_evidence_type": RequiredEvidenceType.SUPERVISOR_ENDORSEMENT,
+                "competency_tags": ["Teaching Practice", "Classroom Management", "TRCN Certification"],
+            },
+        ]
+
+        for m_data in fce_milestones_data:
+            PathwayMilestone.objects.get_or_create(
+                pathway=pw_fce,
+                order_index=m_data["order_index"],
+                defaults=m_data,
+            )
+        pw_fce.recalculate_totals()
 
         # FCE Zaria Accounts & Staff Assignments (password: 1234!@#$)
         u_fce_hod, _ = create_or_update_staff_user(

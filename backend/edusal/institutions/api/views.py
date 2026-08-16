@@ -22,11 +22,14 @@ from edusal.institutions.models import (
     StaffRoleAtUnit,
     StudentProfile,
     EmbeddingStatus,
+    Pathway,
+    PathwayMilestone,
 )
 from ..services.document_parser import DocumentParserService
 from ..services.embedding_service import EmbeddingService
 from ..services.vector_search_service import VectorSearchService
 from ..services.groq_advisor_service import GroqAdvisorService
+from ..services.pathway_template_service import PathwayTemplateService
 from .serializers import (
     InstitutionListSerializer,
     InstitutionDetailSerializer,
@@ -43,11 +46,19 @@ from .serializers import (
     StaffAssignmentSerializer,
     StudentProfileSerializer,
     StudentProfileCreateSerializer,
+    PathwayMilestoneSerializer,
+    PathwayMilestoneCreateUpdateSerializer,
+    PathwayListSerializer,
+    PathwayDetailSerializer,
+    PathwayCreateSerializer,
+    PathwayClonePayloadSerializer,
+    PathwayPublishTemplatePayloadSerializer,
     AuthLoginSerializer,
     AuthUserSerializer,
 )
 
 User = get_user_model()
+
 
 
 
@@ -821,5 +832,164 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
 
         student.save()
         return Response(StudentProfileSerializer(student).data)
+
+
+class PathwayViewSet(viewsets.ModelViewSet):
+    """CRUD and blueprint template management endpoints for Career Pathways."""
+
+    queryset = (
+        Pathway.objects.all()
+        .select_related(
+            "institution",
+            "program",
+            "program__department",
+            "program__department__division",
+            "created_by",
+            "cloned_from",
+        )
+        .prefetch_related("milestones")
+    )
+    permission_classes = [AllowAny]
+    lookup_field = "id"
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return PathwayDetailSerializer
+        if self.action in ["create", "update", "partial_update"]:
+            return PathwayCreateSerializer
+        return PathwayListSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        inst_id = self.request.query_params.get("institution")
+        prog_id = self.request.query_params.get("program")
+        dept_id = self.request.query_params.get("department")
+        div_id = self.request.query_params.get("division")
+        is_template = self.request.query_params.get("is_template")
+        search = self.request.query_params.get("search")
+
+        if inst_id:
+            qs = qs.filter(institution_id=inst_id)
+        if prog_id:
+            qs = qs.filter(program_id=prog_id)
+        if dept_id:
+            qs = qs.filter(program__department_id=dept_id)
+        if div_id:
+            qs = qs.filter(program__department__division_id=div_id)
+        if is_template is not None:
+            qs = qs.filter(is_template=is_template.lower() in ["true", "1"])
+        if search:
+            qs = qs.filter(Q(title__icontains=search) | Q(career_role__icontains=search) | Q(industry_sector__icontains=search))
+
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        pathway = serializer.save(created_by=user)
+        pathway.recalculate_totals()
+
+    @action(detail=True, methods=["post"], url_path="clone")
+    def clone_pathway(self, request, id=None):
+        """1-Click cloning: Clones a master template into a customized pathway for an academic program."""
+        serializer = PathwayClonePayloadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            target_program = AcademicProgram.objects.get(id=data["target_program"])
+        except AcademicProgram.DoesNotExist:
+            return Response({"error": "Target program not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        user = request.user if request.user.is_authenticated else None
+
+        new_pathway = PathwayTemplateService.clone_template_to_program(
+            template_id=id,
+            target_program=target_program,
+            user=user,
+            custom_title=data.get("custom_title"),
+            custom_description=data.get("custom_description"),
+        )
+
+        return Response(
+            PathwayDetailSerializer(new_pathway).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"], url_path="publish-as-template")
+    def publish_as_template(self, request, id=None):
+        """Publishes an active custom pathway as a master blueprint template."""
+        serializer = PathwayPublishTemplatePayloadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        visibility = serializer.validated_data.get("visibility", "INSTITUTION")
+
+        pathway = PathwayTemplateService.publish_as_template(
+            pathway_id=id,
+            visibility=visibility,
+        )
+        return Response(PathwayDetailSerializer(pathway).data)
+
+    @action(detail=False, methods=["get"], url_path="templates")
+    def templates_catalog(self, request):
+        """Returns all reusable blueprint templates, optionally filtered by award level or sector."""
+        qs = Pathway.objects.filter(is_template=True).select_related(
+            "institution",
+            "program",
+            "program__department",
+            "created_by",
+        ).prefetch_related("milestones")
+
+        award_level = request.query_params.get("award_level")
+        if award_level:
+            qs = qs.filter(program__award_level=award_level)
+
+        serializer = PathwayListSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+class PathwayMilestoneViewSet(viewsets.ModelViewSet):
+    """CRUD and reordering endpoints for individual Pathway Milestones."""
+
+    queryset = PathwayMilestone.objects.all().select_related("pathway", "pathway__program")
+    permission_classes = [AllowAny]
+    lookup_field = "id"
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return PathwayMilestoneCreateUpdateSerializer
+        return PathwayMilestoneSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        pathway_id = self.request.query_params.get("pathway")
+        if pathway_id:
+            qs = qs.filter(pathway_id=pathway_id)
+        return qs
+
+    def perform_create(self, serializer):
+        milestone = serializer.save()
+        milestone.pathway.recalculate_totals()
+
+    def perform_update(self, serializer):
+        milestone = serializer.save()
+        milestone.pathway.recalculate_totals()
+
+    def perform_destroy(self, instance):
+        pathway = instance.pathway
+        instance.delete()
+        pathway.recalculate_totals()
+
+    @action(detail=False, methods=["post"], url_path="reorder")
+    def reorder_milestones(self, request):
+        """Reorders milestones in a pathway: accepts array of [{id: UUID, order_index: int}]."""
+        items = request.data.get("items", [])
+        if not items:
+            return Response({"error": "No items provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            for item in items:
+                PathwayMilestone.objects.filter(id=item["id"]).update(order_index=item["order_index"])
+
+        return Response({"status": "ok", "message": "Milestones successfully reordered."})
+
 
 
