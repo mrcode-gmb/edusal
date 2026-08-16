@@ -1,0 +1,35 @@
+# Environment variables & secrets
+backend/.envs/.production/
+backend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Python / Django
+backend/.venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/staticfiles/
+backend/media/
+*.coverage
+*.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Vite
+**/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.local
+
+# Editor & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

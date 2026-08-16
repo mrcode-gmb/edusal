@@ -1,0 +1,7 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=edusal
+POSTGRES_USER=BtWIFuMLDYDjxnJvnktwUBDIGkrRPpDb
+POSTGRES_PASSWORD=kMBhEI4Kjr5xkD1PpgMW4O2yigIIjwTOw89TM887clRDcwxbyaSjzfMMSYxGvF1I
