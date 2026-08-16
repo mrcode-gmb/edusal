@@ -36,10 +36,14 @@ import {
 } from '../icons';
 
 interface InstitutionDashboardProps {
+  initialRole?: 'student' | 'staff';
   onBackToLanding: () => void;
 }
 
-export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLanding }) => {
+export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
+  initialRole = 'student',
+  onBackToLanding,
+}) => {
   // Authentication State
   const [authToken, setAuthToken] = useState<string | null>(() => {
     return localStorage.getItem('edusal_auth_token') || null;
@@ -129,6 +133,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
   if (!authToken || !currentUser) {
     return (
       <InstitutionLogin
+        initialRole={initialRole}
         onLoginSuccess={handleLoginSuccess}
         onBackToLanding={onBackToLanding}
       />

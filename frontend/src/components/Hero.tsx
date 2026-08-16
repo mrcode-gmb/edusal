@@ -7,14 +7,23 @@ import {
   CheckCircleIcon,
   SparklesIcon,
   ArrowRightIcon,
+  GraduationCapIcon,
+  BuildingIcon,
 } from './icons';
 
 interface HeroProps {
   onOpenBooking: () => void;
   onOpenScoreModal: () => void;
+  onOpenStudentPortal?: () => void;
+  onOpenInstitutionPortal?: () => void;
 }
 
-export const Hero: FC<HeroProps> = ({ onOpenBooking, onOpenScoreModal }) => {
+export const Hero: FC<HeroProps> = ({ 
+  onOpenBooking, 
+  onOpenScoreModal,
+  onOpenStudentPortal,
+  onOpenInstitutionPortal,
+}) => {
   const [activeTab, setActiveTab] = useState<'record' | 'citation' | 'pipeline'>('record');
 
   return (
@@ -29,8 +38,8 @@ export const Hero: FC<HeroProps> = ({ onOpenBooking, onOpenScoreModal }) => {
             </div>
 
             <h1 className="hero-headline">
-              Every graduate should be able to <span className="text-gradient">explain why they're job-ready</span>.
-              <span className="headline-secondary">Not just claim it.</span>
+              Institutional Career Governance.{' '}
+              <span className="text-gradient">Every Skill Claim Verified.</span>
             </h1>
 
             <p className="hero-subheadline">
@@ -38,22 +47,44 @@ export const Hero: FC<HeroProps> = ({ onOpenBooking, onOpenScoreModal }) => {
             </p>
 
             <div className="hero-cta-group">
+              {onOpenStudentPortal && (
+                <button
+                  type="button"
+                  className="btn btn-primary-lg"
+                  onClick={onOpenStudentPortal}
+                >
+                  <GraduationCapIcon size={18} />
+                  Student Portal Login
+                  <ArrowRightIcon size={16} />
+                </button>
+              )}
+
+              {onOpenInstitutionPortal && (
+                <button
+                  type="button"
+                  className="btn btn-secondary-lg"
+                  onClick={onOpenInstitutionPortal}
+                >
+                  <BuildingIcon size={17} />
+                  Faculty & Admin Portal
+                </button>
+              )}
+
               <button
                 type="button"
-                className="btn btn-primary-lg"
+                className="btn btn-outline-sm-hero"
                 onClick={onOpenBooking}
               >
-                Book a Scoped Walkthrough
-                <ArrowRightIcon size={16} />
+                Book Walkthrough
               </button>
 
               <button
                 type="button"
-                className="btn btn-secondary-lg"
+                className="btn btn-outline-sm-hero"
                 onClick={onOpenScoreModal}
               >
-                <SparklesIcon size={16} />
-                See How the Employability Score Works
+                <SparklesIcon size={14} />
+                Score Explainer
               </button>
             </div>
 

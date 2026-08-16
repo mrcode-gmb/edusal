@@ -18,7 +18,7 @@ import type { HealthResponse } from './types';
 import './App.css';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'landing' | 'institution'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'institution' | 'student'>('landing');
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [scoreModalOpen, setScoreModalOpen] = useState<boolean>(false);
@@ -54,8 +54,13 @@ export default function App() {
     }
   };
 
-  if (currentView === 'institution') {
-    return <InstitutionDashboard onBackToLanding={() => setCurrentView('landing')} />;
+  if (currentView === 'institution' || currentView === 'student') {
+    return (
+      <InstitutionDashboard
+        initialRole={currentView === 'student' ? 'student' : 'staff'}
+        onBackToLanding={() => setCurrentView('landing')}
+      />
+    );
   }
 
   return (
@@ -67,6 +72,7 @@ export default function App() {
         onOpenBooking={handleScrollToBooking}
         onOpenScoreModal={() => setScoreModalOpen(true)}
         onOpenInstitutionPortal={() => setCurrentView('institution')}
+        onOpenStudentPortal={() => setCurrentView('student')}
       />
 
       {/* Main Content Sections */}
@@ -75,6 +81,8 @@ export default function App() {
         <Hero
           onOpenBooking={handleScrollToBooking}
           onOpenScoreModal={() => setScoreModalOpen(true)}
+          onOpenStudentPortal={() => setCurrentView('student')}
+          onOpenInstitutionPortal={() => setCurrentView('institution')}
         />
 
         {/* 2. Founding Partner Strip */}

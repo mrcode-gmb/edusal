@@ -1,6 +1,6 @@
 import { useState, type FC } from 'react';
 import type { HealthResponse } from '../types';
-import { BuildingIcon } from './icons';
+import { BuildingIcon, GraduationCapIcon } from './icons';
 
 interface NavbarProps {
   health: HealthResponse | null;
@@ -8,6 +8,7 @@ interface NavbarProps {
   onOpenBooking: () => void;
   onOpenScoreModal: () => void;
   onOpenInstitutionPortal: () => void;
+  onOpenStudentPortal: () => void;
 }
 
 export const Navbar: FC<NavbarProps> = ({
@@ -16,6 +17,7 @@ export const Navbar: FC<NavbarProps> = ({
   onOpenBooking,
   onOpenScoreModal,
   onOpenInstitutionPortal,
+  onOpenStudentPortal,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -99,10 +101,20 @@ export const Navbar: FC<NavbarProps> = ({
 
           <button
             type="button"
+            className="btn btn-student-portal d-none-mobile"
+            onClick={onOpenStudentPortal}
+            title="Student Career Portal Login"
+          >
+            <GraduationCapIcon size={15} /> Student Portal
+          </button>
+
+          <button
+            type="button"
             className="btn btn-secondary-sm d-none-mobile nav-portal-btn"
             onClick={onOpenInstitutionPortal}
+            title="Faculty and Administrator Portal"
           >
-            <BuildingIcon size={15} /> Institutional Portal
+            <BuildingIcon size={15} /> Faculty / Admin
           </button>
 
           <button
@@ -148,14 +160,25 @@ export const Navbar: FC<NavbarProps> = ({
             </button>
             <button
               type="button"
+              className="mobile-nav-item highlight-student"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenStudentPortal();
+              }}
+            >
+              <GraduationCapIcon size={16} /> Open Student Career Portal
+            </button>
+            <button
+              type="button"
               className="mobile-nav-item highlight"
               onClick={() => {
                 setMobileMenuOpen(false);
                 onOpenInstitutionPortal();
               }}
             >
-              <BuildingIcon size={16} /> Open Institutional Governance Portal
+              <BuildingIcon size={16} /> Open Faculty / Admin Portal
             </button>
+
             <button
               type="button"
               className="mobile-nav-item"
