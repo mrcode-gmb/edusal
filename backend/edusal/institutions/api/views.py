@@ -1,4 +1,5 @@
 import hashlib
+from django.utils import timezone
 from django.contrib.auth import authenticate, get_user_model
 from django.db import transaction
 from django.db.models import Count, Q
@@ -24,12 +25,15 @@ from edusal.institutions.models import (
     EmbeddingStatus,
     Pathway,
     PathwayMilestone,
+    StudentMilestoneSubmission,
+    SubmissionStatus,
 )
 from ..services.document_parser import DocumentParserService
 from ..services.embedding_service import EmbeddingService
 from ..services.vector_search_service import VectorSearchService
 from ..services.groq_advisor_service import GroqAdvisorService
 from ..services.pathway_template_service import PathwayTemplateService
+from ..services.student_credential_service import StudentCredentialService
 from .serializers import (
     InstitutionListSerializer,
     InstitutionDetailSerializer,
@@ -53,6 +57,12 @@ from .serializers import (
     PathwayCreateSerializer,
     PathwayClonePayloadSerializer,
     PathwayPublishTemplatePayloadSerializer,
+    StudentMilestoneSubmissionSerializer,
+    StudentSubmissionCreateSerializer,
+    StudentSubmissionReviewSerializer,
+    StudentCredentialGenerationSerializer,
+    StudentEnrollPathwaySerializer,
+    StudentDashboardDataSerializer,
     AuthLoginSerializer,
     AuthUserSerializer,
 )
@@ -815,23 +825,95 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
         serializer = StudentProfileSerializer(request.user.student_profile)
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"], url_path="update-status")
-    def update_status(self, request, id=None):
-        """Allows assigned HOD/adviser to update SIWES status or academic standing."""
-        student = self.get_object()
-        siwes_status = request.data.get("siwes_clearance_status")
-        standing = request.data.get("academic_standing")
-        cgpa = request.data.get("cgpa")
-
-        if siwes_status:
-            student.siwes_clearance_status = siwes_status.upper()
-        if standing:
-            student.academic_standing = standing.upper()
-        if cgpa is not None:
-            student.cgpa = cgpa
-
         student.save()
         return Response(StudentProfileSerializer(student).data)
+
+    @action(detail=True, methods=["post"], url_path="generate-credentials")
+    def generate_credentials(self, request, id=None):
+        """Generates a secure password and emails login credentials to the student via Mailpit SMTP."""
+        student = self.get_object()
+        serializer = StudentCredentialGenerationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        result = StudentCredentialService.generate_and_dispatch_credentials(
+            student_profile_id=str(student.id),
+            custom_password=data.get("custom_password"),
+            login_url=data.get("login_url", "http://localhost:5173"),
+        )
+        return Response(result, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="enroll-pathway")
+    def enroll_pathway(self, request, id=None):
+        """Enrolls the student in an active career pathway for their degree program."""
+        student = self.get_object()
+        serializer = StudentEnrollPathwaySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        pathway_id = serializer.validated_data["pathway"]
+
+        try:
+            pathway = Pathway.objects.get(id=pathway_id)
+        except Pathway.DoesNotExist:
+            return Response({"error": "Pathway not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        student.active_pathway = pathway
+        student.save(update_fields=["active_pathway", "updated_at"])
+        student.recalculate_employability()
+
+        return Response(StudentProfileSerializer(student).data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"], url_path="me/dashboard")
+    def my_dashboard(self, request):
+        """Returns the logged-in student's complete dashboard data: profile, enrolled pathway roadmap, submissions, and employability score."""
+        if not request.user.is_authenticated:
+            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+        if not hasattr(request.user, "student_profile") or not request.user.student_profile:
+            return Response({"error": "User does not have a student profile"}, status=status.HTTP_404_NOT_FOUND)
+
+        student = (
+            StudentProfile.objects.select_related(
+                "user",
+                "institution",
+                "program",
+                "program__department",
+                "program__department__division",
+                "active_pathway",
+            )
+            .get(id=request.user.student_profile.id)
+        )
+
+        employability_summary = student.recalculate_employability()
+
+        active_pathway_data = None
+        if student.active_pathway:
+            active_pathway_data = PathwayDetailSerializer(student.active_pathway).data
+        else:
+            # Fallback: find the first active pathway for the student's program
+            default_pathway = (
+                Pathway.objects.filter(program=student.program, is_active=True)
+                .prefetch_related("milestones")
+                .first()
+            )
+            if default_pathway:
+                student.active_pathway = default_pathway
+                student.save(update_fields=["active_pathway"])
+                employability_summary = student.recalculate_employability()
+                active_pathway_data = PathwayDetailSerializer(default_pathway).data
+
+        submissions_qs = (
+            StudentMilestoneSubmission.objects.filter(student=student)
+            .select_related("milestone", "reviewed_by")
+            .order_by("-created_at")
+        )
+        submissions_data = StudentMilestoneSubmissionSerializer(submissions_qs, many=True).data
+
+        return Response({
+            "profile": StudentProfileSerializer(student).data,
+            "active_pathway": active_pathway_data,
+            "submissions": submissions_data,
+            "employability_summary": employability_summary,
+        })
+
 
 
 class PathwayViewSet(viewsets.ModelViewSet):
@@ -990,6 +1072,110 @@ class PathwayMilestoneViewSet(viewsets.ModelViewSet):
                 PathwayMilestone.objects.filter(id=item["id"]).update(order_index=item["order_index"])
 
         return Response({"status": "ok", "message": "Milestones successfully reordered."})
+
+
+class StudentMilestoneSubmissionViewSet(viewsets.ModelViewSet):
+    """CRUD and evaluation review endpoints for Student Milestone Submissions."""
+
+    queryset = (
+        StudentMilestoneSubmission.objects.all()
+        .select_related(
+            "student",
+            "student__user",
+            "student__program",
+            "student__institution",
+            "milestone",
+            "milestone__pathway",
+            "reviewed_by",
+        )
+    )
+    permission_classes = [AllowAny]
+    lookup_field = "id"
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return StudentSubmissionCreateSerializer
+        return StudentMilestoneSubmissionSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        student_id = self.request.query_params.get("student")
+        milestone_id = self.request.query_params.get("milestone")
+        pathway_id = self.request.query_params.get("pathway")
+        inst_id = self.request.query_params.get("institution")
+        status_filter = self.request.query_params.get("status")
+
+        if student_id:
+            qs = qs.filter(student_id=student_id)
+        if milestone_id:
+            qs = qs.filter(milestone_id=milestone_id)
+        if pathway_id:
+            qs = qs.filter(milestone__pathway_id=pathway_id)
+        if inst_id:
+            qs = qs.filter(student__institution_id=inst_id)
+        if status_filter:
+            qs = qs.filter(status=status_filter.upper())
+
+        return qs
+
+    def perform_create(self, serializer):
+        # Resolve student
+        student = None
+        if self.request.user.is_authenticated and hasattr(self.request.user, "student_profile") and self.request.user.student_profile:
+            student = self.request.user.student_profile
+        else:
+            student_id = self.request.data.get("student")
+            if student_id:
+                student = StudentProfile.objects.get(id=student_id)
+
+        if not student:
+            raise ValueError("Student profile could not be determined for this submission.")
+
+        milestone = serializer.validated_data["milestone"]
+
+        # Check if already submitted (create or update)
+        existing = StudentMilestoneSubmission.objects.filter(student=student, milestone=milestone).first()
+        if existing:
+            existing.evidence_url = serializer.validated_data.get("evidence_url", existing.evidence_url)
+            existing.submission_notes = serializer.validated_data.get("submission_notes", existing.submission_notes)
+            existing.status = SubmissionStatus.PENDING_REVIEW
+            existing.save()
+            student.recalculate_employability()
+            return
+
+        submission = serializer.save(student=student, status=SubmissionStatus.PENDING_REVIEW)
+        student.recalculate_employability()
+
+    @action(detail=True, methods=["post"], url_path="review")
+    def review_submission(self, request, id=None):
+        """Staff Review action: Approve (VERIFIED), request changes, or reject + award points."""
+        submission = self.get_object()
+        serializer = StudentSubmissionReviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        submission.status = data["status"]
+        submission.review_feedback = data.get("review_feedback", "")
+        submission.reviewed_by = request.user if request.user.is_authenticated else None
+        submission.reviewed_at = timezone.now()
+
+        if submission.status == SubmissionStatus.VERIFIED:
+            # Award points specified or default to full milestone points
+            points = data.get("points_awarded")
+            submission.points_awarded = points if points is not None else submission.milestone.points
+        else:
+            submission.points_awarded = 0
+
+        submission.save()
+
+        # Recalculate student's total employability score
+        submission.student.recalculate_employability()
+
+        return Response(
+            StudentMilestoneSubmissionSerializer(submission).data,
+            status=status.HTTP_200_OK,
+        )
+
 
 
 

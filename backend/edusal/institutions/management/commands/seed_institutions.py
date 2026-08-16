@@ -32,8 +32,11 @@ from edusal.institutions.models import (
     MilestoneType,
     VerificationMethod,
     RequiredEvidenceType,
+    StudentMilestoneSubmission,
+    SubmissionStatus,
 )
 from edusal.institutions.services.embedding_service import EmbeddingService
+
 
 
 
@@ -97,7 +100,7 @@ class Command(BaseCommand):
             )
             return assignment
 
-        def create_student_profile(email, name, institution, program, session, matric_number, year_of_study, cgpa=None, entry_mode=EntryMode.UTME, siwes_status=SIWESClearanceStatus.NOT_ELIGIBLE, phone=""):
+        def create_student_profile(email, name, institution, program, session, matric_number, year_of_study, cgpa=None, entry_mode=EntryMode.UTME, siwes_status=SIWESClearanceStatus.NOT_ELIGIBLE, phone="", active_pathway=None):
             user, _ = User.objects.get_or_create(
                 email=email,
                 defaults={"name": name, "is_active": True},
@@ -120,12 +123,20 @@ class Command(BaseCommand):
                     "siwes_clearance_status": siwes_status,
                     "phone_number": phone,
                     "is_verified_student": True,
+                    "active_pathway": active_pathway,
                 },
             )
+            if active_pathway and student.active_pathway != active_pathway:
+                student.active_pathway = active_pathway
+                student.save(update_fields=["active_pathway"])
+
+            student.recalculate_employability()
+
             self.stdout.write(
                 f"    [Student Account] {email} ({matric_number}) -> {name} | {program.name} [{student.get_level_display()}]"
             )
             return student
+
 
 
         # =====================================================================
@@ -400,9 +411,9 @@ class Command(BaseCommand):
         ]
 
         for m_data in swe_milestones_data:
-            PathwayMilestone.objects.get_or_create(
+            PathwayMilestone.objects.update_or_create(
                 pathway=pw_swe,
-                order_index=m_data["order_index"],
+                title=m_data["title"],
                 defaults=m_data,
             )
         pw_swe.recalculate_totals()
@@ -462,7 +473,7 @@ class Command(BaseCommand):
         session_futm = AcademicSession.objects.filter(institution=futminna, is_current=True).first()
 
         # FUTMinna Students (5-Year Duration Programs)
-        create_student_profile(
+        sp_amina = create_student_profile(
             email="student.swe@futminna.edu.ng",
             name="Amina Bello",
             institution=futminna,
@@ -474,7 +485,66 @@ class Command(BaseCommand):
             entry_mode=EntryMode.UTME,
             siwes_status=SIWESClearanceStatus.QUALIFYING,
             phone="+234 803 111 2233",
+            active_pathway=pw_swe,
         )
+
+        # Seed verified submissions for Amina Bello to demonstrate live employability score calculation
+        swe_m1 = pw_swe.milestones.filter(order_index=0).first()
+        swe_m2 = pw_swe.milestones.filter(order_index=1).first()
+        swe_m3 = pw_swe.milestones.filter(order_index=2).first()
+        swe_m4 = pw_swe.milestones.filter(order_index=3).first()
+
+        if swe_m1:
+            StudentMilestoneSubmission.objects.get_or_create(
+                student=sp_amina,
+                milestone=swe_m1,
+                defaults={
+                    "status": SubmissionStatus.VERIFIED,
+                    "evidence_url": "https://github.com/aminabello/git-devops-mastery",
+                    "submission_notes": "Completed Git terminal workflows, branching strategies, and automated CI pipelines.",
+                    "points_awarded": swe_m1.points,
+                    "review_feedback": "Excellent Git branching history and README documentation.",
+                    "reviewed_by": u_hod_swe,
+                },
+            )
+        if swe_m2:
+            StudentMilestoneSubmission.objects.get_or_create(
+                student=sp_amina,
+                milestone=swe_m2,
+                defaults={
+                    "status": SubmissionStatus.VERIFIED,
+                    "evidence_url": "https://github.com/aminabello/postgresql-schema-opt",
+                    "submission_notes": "Designed 3NF database architecture for university portal with indexing.",
+                    "points_awarded": swe_m2.points,
+                    "review_feedback": "Relational schemas and migration integrity verified.",
+                    "reviewed_by": u_hod_swe,
+                },
+            )
+        if swe_m3:
+            StudentMilestoneSubmission.objects.get_or_create(
+                student=sp_amina,
+                milestone=swe_m3,
+                defaults={
+                    "status": SubmissionStatus.VERIFIED,
+                    "evidence_url": "https://github.com/aminabello/edusal-microservices-fastapi",
+                    "submission_notes": "Containerized microservice API with Docker compose and automated Pytest test suite.",
+                    "points_awarded": swe_m3.points,
+                    "review_feedback": "Microservices and dockerized API pass all integration checks.",
+                    "reviewed_by": u_hod_swe,
+                },
+            )
+        if swe_m4:
+            StudentMilestoneSubmission.objects.get_or_create(
+                student=sp_amina,
+                milestone=swe_m4,
+                defaults={
+                    "status": SubmissionStatus.PENDING_REVIEW,
+                    "submission_notes": "Submitted verified monthly ITCC Form 08 signed by MainOne Cable IT supervisor.",
+                    "points_awarded": 0,
+                },
+            )
+        sp_amina.recalculate_employability()
+
         create_student_profile(
             email="student2.swe@futminna.edu.ng",
             name="Emeka Nwosu",
@@ -487,6 +557,7 @@ class Command(BaseCommand):
             entry_mode=EntryMode.UTME,
             siwes_status=SIWESClearanceStatus.COMPLETED,
             phone="+234 803 222 3344",
+            active_pathway=pw_swe,
         )
         create_student_profile(
             email="student.csc@futminna.edu.ng",
@@ -806,9 +877,9 @@ class Command(BaseCommand):
         ]
 
         for m_data in yaba_milestones_data:
-            PathwayMilestone.objects.get_or_create(
+            PathwayMilestone.objects.update_or_create(
                 pathway=pw_yaba,
-                order_index=m_data["order_index"],
+                title=m_data["title"],
                 defaults=m_data,
             )
         pw_yaba.recalculate_totals()
@@ -857,10 +928,11 @@ class Command(BaseCommand):
             session=session_yaba,
             matric_number="F/ND/23/3820019",
             year_of_study=2,  # Year 2 of 2 = ND II (Final Year)
-            cgpa=3.62,
+            cgpa=3.60,
             entry_mode=EntryMode.UTME,
             siwes_status=SIWESClearanceStatus.QUALIFYING,
             phone="+234 801 666 7788",
+            active_pathway=pw_yaba,
         )
         create_student_profile(
             email="student.hnd@yabatech.edu.ng",
@@ -999,9 +1071,9 @@ class Command(BaseCommand):
         ]
 
         for m_data in fce_milestones_data:
-            PathwayMilestone.objects.get_or_create(
+            PathwayMilestone.objects.update_or_create(
                 pathway=pw_fce,
-                order_index=m_data["order_index"],
+                title=m_data["title"],
                 defaults=m_data,
             )
         pw_fce.recalculate_totals()
@@ -1054,6 +1126,8 @@ class Command(BaseCommand):
             entry_mode=EntryMode.UTME,
             siwes_status=SIWESClearanceStatus.NOT_ELIGIBLE,
             phone="+234 809 888 9900",
+            active_pathway=pw_fce,
         )
+
 
         self.stdout.write(self.style.SUCCESS("✓ Successfully seeded all 4 institutions, scoped staff assignments, and multi-year duration students with password: '1234!@#$'!"))

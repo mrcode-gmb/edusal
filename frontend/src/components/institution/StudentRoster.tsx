@@ -2,15 +2,16 @@ import { useState, useEffect, type FC } from 'react';
 import type { StudentProfile, InstitutionHierarchyTree, AcademicSession } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
 import { AddStudentModal } from './AddStudentModal';
+import { GenerateCredentialModal } from './GenerateCredentialModal';
 import {
   GraduationCapIcon,
   PlusIcon,
   SearchIcon,
   ShieldCheckIcon,
-  CheckCircleIcon,
   RefreshCwIcon,
   BookOpenIcon,
   BriefcaseIcon,
+  KeyIcon,
 } from '../icons';
 
 interface StudentRosterProps {
@@ -34,6 +35,8 @@ export const StudentRoster: FC<StudentRosterProps> = ({
   const [selectedDeptId, setSelectedDeptId] = useState<string>('ALL');
   const [selectedYear, setSelectedYear] = useState<number | 'ALL'>('ALL');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedStudentForCreds, setSelectedStudentForCreds] = useState<StudentProfile | null>(null);
+
 
   const loadStudents = async () => {
     setLoading(true);
@@ -246,12 +249,13 @@ export const StudentRoster: FC<StudentRosterProps> = ({
                 <tr>
                   <th>Matriculation Number</th>
                   <th>Student Profile</th>
-                  <th>Department & Programme (Tier 4)</th>
+                  <th>Department & Programme</th>
                   <th>Dynamic Level</th>
-                  <th>Entry Mode</th>
+                  <th>Active Pathway</th>
+                  <th>Employability Score</th>
                   <th>SIWES Clearance</th>
                   <th>CGPA</th>
-                  <th>Admissions Status</th>
+                  <th>Portal Account</th>
                 </tr>
               </thead>
               <tbody>
@@ -295,7 +299,26 @@ export const StudentRoster: FC<StudentRosterProps> = ({
                     </td>
 
                     <td>
-                      <span className="entry-mode-tag">{std.entry_mode_display}</span>
+                      {std.active_pathway_title ? (
+                        <span className="pathway-active-pill" title={std.active_pathway_career_role || ''}>
+                          {std.active_pathway_title}
+                        </span>
+                      ) : (
+                        <span className="text-muted-xs">Unassigned</span>
+                      )}
+                    </td>
+
+                    <td>
+                      <div className="employability-score-cell">
+                        <span className="emp-score-number">
+                          {std.employability_score !== undefined && std.employability_score !== null
+                            ? `${Number(std.employability_score).toFixed(1)}%`
+                            : '0.0%'}
+                        </span>
+                        <span className="emp-pts-sub">
+                          {std.verified_points_total || 0} pts ({std.milestones_completed_count || 0} done)
+                        </span>
+                      </div>
                     </td>
 
                     <td>
@@ -313,13 +336,14 @@ export const StudentRoster: FC<StudentRosterProps> = ({
                     </td>
 
                     <td>
-                      {std.is_verified_student ? (
-                        <span className="verified-status-tag">
-                          <CheckCircleIcon size={13} color="#059669" /> Verified
-                        </span>
-                      ) : (
-                        <span className="pending-status-tag">Unverified</span>
-                      )}
+                      <button
+                        type="button"
+                        className="btn btn-outline-xs btn-cred-action"
+                        onClick={() => setSelectedStudentForCreds(std)}
+                        title="Generate password and email credentials"
+                      >
+                        <KeyIcon size={12} /> Email Password
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -339,6 +363,18 @@ export const StudentRoster: FC<StudentRosterProps> = ({
         authToken={authToken}
         onSubmit={handleStudentCreated}
       />
+
+      {/* Generate Credentials Modal */}
+      {selectedStudentForCreds && (
+        <GenerateCredentialModal
+          isOpen={!!selectedStudentForCreds}
+          onClose={() => setSelectedStudentForCreds(null)}
+          student={selectedStudentForCreds}
+          authToken={authToken}
+          onSuccess={loadStudents}
+        />
+      )}
     </div>
   );
 };
+

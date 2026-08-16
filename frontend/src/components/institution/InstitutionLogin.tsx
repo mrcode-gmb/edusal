@@ -31,26 +31,44 @@ export const InstitutionLogin: FC<InstitutionLoginProps> = ({
     {
       institution: 'FUTMinna (Federal University)',
       email: 'csc@futminna.edu.ng',
-      role: 'Dean, School of ICT (Superadmin)',
+      role: 'Dean, School of ICT (Superadmin Staff)',
       regulator: 'NUC',
+      type: 'staff',
+    },
+    {
+      institution: 'FUTMinna (Software Engineering Student)',
+      email: 'student.swe@futminna.edu.ng',
+      role: 'Amina Bello · 400L B.Tech SWE (Score: 50.8%)',
+      regulator: 'NUC',
+      type: 'student',
+    },
+    {
+      institution: 'YabaTech (Polytechnic ND Student)',
+      email: 'student.nd@yabatech.edu.ng',
+      role: 'Babatunde Adeleke · ND II Computer Science',
+      regulator: 'NBTE',
+      type: 'student',
+    },
+    {
+      institution: 'FCE Zaria (College of Education Student)',
+      email: 'student.nce@fcezaria.edu.ng',
+      role: 'Fatima Garba · NCE III Math & Computer Ed',
+      regulator: 'NCCE',
+      type: 'student',
     },
     {
       institution: 'Gombe State University (State Univ)',
       email: 'csc@gsu.edu.ng',
-      role: 'HOD, Computer Science',
+      role: 'HOD, Computer Science (Staff)',
       regulator: 'NUC',
+      type: 'staff',
     },
     {
       institution: 'YabaTech (Polytechnic)',
       email: 'csc@yabatech.edu.ng',
-      role: 'HOD, Computer Technology',
+      role: 'HOD, Computer Technology (Staff)',
       regulator: 'NBTE',
-    },
-    {
-      institution: 'FCE Zaria (College of Education)',
-      email: 'csc@fcezaria.edu.ng',
-      role: 'HOD, Mathematics & Computer Education',
-      regulator: 'NCCE',
+      type: 'staff',
     },
   ];
 

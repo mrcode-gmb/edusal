@@ -626,6 +626,28 @@ class StudentProfile(models.Model):
         default=True,
         help_text="True if matched with institutional admissions ledger",
     )
+    active_pathway = models.ForeignKey(
+        "Pathway",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="enrolled_students",
+        help_text="The career pathway this student is currently actively pursuing",
+    )
+    employability_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.00,
+        help_text="Composite Employability Score (0.00 - 100.00%) based on verified milestones (70%) and CGPA (30%)",
+    )
+    verified_points_total = models.PositiveIntegerField(
+        default=0,
+        help_text="Total verified milestone points accumulated by this student",
+    )
+    milestones_completed_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Count of verified milestone submissions",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -709,6 +731,56 @@ class StudentProfile(models.Model):
             return code.replace("_", " ")
 
         return f"{code} Level"
+
+    def recalculate_employability(self) -> dict:
+        """
+        Calculates composite Employability Score:
+        - Verified Milestone Points vs. Active Pathway Total Target Points (70% weighting)
+        - Academic CGPA normalized against 5.0 scale (30% weighting)
+        """
+        verified_submissions = self.milestone_submissions.filter(status="VERIFIED")
+        self.verified_points_total = sum(s.points_awarded for s in verified_submissions)
+        self.milestones_completed_count = verified_submissions.count()
+
+        pathway_target_points = self.active_pathway.total_points if self.active_pathway else 0
+
+        if pathway_target_points > 0:
+            milestone_ratio = min(self.verified_points_total / pathway_target_points, 1.0)
+            milestone_component = milestone_ratio * 70.0
+        else:
+            milestone_component = 0.0
+
+        cgpa_val = float(self.cgpa or 0.0)
+        cgpa_ratio = min(cgpa_val / 5.0, 1.0)
+        cgpa_component = cgpa_ratio * 30.0
+
+        total_score = round(milestone_component + cgpa_component, 2)
+        self.employability_score = total_score
+        self.save(update_fields=[
+            "verified_points_total",
+            "milestones_completed_count",
+            "employability_score",
+            "updated_at",
+        ])
+
+        tier = "Foundational"
+        if total_score >= 80.0:
+            tier = "High-Calibre Talent"
+        elif total_score >= 60.0:
+            tier = "Industry Ready"
+        elif total_score >= 40.0:
+            tier = "Developing"
+
+        return {
+            "employability_score": float(total_score),
+            "tier": tier,
+            "milestone_component": round(milestone_component, 2),
+            "cgpa_component": round(cgpa_component, 2),
+            "verified_points": self.verified_points_total,
+            "target_points": pathway_target_points,
+            "milestones_completed": self.milestones_completed_count,
+        }
+
 
 
 class TemplateVisibility(models.TextChoices):
@@ -907,5 +979,81 @@ class PathwayMilestone(models.Model):
 
     def __str__(self) -> str:
         return f"{self.pathway.title} — Step {self.order_index + 1}: {self.title} ({self.points} pts)"
+
+
+class SubmissionStatus(models.TextChoices):
+    PENDING_REVIEW = "PENDING_REVIEW", "Pending Review"
+    VERIFIED = "VERIFIED", "Verified & Points Awarded"
+    CHANGES_REQUESTED = "CHANGES_REQUESTED", "Changes / Re-submission Requested"
+    REJECTED = "REJECTED", "Rejected / Incomplete"
+
+
+class StudentMilestoneSubmission(models.Model):
+    """Verifiable student submission for a pathway milestone with counsellor evaluation."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(
+        StudentProfile,
+        on_delete=models.CASCADE,
+        related_name="milestone_submissions",
+    )
+    milestone = models.ForeignKey(
+        PathwayMilestone,
+        on_delete=models.CASCADE,
+        related_name="submissions",
+    )
+    status = models.CharField(
+        max_length=25,
+        choices=SubmissionStatus.choices,
+        default=SubmissionStatus.PENDING_REVIEW,
+    )
+    evidence_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text="GitHub repository URL or Live demo deployment link",
+    )
+    evidence_file = models.FileField(
+        upload_to="student_evidence/%Y/%m/",
+        blank=True,
+        null=True,
+        help_text="Uploaded certificate PDF or supervisor endorsement form",
+    )
+    submission_notes = models.TextField(
+        blank=True,
+        help_text="Student description of work completed, architectural decisions, or SIWES context",
+    )
+    points_awarded = models.PositiveIntegerField(
+        default=0,
+        help_text="Points awarded upon verification (defaults to milestone.points)",
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_milestones",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_feedback = models.TextField(
+        blank=True,
+        help_text="Counsellor or HOD remarks and evaluation notes",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "milestone"],
+                name="unique_student_milestone_submission",
+            )
+        ]
+        verbose_name = "Student Milestone Submission"
+        verbose_name_plural = "Student Milestone Submissions"
+
+    def __str__(self) -> str:
+        return f"{self.student.matric_number} — {self.milestone.title} ({self.status})"
+
 
 

@@ -545,7 +545,111 @@ export const institutionApi = {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to delete milestone`);
   },
+
+  // Student Credential Dispatch & Portal
+  async generateStudentCredentials(
+    studentId: string,
+    payload?: { custom_password?: string; login_url?: string },
+    token?: string
+  ): Promise<import('../types/institution').StudentCredentialResult> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/students/${studentId}/generate-credentials/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload || {}),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Failed to generate credentials`);
+    }
+    return res.json();
+  },
+
+  async enrollStudentPathway(
+    studentId: string,
+    pathwayId: string,
+    token?: string
+  ): Promise<import('../types/institution').StudentProfile> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/students/${studentId}/enroll-pathway/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ pathway: pathwayId }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to enroll pathway`);
+    return res.json();
+  },
+
+  async getStudentDashboard(
+    token?: string
+  ): Promise<import('../types/institution').StudentDashboardData> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/students/me/dashboard/`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch student dashboard`);
+    return res.json();
+  },
+
+  async getStudentSubmissions(
+    params?: { student?: string; milestone?: string; pathway?: string; status?: string },
+    token?: string
+  ): Promise<import('../types/institution').StudentMilestoneSubmission[]> {
+    const query = new URLSearchParams();
+    if (params?.student) query.append('student', params.student);
+    if (params?.milestone) query.append('milestone', params.milestone);
+    if (params?.pathway) query.append('pathway', params.pathway);
+    if (params?.status) query.append('status', params.status);
+
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/student-submissions/?${query.toString()}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch student submissions`);
+    return res.json();
+  },
+
+  async submitMilestoneEvidence(
+    payload: import('../types/institution').StudentSubmissionCreatePayload,
+    token?: string
+  ): Promise<import('../types/institution').StudentMilestoneSubmission> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/student-submissions/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Failed to submit evidence`);
+    }
+    return res.json();
+  },
+
+  async reviewStudentSubmission(
+    submissionId: string,
+    payload: import('../types/institution').StudentSubmissionReviewPayload,
+    token?: string
+  ): Promise<import('../types/institution').StudentMilestoneSubmission> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/student-submissions/${submissionId}/review/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to review submission`);
+    return res.json();
+  },
 };
+
 
 
 

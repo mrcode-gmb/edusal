@@ -16,6 +16,7 @@ import { KnowledgeBaseManager } from './KnowledgeBaseManager';
 import { StaffDirectory } from './StaffDirectory';
 import { StudentRoster } from './StudentRoster';
 import { PathwaysManager } from './PathwaysManager';
+import { StudentDashboard } from '../student/StudentDashboard';
 import { AddDivisionModal } from './AddDivisionModal';
 import { AddDepartmentModal } from './AddDepartmentModal';
 import { AddProgramModal } from './AddProgramModal';
@@ -130,6 +131,17 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
       <InstitutionLogin
         onLoginSuccess={handleLoginSuccess}
         onBackToLanding={onBackToLanding}
+      />
+    );
+  }
+
+  // If user is a student, render the dedicated Student Dashboard
+  if (currentUser.student_profile) {
+    return (
+      <StudentDashboard
+        currentUser={currentUser}
+        authToken={authToken}
+        onLogout={handleLogout}
       />
     );
   }

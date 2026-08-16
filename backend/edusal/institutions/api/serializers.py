@@ -12,6 +12,8 @@ from edusal.institutions.models import (
     StudentProfile,
     Pathway,
     PathwayMilestone,
+    StudentMilestoneSubmission,
+    SubmissionStatus,
 )
 
 
@@ -364,6 +366,8 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     level_display = serializers.CharField(source="get_level_display", read_only=True)
     is_final_year = serializers.BooleanField(read_only=True)
     is_siwes_year = serializers.BooleanField(read_only=True)
+    active_pathway_title = serializers.CharField(source="active_pathway.title", read_only=True, default=None)
+    active_pathway_career_role = serializers.CharField(source="active_pathway.career_role", read_only=True, default=None)
 
     class Meta:
         model = StudentProfile
@@ -396,6 +400,12 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             "is_final_year",
             "is_siwes_year",
             "is_spillover",
+            "active_pathway",
+            "active_pathway_title",
+            "active_pathway_career_role",
+            "employability_score",
+            "verified_points_total",
+            "milestones_completed_count",
             "cgpa",
             "academic_standing",
             "academic_standing_display",
@@ -417,9 +427,13 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             "level_display",
             "is_final_year",
             "is_siwes_year",
+            "employability_score",
+            "verified_points_total",
+            "milestones_completed_count",
             "created_at",
             "updated_at",
         ]
+
 
 
 class StudentProfileCreateSerializer(serializers.Serializer):
@@ -603,5 +617,101 @@ class PathwayClonePayloadSerializer(serializers.Serializer):
 
 class PathwayPublishTemplatePayloadSerializer(serializers.Serializer):
     visibility = serializers.CharField(required=False, default="INSTITUTION")
+
+
+class StudentMilestoneSubmissionSerializer(serializers.ModelSerializer):
+    milestone_title = serializers.CharField(source="milestone.title", read_only=True)
+    milestone_points = serializers.IntegerField(source="milestone.points", read_only=True)
+    milestone_type = serializers.CharField(source="milestone.milestone_type", read_only=True)
+    milestone_type_display = serializers.CharField(source="milestone.get_milestone_type_display", read_only=True)
+    year_of_study = serializers.IntegerField(source="milestone.year_of_study", read_only=True)
+    target_level_code = serializers.CharField(source="milestone.target_level_code", read_only=True)
+    target_semester = serializers.CharField(source="milestone.target_semester", read_only=True)
+    required_evidence_type = serializers.CharField(source="milestone.required_evidence_type", read_only=True)
+    verification_method = serializers.CharField(source="milestone.verification_method", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    reviewed_by_name = serializers.CharField(source="reviewed_by.name", read_only=True, default=None)
+    student_matric = serializers.CharField(source="student.matric_number", read_only=True)
+    student_name = serializers.CharField(source="student.user.name", read_only=True)
+
+    class Meta:
+        model = StudentMilestoneSubmission
+        fields = [
+            "id",
+            "student",
+            "student_matric",
+            "student_name",
+            "milestone",
+            "milestone_title",
+            "milestone_points",
+            "milestone_type",
+            "milestone_type_display",
+            "year_of_study",
+            "target_level_code",
+            "target_semester",
+            "required_evidence_type",
+            "verification_method",
+            "status",
+            "status_display",
+            "evidence_url",
+            "evidence_file",
+            "submission_notes",
+            "points_awarded",
+            "reviewed_by",
+            "reviewed_by_name",
+            "reviewed_at",
+            "review_feedback",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "status",
+            "points_awarded",
+            "reviewed_by",
+            "reviewed_at",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class StudentSubmissionCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudentMilestoneSubmission
+        fields = [
+            "milestone",
+            "evidence_url",
+            "evidence_file",
+            "submission_notes",
+        ]
+
+
+class StudentSubmissionReviewSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(
+        choices=[
+            ("VERIFIED", "Verified & Points Awarded"),
+            ("CHANGES_REQUESTED", "Changes / Re-submission Requested"),
+            ("REJECTED", "Rejected / Incomplete"),
+        ]
+    )
+    points_awarded = serializers.IntegerField(required=False, min_value=0)
+    review_feedback = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class StudentCredentialGenerationSerializer(serializers.Serializer):
+    custom_password = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    login_url = serializers.CharField(required=False, allow_blank=True, default="http://localhost:5173")
+
+
+class StudentEnrollPathwaySerializer(serializers.Serializer):
+    pathway = serializers.UUIDField(required=True)
+
+
+class StudentDashboardDataSerializer(serializers.Serializer):
+    profile = StudentProfileSerializer()
+    active_pathway = PathwayDetailSerializer(allow_null=True)
+    submissions = StudentMilestoneSubmissionSerializer(many=True)
+    employability_summary = serializers.DictField()
+
 
 

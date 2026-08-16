@@ -356,6 +356,12 @@ export interface StudentProfile {
   is_final_year: boolean;
   is_siwes_year: boolean;
   is_spillover: boolean;
+  active_pathway?: string | null;
+  active_pathway_title?: string | null;
+  active_pathway_career_role?: string | null;
+  employability_score: number;
+  verified_points_total: number;
+  milestones_completed_count: number;
   cgpa?: number | null;
   academic_standing: AcademicStanding;
   academic_standing_display: string;
@@ -483,6 +489,80 @@ export interface PathwayClonePayload {
   custom_title?: string;
   custom_description?: string;
 }
+
+export type SubmissionStatus =
+  | 'PENDING_REVIEW'
+  | 'VERIFIED'
+  | 'CHANGES_REQUESTED'
+  | 'REJECTED';
+
+export interface StudentMilestoneSubmission {
+  id: string;
+  student: string;
+  student_matric: string;
+  student_name: string;
+  milestone: string;
+  milestone_title: string;
+  milestone_points: number;
+  milestone_type: MilestoneType;
+  milestone_type_display?: string;
+  year_of_study: number;
+  target_level_code: string;
+  target_semester: string;
+  required_evidence_type: RequiredEvidenceType;
+  verification_method: VerificationMethod;
+  status: SubmissionStatus;
+  status_display: string;
+  evidence_url?: string | null;
+  evidence_file?: string | null;
+  submission_notes?: string;
+  points_awarded: number;
+  reviewed_by?: number | null;
+  reviewed_by_name?: string | null;
+  reviewed_at?: string | null;
+  review_feedback?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudentSubmissionCreatePayload {
+  milestone: string;
+  evidence_url?: string;
+  submission_notes?: string;
+}
+
+export interface StudentSubmissionReviewPayload {
+  status: 'VERIFIED' | 'CHANGES_REQUESTED' | 'REJECTED';
+  points_awarded?: number;
+  review_feedback?: string;
+}
+
+export interface StudentCredentialResult {
+  student_id: string;
+  matric_number: string;
+  email: string;
+  plain_password: string;
+  email_sent: boolean;
+  recipient: string;
+}
+
+export interface EmployabilitySummary {
+  employability_score: number;
+  tier: string;
+  milestone_component: number;
+  cgpa_component: number;
+  verified_points: number;
+  target_points: number;
+  milestones_completed: number;
+}
+
+export interface StudentDashboardData {
+  profile: StudentProfile;
+  active_pathway: Pathway | null;
+  submissions: StudentMilestoneSubmission[];
+  employability_summary: EmployabilitySummary;
+}
+
 
 
 

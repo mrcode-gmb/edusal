@@ -6543,6 +6543,958 @@ body {
   line-height: 1.45;
 }
 
+/* ==========================================================================
+   19. Student Portal Workspace, Credential Generation & Employability Gauge
+   ========================================================================== */
+
+/* Student Portal Wrapper & Header */
+.student-portal-wrapper {
+  min-height: 100vh;
+  background-color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+.student-portal-navbar {
+  background-color: #0f172a;
+  color: #ffffff;
+  padding: 14px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #1e293b;
+}
+
+.portal-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.student-brand-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.portal-brand-row h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.portal-brand-row p {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.portal-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.student-info-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.student-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.student-matric {
+  font-size: 11.5px;
+  color: #38bdf8;
+  font-family: monospace;
+}
+
+.btn-logout {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-logout:hover {
+  background-color: #334155;
+  color: #ffffff;
+}
+
+/* Student Main Container */
+.student-portal-main {
+  max-width: 1140px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 28px 20px 60px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.student-loading-container,
+.student-error-container {
+  max-width: 500px;
+  margin: 100px auto;
+  text-align: center;
+  background: #ffffff;
+  padding: 36px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Identity Banner */
+.student-identity-banner {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 22px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.student-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.inst-badge {
+  background-color: #0f172a;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.dept-badge {
+  background-color: #f1f5f9;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.level-badge {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.siwes-active-badge {
+  background-color: #fef3c7;
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #fde68a;
+}
+
+.student-headline {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  font-weight: 850;
+  color: #0f172a;
+}
+
+.student-subhead {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.banner-right-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stat-pill {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 14px;
+  text-align: right;
+}
+
+.stat-pill-label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.stat-pill-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.btn-icon-refresh {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-icon-refresh:hover {
+  background: #e2e8f0;
+}
+
+/* Employability Gauge Card */
+.employability-gauge-card {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 22px 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.gauge-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.gauge-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gauge-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gauge-title-group h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.gauge-title-group p {
+  margin: 2px 0 0 0;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.tier-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.gauge-metrics-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1.5fr 1.5fr;
+  gap: 18px;
+}
+
+.big-score-box {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.score-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #15803d;
+}
+
+.score-number-row {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin: 6px 0;
+}
+
+.score-big {
+  font-size: 38px;
+  font-weight: 900;
+  color: #166534;
+  line-height: 1;
+}
+
+.score-unit {
+  font-size: 20px;
+  font-weight: 800;
+  color: #15803d;
+}
+
+.score-meter-bar {
+  width: 100%;
+  height: 6px;
+  background-color: #dcfce7;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.score-meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.metric-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.metric-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metric-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.metric-sub-val {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #0284c7;
+}
+
+.metric-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 6px 0;
+}
+
+.metric-val {
+  font-size: 22px;
+  font-weight: 850;
+  color: #0f172a;
+}
+
+.metric-denom {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.progress-bar-sm {
+  width: 100%;
+  height: 5px;
+  background-color: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.progress-fill-sm {
+  height: 100%;
+  background-color: #0284c7;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.progress-fill-sm.cgpa-fill {
+  background-color: #7c3aed;
+}
+
+.metric-hint {
+  font-size: 11.5px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Student Roadmap Timeline */
+.student-roadmap-timeline {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 22px 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.roadmap-header {
+  margin-bottom: 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.roadmap-header h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.roadmap-header p {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.student-levels-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.student-year-block {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.student-year-header {
+  background-color: #f8fafc;
+  padding: 12px 18px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.year-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.year-num-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: #0f172a;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.year-title-row h5 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.year-meta {
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.student-milestones-stack {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background-color: #ffffff;
+}
+
+.student-milestone-card {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.student-milestone-card.verified-border {
+  border-color: #86efac;
+  background-color: #fafdfb;
+}
+
+.milestone-card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.milestone-step-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.step-chip {
+  font-size: 11px;
+  font-weight: 800;
+  background-color: #0284c7;
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+.type-chip {
+  font-size: 11px;
+  font-weight: 700;
+  background-color: #f1f5f9;
+  color: #334155;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+.semester-pill {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #64748b;
+  background-color: #f8fafc;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid #e2e8f0;
+}
+
+.status-badge-container {
+  display: flex;
+  align-items: center;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 12px;
+}
+
+.status-badge.verified {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.status-badge.pending {
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.status-badge.changes {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.status-badge.not-started {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.milestone-name {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.milestone-details {
+  margin: 0;
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.milestone-guidelines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 11.5px;
+  color: #64748b;
+  background-color: #f8fafc;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+.student-submission-summary {
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-top: 4px;
+}
+
+.sub-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+.sub-link-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #475569;
+  margin-bottom: 4px;
+}
+
+.evidence-link {
+  color: #0284c7;
+  font-weight: 600;
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  word-break: break-all;
+}
+
+.sub-notes {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: #334155;
+  font-style: italic;
+}
+
+.reviewer-feedback-box {
+  background-color: #eff6ff;
+  border-left: 3px solid #0284c7;
+  padding: 8px 10px;
+  margin-top: 8px;
+  border-radius: 0 4px 4px 0;
+  font-size: 12px;
+}
+
+.reviewer-feedback-box strong {
+  color: #1e40af;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.reviewer-feedback-box p {
+  margin: 0;
+  color: #1e3a8a;
+}
+
+.milestone-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.verified-lock-tag {
+  font-size: 12px;
+  font-weight: 700;
+  color: #059669;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Submission Modal Banner */
+.submission-milestone-banner {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.banner-top-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.banner-top-row .step-tag {
+  background-color: #0284c7;
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.banner-top-row .type-tag {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.banner-top-row .pts-tag {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #059669;
+}
+
+.submission-milestone-banner h4 {
+  margin: 0 0 4px 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.banner-desc {
+  margin: 0 0 8px 0;
+  font-size: 12.5px;
+  color: #475569;
+}
+
+.banner-rules {
+  display: flex;
+  gap: 16px;
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+/* Credential Modal Details */
+.student-target-summary {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  color: #64748b;
+}
+
+.summary-row strong {
+  color: #0f172a;
+}
+
+.email-dispatch-notice {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 12px;
+}
+
+.email-dispatch-notice p {
+  margin: 0;
+  font-size: 12px;
+  color: #0369a1;
+  line-height: 1.4;
+}
+
+.credential-success-state {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.success-banner {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.success-banner h4 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #065f46;
+}
+
+.success-banner p {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  color: #047857;
+}
+
+.credential-details-box {
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.cred-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cred-label {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.cred-val {
+  font-weight: 700;
+  color: #0f172a;
+  font-family: monospace;
+}
+
+.cred-val-highlight {
+  font-size: 14px;
+  font-weight: 900;
+  color: #0284c7;
+  background-color: #ffffff;
+  border: 1px dashed #0284c7;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.mailpit-test-action {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  padding: 12px 14px;
+  text-align: center;
+  font-size: 12.5px;
+  color: #0369a1;
+}
+
+.mailpit-test-action p {
+  margin: 0 0 8px 0;
+}
+
+.mailpit-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #ffffff;
+  color: #0284c7 !important;
+  border-color: #0284c7 !important;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.mailpit-link:hover {
+  background-color: #0284c7;
+  color: #ffffff !important;
+}
+
+/* Roster Action Enhancements */
+.employability-score-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.emp-score-number {
+  font-size: 13.5px;
+  font-weight: 850;
+  color: #059669;
+}
+
+.emp-pts-sub {
+  font-size: 10.5px;
+  color: #64748b;
+}
+
+.btn-cred-action {
+  background-color: #f0f9ff;
+  border-color: #bae6fd;
+  color: #0284c7;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-cred-action:hover {
+  background-color: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.pathway-active-pill {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #0284c7;
+  background-color: #f0f9ff;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid #bae6fd;
+  display: inline-block;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
 
 
 
