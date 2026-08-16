@@ -16,6 +16,11 @@ from edusal.institutions.api.views import (
     PathwayViewSet,
     PathwayMilestoneViewSet,
     StudentMilestoneSubmissionViewSet,
+    DiagnosticAssessmentViewSet,
+    StudentAssessmentSessionViewSet,
+    AICoachViewSet,
+    CounsellingSessionViewSet,
+    CounsellingCaseNoteViewSet,
 )
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
@@ -33,7 +38,13 @@ router.register("students", StudentProfileViewSet, basename="student")
 router.register("pathways", PathwayViewSet, basename="pathway")
 router.register("milestones", PathwayMilestoneViewSet, basename="milestone")
 router.register("student-submissions", StudentMilestoneSubmissionViewSet, basename="student-submission")
+router.register("diagnostic-assessments", DiagnosticAssessmentViewSet, basename="diagnostic-assessment")
+router.register("student-assessments", StudentAssessmentSessionViewSet, basename="student-assessment")
+router.register("ai-coach", AICoachViewSet, basename="ai-coach")
+router.register("counselling-sessions", CounsellingSessionViewSet, basename="counselling-session")
+router.register("counselling-case-notes", CounsellingCaseNoteViewSet, basename="counselling-case-note")
 
 
 app_name = "api"
 urlpatterns = router.urls
+

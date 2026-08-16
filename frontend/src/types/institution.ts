@@ -563,6 +563,202 @@ export interface StudentDashboardData {
   employability_summary: EmployabilitySummary;
 }
 
+// =============================================================================
+// Diagnostic Assessments & Psychometrics
+// =============================================================================
+
+export type AssessmentType =
+  | 'BIG_FIVE'
+  | 'HOLLAND_RIASEC'
+  | 'NUMERICAL_REASONING'
+  | 'DIGITAL_SKILLS';
+
+export interface DiagnosticQuestionOption {
+  id: string;
+  text: string;
+  is_correct?: boolean;
+}
+
+export interface DiagnosticQuestion {
+  id: string;
+  order_index: number;
+  prompt: string;
+  dimension: string;
+  is_reverse_scored: boolean;
+  question_type: 'LIKERT_5' | 'MULTIPLE_CHOICE';
+  options: DiagnosticQuestionOption[];
+  explanation?: string;
+}
+
+export interface DiagnosticAssessment {
+  id: string;
+  institution: string | null;
+  assessment_type: AssessmentType;
+  assessment_type_display: string;
+  title: string;
+  slug: string;
+  description: string;
+  instructions: string;
+  estimated_minutes: number;
+  total_questions: number;
+  questions_count?: number;
+  questions?: DiagnosticQuestion[];
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface StudentAssessmentSession {
+  id: string;
+  student: string;
+  student_matric: string;
+  student_name: string;
+  assessment: string;
+  assessment_title: string;
+  assessment_type: AssessmentType;
+  assessment_type_display: string;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
+  raw_responses: Record<string, number | string>;
+  dimension_scores: Record<string, number>;
+  summary_code: string;
+  percentile_rank: number | null;
+  summary_report: string;
+  career_recommendations: string[];
+  started_at: string;
+  completed_at: string | null;
+}
+
+// =============================================================================
+// 24/7 AI Career Coach
+// =============================================================================
+
+export interface GroundedCitation {
+  source_index: number;
+  citation_label: string;
+  chunk_id: string;
+  document_title: string;
+  section_reference?: string;
+  page_number?: number;
+  similarity_score?: number;
+}
+
+export interface AICoachTelemetry {
+  model: string;
+  latency_ms: number;
+  total_tokens: number;
+  chunks_retrieved: number;
+}
+
+export interface AICoachMessage {
+  id: string;
+  conversation: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  citations: GroundedCitation[];
+  telemetry?: AICoachTelemetry;
+  created_at: string;
+}
+
+export interface AICoachConversation {
+  id: string;
+  student: string;
+  title: string;
+  is_active: boolean;
+  case_summary: string;
+  messages_count: number;
+  last_message?: AICoachMessage | null;
+  messages?: AICoachMessage[];
+  created_at: string;
+  updated_at: string;
+}
+
+// =============================================================================
+// Seamless Counsellor Handoff & Booking
+// =============================================================================
+
+export type CounsellingTopic =
+  | 'PATHWAY_ALIGNMENT'
+  | 'SIWES_CLEARANCE'
+  | 'ASSESSMENT_DEBRIEF'
+  | 'RESUME_CV_REVIEW'
+  | 'EMPLOYER_PLACEMENT'
+  | 'ACADEMIC_STANDING';
+
+export type CounsellingSessionStatus =
+  | 'REQUESTED'
+  | 'CONFIRMED'
+  | 'COMPLETED'
+  | 'RESCHEDULED'
+  | 'CANCELLED';
+
+export interface ActionItem {
+  task: string;
+  due_date?: string;
+  done: boolean;
+}
+
+export interface CounsellingCaseNote {
+  id: string;
+  session?: string | null;
+  student: string;
+  student_matric: string;
+  author: string;
+  author_name: string;
+  author_title: string;
+  summary: string;
+  action_items: ActionItem[];
+  is_confidential: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CounsellingSession {
+  id: string;
+  student: string;
+  student_matric: string;
+  student_name: string;
+  student_program: string;
+  student_level: string;
+  counsellor?: string | null;
+  counsellor_name?: string | null;
+  counsellor_title?: string | null;
+  topic: CounsellingTopic;
+  topic_display: string;
+  student_notes: string;
+  status: CounsellingSessionStatus;
+  status_display: string;
+  preferred_date: string;
+  preferred_time_slot: string;
+  scheduled_datetime?: string | null;
+  meeting_mode: 'IN_PERSON' | 'VIRTUAL_CALL';
+  meeting_mode_display: string;
+  meeting_location: string;
+  case_notes?: CounsellingCaseNote[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AvailableCounsellor {
+  id: string;
+  name: string;
+  email: string;
+  title: string;
+  phone?: string;
+  office_location?: string;
+  institution: string;
+}
+
+export interface StudentDossier {
+  profile: StudentProfile;
+  active_pathway: Pathway | null;
+  submissions: StudentMilestoneSubmission[];
+  assessments: StudentAssessmentSession[];
+  counselling_sessions: CounsellingSession[];
+  case_notes: CounsellingCaseNote[];
+  ai_coach_summary: string;
+  employability_summary: EmployabilitySummary;
+}
+
+
 
 
 

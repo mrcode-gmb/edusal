@@ -34,6 +34,16 @@ from edusal.institutions.models import (
     RequiredEvidenceType,
     StudentMilestoneSubmission,
     SubmissionStatus,
+    DiagnosticAssessment,
+    DiagnosticQuestion,
+    StudentAssessmentSession,
+    AssessmentType,
+    AICoachConversation,
+    AICoachMessage,
+    CounsellingSession,
+    CounsellingTopic,
+    CounsellingSessionStatus,
+    CounsellingCaseNote,
 )
 from edusal.institutions.services.embedding_service import EmbeddingService
 
@@ -1129,5 +1139,406 @@ class Command(BaseCommand):
             active_pathway=pw_fce,
         )
 
+        # =====================================================================
+        # 5. Seed Standard Diagnostic Assessments & Item Banks
+        # =====================================================================
+        self.stdout.write("  Seeding Standard Psychometric & Cognitive Diagnostic Item Banks...")
 
-        self.stdout.write(self.style.SUCCESS("✓ Successfully seeded all 4 institutions, scoped staff assignments, and multi-year duration students with password: '1234!@#$'!"))
+        # 1. Big Five Personality Inventory (Mini-IPIP 20 Items)
+        big5_test, _ = DiagnosticAssessment.objects.get_or_create(
+            slug="big-five-personality-inventory",
+            defaults={
+                "assessment_type": AssessmentType.BIG_FIVE,
+                "title": "Big Five Personality Inventory (Mini-IPIP)",
+                "description": "Evaluates core workplace personality traits across Openness, Conscientiousness, Extraversion, Agreeableness, and Emotional Stability using the validated 20-item public domain Mini-IPIP framework.",
+                "instructions": "For each statement, rate how accurately it describes your typical behavior on a scale of 1 (Very Inaccurate) to 5 (Very Accurate).",
+                "estimated_minutes": 8,
+                "total_questions": 20,
+                "is_active": True,
+            },
+        )
+
+        big5_items = [
+            # Extraversion (E)
+            ("I am the life of the party.", "EXTRAVERSION", False),
+            ("I don't talk a lot.", "EXTRAVERSION", True),
+            ("I talk to a lot of different people at academic and tech meetups.", "EXTRAVERSION", False),
+            ("I keep in the background during large team meetings.", "EXTRAVERSION", True),
+            # Agreeableness (A)
+            ("I sympathize with others' technical struggles and blockers.", "EXTRAVERSION", False),  # Agreeableness
+            ("I am not interested in other people's problems.", "AGREEABLENESS", True),
+            ("I feel others' emotions during team project disputes.", "AGREEABLENESS", False),
+            ("I am not really interested in others.", "AGREEABLENESS", True),
+            # Conscientiousness (C)
+            ("I get chore tasks and project scaffolding done right away.", "CONSCIENTIOUSNESS", False),
+            ("I often forget to put things back in their proper place or commit clean code.", "CONSCIENTIOUSNESS", True),
+            ("I like order and structured deliverable checklists.", "CONSCIENTIOUSNESS", False),
+            ("I make a mess of my tasks and leave tickets half-done.", "CONSCIENTIOUSNESS", True),
+            # Emotional Stability (Neuroticism inverted) (S)
+            ("I have frequent mood swings under tight project deadlines.", "EMOTIONAL_STABILITY", True),
+            ("I am relaxed most of the time during software release cycles.", "EMOTIONAL_STABILITY", False),
+            ("I get upset easily when a unit test or deployment fails.", "EMOTIONAL_STABILITY", True),
+            ("I seldom feel blue or discouraged by challenging algorithms.", "EMOTIONAL_STABILITY", False),
+            # Openness to Experience (O)
+            ("I have a vivid imagination and love designing novel system architectures.", "OPENNESS", False),
+            ("I am not interested in abstract computational theories or new frameworks.", "OPENNESS", True),
+            ("I have difficulty understanding abstract mathematical concepts.", "OPENNESS", True),
+            ("I do not have a good imagination.", "OPENNESS", True),
+        ]
+
+        # Fix item 5 dimension to AGREEABLENESS
+        big5_items[4] = ("I sympathize with others' technical struggles and blockers.", "AGREEABLENESS", False)
+
+        for idx, (prompt, dim, rev) in enumerate(big5_items):
+            DiagnosticQuestion.objects.update_or_create(
+                assessment=big5_test,
+                order_index=idx,
+                defaults={
+                    "prompt": prompt,
+                    "dimension": dim,
+                    "is_reverse_scored": rev,
+                    "question_type": "LIKERT_5",
+                    "options": [
+                        {"id": "1", "text": "1 - Very Inaccurate"},
+                        {"id": "2", "text": "2 - Moderately Inaccurate"},
+                        {"id": "3", "text": "3 - Neither Accurate Nor Inaccurate"},
+                        {"id": "4", "text": "4 - Moderately Accurate"},
+                        {"id": "5", "text": "5 - Very Accurate"},
+                    ],
+                },
+            )
+
+        # 2. Holland RIASEC Vocational Interest Inventory (30 Items)
+        riasec_test, _ = DiagnosticAssessment.objects.get_or_create(
+            slug="holland-riasec-interest-inventory",
+            defaults={
+                "assessment_type": AssessmentType.HOLLAND_RIASEC,
+                "title": "Holland RIASEC Vocational Interest Inventory",
+                "description": "Discovers your 3-letter Holland career code (e.g. IRC, RIA) across Realistic, Investigative, Artistic, Social, Enterprising, and Conventional themes to match you with top industry pathways.",
+                "instructions": "Rate how much you would enjoy performing each activity on a scale of 1 (Strongly Dislike) to 5 (Strongly Enjoy).",
+                "estimated_minutes": 10,
+                "total_questions": 30,
+                "is_active": True,
+            },
+        )
+
+        riasec_items = [
+            # Realistic (R)
+            ("Configure hardware servers, network switches, or IoT microcontrollers.", "REALISTIC"),
+            ("Build and troubleshoot physical or automated electromechanical systems.", "REALISTIC"),
+            ("Work outdoors conducting SIWES telecommunication field surveys.", "REALISTIC"),
+            ("Use precision hand tools to assemble technical equipment.", "REALISTIC"),
+            ("Maintain Linux server clusters and manage bare-metal container hosts.", "REALISTIC"),
+            # Investigative (I)
+            ("Analyze algorithmic time complexity and optimize database query plans.", "INVESTIGATIVE"),
+            ("Conduct scientific research on distributed consensus or machine learning.", "INVESTIGATIVE"),
+            ("Solve complex mathematical puzzles and cryptographic equations.", "INVESTIGATIVE"),
+            ("Diagnose race conditions and root causes of complex system failures.", "INVESTIGATIVE"),
+            ("Study academic whitepapers on cloud architecture and compiler theory.", "INVESTIGATIVE"),
+            # Artistic (A)
+            ("Design intuitive user interfaces, design systems, and responsive Figma mockups.", "ARTISTIC"),
+            ("Write engaging technical blog posts, release notes, and product stories.", "ARTISTIC"),
+            ("Create 3D graphics, motion animations, or interactive visualizations.", "ARTISTIC"),
+            ("Develop novel branding, typography pairings, and layout aesthetics.", "ARTISTIC"),
+            ("Compose technical multimedia tutorials and developer podcasts.", "ARTISTIC"),
+            # Social (S)
+            ("Teach junior students programming fundamentals and algorithmic thinking.", "SOCIAL"),
+            ("Mentor peers through career transitions and resume preparation.", "SOCIAL"),
+            ("Facilitate collaborative hackathons and community study groups.", "SOCIAL"),
+            ("Provide empathetic career counselling and academic advisement.", "SOCIAL"),
+            ("Help team members resolve interpersonal disputes during group projects.", "SOCIAL"),
+            # Enterprising (E)
+            ("Pitch a software startup proposal to angel investors and industry partners.", "ENTERPRISING"),
+            ("Lead an agile software engineering team as Product Owner or Tech Lead.", "ENTERPRISING"),
+            ("Negotiate freelance contract deliverables, timelines, and budgets.", "ENTERPRISING"),
+            ("Market an open-source tool and organize user adoption campaigns.", "ENTERPRISING"),
+            ("Manage financial budgeting and cost optimization for cloud infrastructure.", "ENTERPRISING"),
+            # Conventional (C)
+            ("Design normalized relational databases and maintain schema documentation.", "CONVENTIONAL"),
+            ("Audit code repositories against strict ISO/NDPR security and compliance standards.", "CONVENTIONAL"),
+            ("Create meticulous test suites, QA matrices, and reproducible bug reports.", "CONVENTIONAL"),
+            ("Organize structured project backlogs, release milestones, and Gantt charts.", "CONVENTIONAL"),
+            ("Maintain precise accounting records and cloud resource billing ledgers.", "CONVENTIONAL"),
+        ]
+
+        for idx, (prompt, dim) in enumerate(riasec_items):
+            DiagnosticQuestion.objects.update_or_create(
+                assessment=riasec_test,
+                order_index=idx,
+                defaults={
+                    "prompt": prompt,
+                    "dimension": dim,
+                    "is_reverse_scored": False,
+                    "question_type": "LIKERT_5",
+                    "options": [
+                        {"id": "1", "text": "1 - Strongly Dislike"},
+                        {"id": "2", "text": "2 - Dislike"},
+                        {"id": "3", "text": "3 - Neutral"},
+                        {"id": "4", "text": "4 - Enjoy"},
+                        {"id": "5", "text": "5 - Strongly Enjoy"},
+                    ],
+                },
+            )
+
+        # 3. Numerical & Logical Reasoning Diagnostic (10 Items)
+        num_test, _ = DiagnosticAssessment.objects.get_or_create(
+            slug="numerical-logical-reasoning",
+            defaults={
+                "assessment_type": AssessmentType.NUMERICAL_REASONING,
+                "title": "Numerical & Logical Reasoning Diagnostic",
+                "description": "Standard timed cognitive assessment evaluating numerical extrapolation, percentage modeling, algorithmic deductions, and data analysis.",
+                "instructions": "Select the correct answer for each quantitative and sequence puzzle. Calculator permitted.",
+                "estimated_minutes": 15,
+                "total_questions": 5,
+                "is_active": True,
+            },
+        )
+
+        num_items = [
+            (
+                "A cloud server cluster processes 1,200 requests/sec with a 25% failure rate. After an optimization patch, the throughput increases by 50% and the failure rate drops to 10%. How many successful requests are processed per second after the patch?",
+                "NUMERICAL",
+                [
+                    {"id": "A", "text": "1,440 requests/sec", "is_correct": False},
+                    {"id": "B", "text": "1,620 requests/sec", "is_correct": True},
+                    {"id": "C", "text": "1,800 requests/sec", "is_correct": False},
+                    {"id": "D", "text": "1,500 requests/sec", "is_correct": False},
+                ],
+                "New throughput = 1200 * 1.50 = 1800 req/s. Successful rate = 1800 * (1 - 0.10) = 1620 req/s.",
+            ),
+            (
+                "Find the next number in the sequence: 4, 11, 25, 53, 109, ?",
+                "LOGICAL",
+                [
+                    {"id": "A", "text": "218", "is_correct": False},
+                    {"id": "B", "text": "221", "is_correct": True},
+                    {"id": "C", "text": "225", "is_correct": False},
+                    {"id": "D", "text": "215", "is_correct": False},
+                ],
+                "Rule: x_{n+1} = 2 * x_n + (sequence of primes or +3, +3, +3 -> 4*2+3=11, 11*2+3=25, 25*2+3=53, 53*2+3=109, 109*2+3=221).",
+            ),
+            (
+                "If 6 software developers can review 180 pull requests in 5 working days, how many developers are required to review 360 pull requests in 4 working days at the same work rate?",
+                "NUMERICAL",
+                [
+                    {"id": "A", "text": "12 developers", "is_correct": False},
+                    {"id": "B", "text": "15 developers", "is_correct": True},
+                    {"id": "C", "text": "18 developers", "is_correct": False},
+                    {"id": "D", "text": "10 developers", "is_correct": False},
+                ],
+                "Rate per developer per day = 180 / (6 * 5) = 6 PRs/day. Total required rate = 360 / 4 = 90 PRs/day. Developers needed = 90 / 6 = 15 developers.",
+            ),
+            (
+                "A database table with 5,000,000 rows performs a sequential scan in 2,500ms. After creating a B-Tree index, index lookup reduces query latency by 96%. What is the new query latency in milliseconds?",
+                "NUMERICAL",
+                [
+                    {"id": "A", "text": "100ms", "is_correct": True},
+                    {"id": "B", "text": "250ms", "is_correct": False},
+                    {"id": "C", "text": "50ms", "is_correct": False},
+                    {"id": "D", "text": "125ms", "is_correct": False},
+                ],
+                "New latency = 2500ms * (1 - 0.96) = 2500 * 0.04 = 100ms.",
+            ),
+            (
+                "All microservices that process payments must have mTLS enabled. Service Alpha does not have mTLS enabled. Service Beta connects to Service Alpha. Which conclusion is definitively true?",
+                "LOGICAL",
+                [
+                    {"id": "A", "text": "Service Alpha does not process payments.", "is_correct": True},
+                    {"id": "B", "text": "Service Beta does not process payments.", "is_correct": False},
+                    {"id": "C", "text": "Service Beta has mTLS enabled.", "is_correct": False},
+                    {"id": "D", "text": "Service Alpha is insecure.", "is_correct": False},
+                ],
+                "By modus tollens: If P (processes payments) -> Q (has mTLS). Not Q (Alpha does not have mTLS) -> Not P (Alpha does not process payments).",
+            ),
+        ]
+
+        for idx, (prompt, dim, opts, expl) in enumerate(num_items):
+            DiagnosticQuestion.objects.update_or_create(
+                assessment=num_test,
+                order_index=idx,
+                defaults={
+                    "prompt": prompt,
+                    "dimension": dim,
+                    "is_reverse_scored": False,
+                    "question_type": "MULTIPLE_CHOICE",
+                    "options": opts,
+                    "explanation": expl,
+                },
+            )
+
+        # =====================================================================
+        # 6. Seed Sample Diagnostic Session Results (Amina Bello)
+        # =====================================================================
+        amina = StudentProfile.objects.filter(user__email="student.swe@futminna.edu.ng").first()
+        if amina:
+            # Seed Big Five Session
+            StudentAssessmentSession.objects.get_or_create(
+                student=amina,
+                assessment=big5_test,
+                defaults={
+                    "status": "COMPLETED",
+                    "raw_responses": {"0": 4, "1": 2, "2": 4, "3": 2, "4": 4, "5": 1, "6": 4, "7": 1, "8": 5, "9": 1, "10": 5, "11": 1, "12": 2, "13": 4, "14": 2, "15": 4, "16": 5, "17": 1, "18": 1, "19": 1},
+                    "dimension_scores": {
+                        "OPENNESS": 87.5,
+                        "CONSCIENTIOUSNESS": 93.8,
+                        "EXTRAVERSION": 68.8,
+                        "AGREEABLENESS": 81.2,
+                        "EMOTIONAL_STABILITY": 75.0,
+                    },
+                    "summary_code": "O88-C94-E69-A81-S75",
+                    "percentile_rank": 92.00,
+                    "summary_report": "**Exceptional Execution Discipline & Openness**: Demonstrates superior goal orientation, meticulous software testing standards, and high intellectual curiosity for cloud-native architecture.",
+                    "career_recommendations": [
+                        "Full-Stack Software Architecture & Cloud DevOps Engineering",
+                        "Technical Systems Lead / Engineering Management",
+                        "Database Reliability & Security Compliance Engineering",
+                    ],
+                    "completed_at": session_futm.created_at if session_futm else None,
+                },
+            )
+
+            # Seed Holland RIASEC Session
+            StudentAssessmentSession.objects.get_or_create(
+                student=amina,
+                assessment=riasec_test,
+                defaults={
+                    "status": "COMPLETED",
+                    "raw_responses": {},
+                    "dimension_scores": {
+                        "INVESTIGATIVE": 95.0,
+                        "REALISTIC": 88.0,
+                        "CONVENTIONAL": 82.0,
+                        "ENTERPRISING": 65.0,
+                        "ARTISTIC": 60.0,
+                        "SOCIAL": 55.0,
+                    },
+                    "summary_code": "IRC",
+                    "percentile_rank": 94.50,
+                    "summary_report": "**Primary Holland Code: `IRC` (Investigative - Realistic - Conventional)**\n\nOptimal alignment with Software Engineering, Distributed Systems, Cloud Automation, and Database Infrastructure.",
+                    "career_recommendations": [
+                        "Cloud Infrastructure, DevOps & Backend Engineering",
+                        "Data Engineering, PostgreSQL Database Architecture & BI Analytics",
+                        "Robotics & Embedded Systems Engineering",
+                    ],
+                    "completed_at": session_futm.created_at if session_futm else None,
+                },
+            )
+
+            # Seed Numerical Reasoning Session
+            StudentAssessmentSession.objects.get_or_create(
+                student=amina,
+                assessment=num_test,
+                defaults={
+                    "status": "COMPLETED",
+                    "raw_responses": {},
+                    "dimension_scores": {
+                        "NUMERICAL_ACCURACY": 100.0,
+                        "CORRECT_ITEMS": 5.0,
+                        "TOTAL_ITEMS": 5.0,
+                    },
+                    "summary_code": "5/5 (100.0%)",
+                    "percentile_rank": 98.00,
+                    "summary_report": "**Superior Analytical Aptitude**: Flawless deduction on system throughput, logic extrapolation, and database performance mathematics.",
+                    "career_recommendations": [
+                        "Algorithmic Problem Solving",
+                        "Data Modeling & Analytics",
+                        "Financial & Statistical Systems",
+                    ],
+                    "completed_at": session_futm.created_at if session_futm else None,
+                },
+            )
+
+            # =================================================================
+            # 7. Seed Sample 24/7 AI Coach Conversation (Amina Bello)
+            # =================================================================
+            ai_conv, _ = AICoachConversation.objects.get_or_create(
+                student=amina,
+                title="SIWES Form 08 Logistics & Docker Containerization Rubric",
+                defaults={
+                    "is_active": True,
+                    "case_summary": "• Student queried SIWES Form 08 logbook endorsement process and Microservices milestone evidence\n• Verified pathway: B.Tech Software Engineering (400L)\n• Employability Score: 50.8% with 3 verified milestones",
+                },
+            )
+
+            AICoachMessage.objects.get_or_create(
+                conversation=ai_conv,
+                role="assistant",
+                content=f"Hello Amina! I am your 24/7 AI Career Coach at **FUTMinna**. I can see that you are currently in your **400L SIWES Year** enrolled in **Full-Stack Cloud & DevOps Engineering** with **300 verified points**.\n\nHow can I help you with your SIWES Form 08 logbook or your 400L Kubernetes & CI/CD milestone today?",
+            )
+
+            AICoachMessage.objects.get_or_create(
+                conversation=ai_conv,
+                role="user",
+                content="How do I submit my SIWES Form 08 and what evidence does the department require for the 400L Microservices milestone?",
+            )
+
+            AICoachMessage.objects.get_or_create(
+                conversation=ai_conv,
+                role="assistant",
+                content="""Based on the **FUTMinna SIWES Industrial Training Policy Handbook** and your **Full-Stack Cloud & DevOps Pathway Rubric**:
+
+1. **SIWES Form 08 Clearance [1]**:
+   - Collect the physical ITCC Form 08 from the Directorate of SIWES (Bosso/Gidan Kwano campus).
+   - Ensure your Industry-Based Supervisor endorses your weekly logbook entries with their official company stamp.
+   - Submit the scanned signed Form 08 via your portal before the 16th week of training.
+
+2. **400L Microservices Milestone Evidence [2]**:
+   - Provide a public GitHub repository with a `docker-compose.yml` orchestrating at least two containerized services and a PostgreSQL database.
+   - Include clear API endpoint documentation in your `README.md` and evidence of health check endpoints.
+   - Your Departmental SIWES Coordinator will review the submission on your portal and award the **150 accredited employability points**.
+
+Would you like help drafting your repository README or structuring your weekly SIWES logbook remarks?""",
+                citations=[
+                    {
+                        "source_index": 1,
+                        "citation_label": "[1]",
+                        "document_title": "FUTMinna Student Handbook & SIWES Guidelines",
+                        "section_reference": "Section 4.2 - ITCC Form 08 Submission",
+                        "page_number": 14,
+                    },
+                    {
+                        "source_index": 2,
+                        "citation_label": "[2]",
+                        "document_title": "Department of Software Engineering 400L Rubric",
+                        "section_reference": "Milestone SWE-401 - Microservices Architecture",
+                        "page_number": 3,
+                    },
+                ],
+            )
+
+            # =================================================================
+            # 8. Seed Sample Counsellor Session & Case Note (Amina Bello)
+            # =================================================================
+            counsellor_staff = InstitutionStaff.objects.filter(institution=futminna, user__email="csc@futminna.edu.ng").first()
+            if counsellor_staff:
+                from datetime import date
+                session_obj, _ = CounsellingSession.objects.get_or_create(
+                    student=amina,
+                    topic=CounsellingTopic.SIWES_CLEARANCE,
+                    defaults={
+                        "counsellor": counsellor_staff,
+                        "student_notes": "Seeking advice on SIWES placement defense preparation and employer recommendations in Abuja/Lagos.",
+                        "status": CounsellingSessionStatus.CONFIRMED,
+                        "preferred_date": date(2026, 8, 20),
+                        "preferred_time_slot": "11:00 AM - 11:45 AM",
+                        "meeting_mode": "IN_PERSON",
+                        "meeting_location": "School of ICT Deanery Boardroom, Gidan Kwano",
+                    },
+                )
+
+                CounsellingCaseNote.objects.get_or_create(
+                    session=session_obj,
+                    student=amina,
+                    author=counsellor_staff,
+                    defaults={
+                        "summary": "Reviewed Amina's Holland Code (IRC) and exceptional Big Five Conscientiousness (94%). Discussed SIWES placement at a fintech cloud infrastructure team. Student has completed 300 pts in the SWE roadmap.",
+                        "action_items": [
+                            {"task": "Prepare Docker compose repository evidence for Step 4 milestone", "due_date": "2026-08-25", "done": True},
+                            {"task": "Collect SIWES Form 08 employer signature before mid-term inspection", "due_date": "2026-09-05", "done": False},
+                        ],
+                        "is_confidential": True,
+                    },
+                )
+
+        self.stdout.write(self.style.SUCCESS("✓ Successfully seeded all 4 institutions, scoped staff assignments, psychometric item banks, student diagnostic profiles, AI coach conversations, and counselling appointments with password: '1234!@#$'!"))
+

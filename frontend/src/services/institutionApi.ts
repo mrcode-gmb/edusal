@@ -648,7 +648,208 @@ export const institutionApi = {
     if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to review submission`);
     return res.json();
   },
+
+  // =========================================================================
+  // Diagnostic Assessments & Psychometrics API
+  // =========================================================================
+
+  async listDiagnosticAssessments(token?: string): Promise<import('../types/institution').DiagnosticAssessment[]> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/diagnostic-assessments/`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch diagnostic assessments`);
+    return res.json();
+  },
+
+  async getDiagnosticAssessment(slug: string, token?: string): Promise<import('../types/institution').DiagnosticAssessment> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/diagnostic-assessments/${slug}/`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch assessment details`);
+    return res.json();
+  },
+
+  async getAssessmentQuestions(slug: string, token?: string): Promise<import('../types/institution').DiagnosticQuestion[]> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/diagnostic-assessments/${slug}/questions/`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch assessment questions`);
+    return res.json();
+  },
+
+  async submitAssessment(
+    assessmentId: string,
+    rawResponses: Record<string, number | string>,
+    studentId?: string,
+    token?: string
+  ): Promise<import('../types/institution').StudentAssessmentSession> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/student-assessments/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ assessment_id: assessmentId, raw_responses: rawResponses, student_id: studentId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || err.error || `HTTP ${res.status}: Failed to evaluate assessment`);
+    }
+    return res.json();
+  },
+
+  async getMyAssessmentResults(token?: string): Promise<import('../types/institution').StudentAssessmentSession[]> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/student-assessments/my-results/`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch student assessment results`);
+    return res.json();
+  },
+
+  // =========================================================================
+  // 24/7 AI Career Coach API
+  // =========================================================================
+
+  async listAIConversations(studentId?: string, token?: string): Promise<import('../types/institution').AICoachConversation[]> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+    const query = studentId ? `?student_id=${studentId}` : '';
+    const res = await fetch(`${API_BASE}/api/ai-coach/conversations/${query}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch AI coach conversations`);
+    return res.json();
+  },
+
+  async createAIConversation(title?: string, studentId?: string, token?: string): Promise<import('../types/institution').AICoachConversation> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/ai-coach/conversations/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ title: title || 'Career & SIWES Advisory Session', student_id: studentId }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to create AI conversation`);
+    return res.json();
+  },
+
+  async getAIMessages(conversationId: string, token?: string): Promise<import('../types/institution').AICoachMessage[]> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/ai-coach/${conversationId}/messages/`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch AI messages`);
+    return res.json();
+  },
+
+  async sendAIMessage(conversationId: string, message: string, token?: string): Promise<import('../types/institution').AICoachMessage> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/ai-coach/${conversationId}/messages/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}: Failed to query AI Coach`);
+    }
+    return res.json();
+  },
+
+  // =========================================================================
+  // Seamless Counsellor Handoff & Booking API
+  // =========================================================================
+
+  async getMyCounsellingSessions(token?: string): Promise<import('../types/institution').CounsellingSession[]> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/counselling-sessions/my-sessions/`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch counselling sessions`);
+    return res.json();
+  },
+
+  async getAvailableCounsellors(institutionId?: string, departmentId?: string, token?: string): Promise<import('../types/institution').AvailableCounsellor[]> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+    const query = new URLSearchParams();
+    if (institutionId) query.append('institution', institutionId);
+    if (departmentId) query.append('department', departmentId);
+    const res = await fetch(`${API_BASE}/api/counselling-sessions/available-counsellors/?${query.toString()}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch available counsellors`);
+    return res.json();
+  },
+
+  async bookCounsellingSession(
+    payload: {
+      counsellor?: string;
+      topic: string;
+      student_notes?: string;
+      preferred_date: string;
+      preferred_time_slot: string;
+      meeting_mode: string;
+      meeting_location?: string;
+      student_id?: string;
+    },
+    token?: string
+  ): Promise<import('../types/institution').CounsellingSession> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/counselling-sessions/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || err.error || `HTTP ${res.status}: Failed to book counselling session`);
+    }
+    return res.json();
+  },
+
+  async confirmCounsellingSession(
+    sessionId: string,
+    payload: { status: string; scheduled_datetime?: string; meeting_location?: string },
+    token?: string
+  ): Promise<import('../types/institution').CounsellingSession> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/counselling-sessions/${sessionId}/confirm/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to confirm counselling session`);
+    return res.json();
+  },
+
+  async createCaseNote(
+    payload: {
+      student: string;
+      session?: string;
+      summary: string;
+      action_items?: import('../types/institution').ActionItem[];
+      is_confidential?: boolean;
+      author_id?: string;
+    },
+    token?: string
+  ): Promise<import('../types/institution').CounsellingCaseNote> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/counselling-case-notes/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to create counselling case note`);
+    return res.json();
+  },
+
+  async getStudentDossier(studentId: string, token?: string): Promise<import('../types/institution').StudentDossier> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/students/${studentId}/dossier/`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch student dossier`);
+    return res.json();
+  },
 };
+
 
 
 

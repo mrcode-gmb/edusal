@@ -4,6 +4,9 @@ import type { StudentDashboardData, AuthUser } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
 import { EmployabilityGaugeCard } from './EmployabilityGaugeCard';
 import { StudentRoadmapTimeline } from './StudentRoadmapTimeline';
+import { AssessmentCatalog } from './AssessmentCatalog';
+import { AICareerCoachChat } from './AICareerCoachChat';
+import { CounsellingSessionsTab } from './CounsellingSessionsTab';
 import { DashboardTheme, PageHead, Panel, StatCard, Badge } from '../institution/Shared';
 import { Chip, Drawer, IconButton, Tooltip } from '@mui/material';
 import {
@@ -19,20 +22,26 @@ import {
   Explore as CompassIcon,
   Verified as VerifiedIcon,
   EmojiEvents as EmojiEventsIcon,
+  Psychology as PsychologyIcon,
+  AutoAwesome as AutoAwesomeIcon,
+  SupportAgent as SupportAgentIcon,
 } from '@mui/icons-material';
 
 interface StudentDashboardProps {
-  currentUser?: AuthUser;
+  currentUser: AuthUser;
   authToken: string;
   onLogout: () => void;
 }
 
-type TabKey = 'overview' | 'employability' | 'roadmap';
+type TabKey = 'overview' | 'employability' | 'roadmap' | 'diagnostics' | 'ai_coach' | 'counselling';
 
 const TAB_PATHS: Record<TabKey, string> = {
   overview: 'overview',
   employability: 'employability',
   roadmap: 'career-roadmap',
+  diagnostics: 'diagnostics',
+  ai_coach: 'ai-career-coach',
+  counselling: 'counselling',
 };
 
 const PATH_TO_TAB: Record<string, TabKey> = Object.fromEntries(
@@ -52,6 +61,14 @@ const NavSections: {
     items: [
       { key: 'employability', label: 'Employability Quotient', icon: WorkspacePremiumIcon },
       { key: 'roadmap', label: 'Career Roadmap', icon: TimelineIcon },
+    ],
+  },
+  {
+    label: 'Career Growth',
+    items: [
+      { key: 'diagnostics', label: 'Diagnostic Assessments', icon: PsychologyIcon },
+      { key: 'ai_coach', label: 'AI Career Coach', icon: AutoAwesomeIcon },
+      { key: 'counselling', label: 'Counsellor Sessions', icon: SupportAgentIcon },
     ],
   },
 ];
@@ -94,7 +111,7 @@ export const StudentDashboard: FC<StudentDashboardProps> = ({
     loadDashboard();
   }, [authToken]);
 
-  const displayName = data?.profile.user_name || currentUser?.name || 'Student';
+  const displayName = data?.profile.user_name || currentUser.name || 'Student';
   const displayRole =
     data?.profile.level_display || data?.profile.award_level_display || 'Student';
   const initials = displayName.slice(0, 2).toUpperCase();
@@ -438,6 +455,25 @@ export const StudentDashboard: FC<StudentDashboardProps> = ({
                       </Panel>
                     )}
                   </>
+                )}
+
+                {activeTab === 'diagnostics' && (
+                  <AssessmentCatalog studentId={data.profile.id} authToken={authToken} />
+                )}
+
+                {activeTab === 'ai_coach' && (
+                  <AICareerCoachChat
+                    studentProfile={data.profile}
+                    activePathway={data.active_pathway}
+                    authToken={authToken}
+                  />
+                )}
+
+                {activeTab === 'counselling' && (
+                  <CounsellingSessionsTab
+                    studentProfile={data.profile}
+                    authToken={authToken}
+                  />
                 )}
               </>
             )}

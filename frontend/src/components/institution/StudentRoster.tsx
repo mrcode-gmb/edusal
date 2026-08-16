@@ -3,6 +3,7 @@ import type { StudentProfile, InstitutionHierarchyTree, AcademicSession } from '
 import { institutionApi } from '../../services/institutionApi';
 import { AddStudentModal } from './AddStudentModal';
 import { GenerateCredentialModal } from './GenerateCredentialModal';
+import { CounsellorDossierModal } from './CounsellorDossierModal';
 import {
   Button,
   Chip,
@@ -21,6 +22,7 @@ import {
   WorkOutlineOutlined as BriefcaseIcon,
   Key as KeyIcon,
   Close as CloseIcon,
+  Psychology as BrainIcon,
 } from '@mui/icons-material';
 import { PageHead, StatCard, Panel } from './Shared';
 
@@ -46,6 +48,7 @@ export const StudentRoster: FC<StudentRosterProps> = ({
   const [selectedYear, setSelectedYear] = useState<number | 'ALL'>('ALL');
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedStudentForCreds, setSelectedStudentForCreds] = useState<StudentProfile | null>(null);
+  const [selectedStudentForDossier, setSelectedStudentForDossier] = useState<string | null>(null);
 
 
   const loadStudents = async () => {
@@ -337,17 +340,31 @@ export const StudentRoster: FC<StudentRosterProps> = ({
                     <td className="py-3.5 pr-4 text-sm font-bold text-charcoal">
                       {std.cgpa !== null && std.cgpa !== undefined ? Number(std.cgpa).toFixed(2) : '—'}
                     </td>
-                    <td className="py-3.5">
-                      <Button
-                        variant="outlined"
-                        color="inherit"
-                        size="small"
-                        startIcon={<KeyIcon sx={{ fontSize: 14 }} />}
-                        onClick={() => setSelectedStudentForCreds(std)}
-                        sx={{ color: 'primary.main', borderColor: 'primary.main' }}
-                      >
-                        Email Password
-                      </Button>
+<td className="py-3.5">
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          variant="outlined"
+                          color="inherit"
+                          size="small"
+                          startIcon={<BrainIcon sx={{ fontSize: 14 }} />}
+                          onClick={() => setSelectedStudentForDossier(std.id)}
+                          title="View 360° student dossier, psychometric radar, and case notes"
+                          sx={{ color: 'primary.main', borderColor: 'primary.main' }}
+                        >
+                          360° Dossier
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="inherit"
+                          size="small"
+                          startIcon={<KeyIcon sx={{ fontSize: 14 }} />}
+                          onClick={() => setSelectedStudentForCreds(std)}
+                          title="Generate password and email credentials"
+                          sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+                        >
+                          Email Password
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -374,6 +391,15 @@ export const StudentRoster: FC<StudentRosterProps> = ({
           student={selectedStudentForCreds}
           authToken={authToken}
           onSuccess={loadStudents}
+        />
+      )}
+
+      {/* 360 Student Dossier Modal */}
+      {selectedStudentForDossier && (
+        <CounsellorDossierModal
+          studentId={selectedStudentForDossier}
+          authToken={authToken || undefined}
+          onClose={() => setSelectedStudentForDossier(null)}
         />
       )}
     </div>
