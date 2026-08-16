@@ -234,11 +234,10 @@ function Navbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 border-b transition-all ${
-        scrolled
+      className={`sticky top-0 z-50 border-b transition-all ${scrolled
           ? 'border-line bg-white/85 shadow-card backdrop-blur-md'
           : 'border-transparent bg-transparent'
-      }`}
+        }`}
     >
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center px-5 sm:px-8 md:h-[72px] lg:px-10">
         <Link to="/" className="flex shrink-0 items-center">
@@ -1309,11 +1308,10 @@ function Workspaces() {
                 key={w.key}
                 type="button"
                 onClick={() => setTab(i)}
-                className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors ${
-                  selected
+                className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors ${selected
                     ? 'bg-primary text-white shadow-card'
                     : 'bg-transparent text-charcoal-soft hover:bg-primary-soft hover:text-primary'
-                }`}
+                  }`}
               >
                 <TabIcon sx={{ fontSize: 18 }} />
                 {w.label}
