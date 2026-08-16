@@ -6,6 +6,7 @@ interface NavbarProps {
   loading: boolean;
   onOpenBooking: () => void;
   onOpenScoreModal: () => void;
+  onOpenInstitutionPortal: () => void;
 }
 
 export const Navbar: FC<NavbarProps> = ({
@@ -13,6 +14,7 @@ export const Navbar: FC<NavbarProps> = ({
   loading,
   onOpenBooking,
   onOpenScoreModal,
+  onOpenInstitutionPortal,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -97,9 +99,9 @@ export const Navbar: FC<NavbarProps> = ({
           <button
             type="button"
             className="btn btn-secondary-sm d-none-mobile"
-            onClick={onOpenScoreModal}
+            onClick={onOpenInstitutionPortal}
           >
-            How It Works
+            🏛️ Institutional Portal
           </button>
 
           <button
@@ -146,6 +148,16 @@ export const Navbar: FC<NavbarProps> = ({
             <button
               type="button"
               className="mobile-nav-item highlight"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenInstitutionPortal();
+              }}
+            >
+              🏛️ Open Institutional Governance Portal
+            </button>
+            <button
+              type="button"
+              className="mobile-nav-item"
               onClick={() => {
                 setMobileMenuOpen(false);
                 onOpenScoreModal();

@@ -103,6 +103,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "edusal.users",
     "edusal.core",
+    "edusal.institutions",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

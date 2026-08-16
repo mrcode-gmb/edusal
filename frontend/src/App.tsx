@@ -13,10 +13,12 @@ import { WalkthroughBooking } from './components/WalkthroughBooking';
 import { Footer } from './components/Footer';
 import { ScoreExplainerModal } from './components/ScoreExplainerModal';
 import { PartnerModal } from './components/PartnerModal';
+import { InstitutionDashboard } from './components/institution/InstitutionDashboard';
 import type { HealthResponse } from './types';
 import './App.css';
 
 export default function App() {
+  const [currentView, setCurrentView] = useState<'landing' | 'institution'>('landing');
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [scoreModalOpen, setScoreModalOpen] = useState<boolean>(false);
@@ -52,6 +54,10 @@ export default function App() {
     }
   };
 
+  if (currentView === 'institution') {
+    return <InstitutionDashboard onBackToLanding={() => setCurrentView('landing')} />;
+  }
+
   return (
     <div className="app-root">
       {/* Top Navbar */}
@@ -60,6 +66,7 @@ export default function App() {
         loading={loading}
         onOpenBooking={handleScrollToBooking}
         onOpenScoreModal={() => setScoreModalOpen(true)}
+        onOpenInstitutionPortal={() => setCurrentView('institution')}
       />
 
       {/* Main Content Sections */}
