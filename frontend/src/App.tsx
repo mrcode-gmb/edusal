@@ -1,219 +1,125 @@
 import { useState, useEffect } from 'react';
+import { Navbar } from './components/Navbar';
+import { Hero } from './components/Hero';
+import { FoundingPartnerStrip } from './components/FoundingPartnerStrip';
+import { OutcomesFraming } from './components/OutcomesFraming';
+import { CoreCapabilities } from './components/CoreCapabilities';
+import { WorkspacesSection } from './components/WorkspacesSection';
+import { AiAssistantDemo } from './components/AiAssistantDemo';
+import { InstitutionalOversight } from './components/InstitutionalOversight';
+import { SocialProof } from './components/SocialProof';
+import { ProfessionalAlignment } from './components/ProfessionalAlignment';
+import { WalkthroughBooking } from './components/WalkthroughBooking';
+import { Footer } from './components/Footer';
+import { ScoreExplainerModal } from './components/ScoreExplainerModal';
+import { PartnerModal } from './components/PartnerModal';
+import type { HealthResponse } from './types';
 import './App.css';
-
-interface HealthResponse {
-  status: string;
-  service: string;
-  database: string;
-  pgvector: string;
-  message: string;
-}
 
 export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [latency, setLatency] = useState<number | null>(null);
-  const [lastChecked, setLastChecked] = useState<string>('');
+  const [scoreModalOpen, setScoreModalOpen] = useState<boolean>(false);
+  const [partnerModalOpen, setPartnerModalOpen] = useState<boolean>(false);
 
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 
-  const checkHealth = async () => {
-    setLoading(true);
-    setError(null);
-    const start = performance.now();
+  const checkApiHealth = async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/health/`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      const data: HealthResponse = await response.json();
-      const elapsed = Math.round(performance.now() - start);
-      setHealth(data);
-      setLatency(elapsed);
-      setLastChecked(new Date().toLocaleTimeString());
-    } catch (err: unknown) {
-      const elapsed = Math.round(performance.now() - start);
-      setLatency(elapsed);
-      setHealth(null);
-      if (err instanceof Error) {
-        setError(err.message);
+      setLoading(true);
+      const res = await fetch(`${apiUrl}/api/health/`);
+      if (res.ok) {
+        const data = await res.json();
+        setHealth(data);
       } else {
-        setError('Failed to connect to backend');
+        setHealth(null);
       }
-      setLastChecked(new Date().toLocaleTimeString());
+    } catch {
+      setHealth(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    checkHealth();
+    checkApiHealth();
   }, []);
 
-  const isHealthy = health && health.status === 'ok';
+  const handleScrollToBooking = () => {
+    const el = document.getElementById('booking-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
-    <div className="container">
-      {/* Header */}
-      <header className="header">
-        <div className="brand-badge">Edusal Platform</div>
-        <h1 className="title">Edusal Full-Stack Starter</h1>
-        <p className="subtitle">
-          Django REST Framework backend + PostgreSQL with pgvector + Celery + React frontend
-        </p>
-      </header>
+    <div className="app-root">
+      {/* Top Navbar */}
+      <Navbar
+        health={health}
+        loading={loading}
+        onOpenBooking={handleScrollToBooking}
+        onOpenScoreModal={() => setScoreModalOpen(true)}
+      />
 
-      {/* Main Connection Status Card */}
-      <section className="status-card">
-        <div className="status-header">
-          <div className="status-title-row">
-            <span className={`status-indicator ${loading ? 'loading' : isHealthy ? 'healthy' : 'unhealthy'}`} />
-            <h2>System Health & Connectivity</h2>
-          </div>
-          <button
-            type="button"
-            className="refresh-button"
-            onClick={checkHealth}
-            disabled={loading}
-          >
-            {loading ? 'Checking...' : 'Refresh Status'}
-          </button>
-        </div>
+      {/* Main Content Sections */}
+      <main>
+        {/* 1. Hero Section */}
+        <Hero
+          onOpenBooking={handleScrollToBooking}
+          onOpenScoreModal={() => setScoreModalOpen(true)}
+        />
 
-        {loading && !health && !error && (
-          <div className="loading-state">
-            <div className="spinner"></div>
-            <p>Pinging Django API at <code>{apiUrl}/api/health/</code>...</p>
-          </div>
-        )}
+        {/* 2. Founding Partner Strip */}
+        <FoundingPartnerStrip
+          onOpenPartnerModal={() => setPartnerModalOpen(true)}
+        />
 
-        {error && (
-          <div className="error-banner">
-            <div className="error-icon">⚠️</div>
-            <div className="error-content">
-              <strong>Connection Issue:</strong> {error}
-              <p className="error-hint">
-                Ensure Docker containers are running (<code>docker compose -f docker-compose.local.yml up -d</code>) on port 8001.
-              </p>
-            </div>
-          </div>
-        )}
+        {/* 3. Outcomes Framing (Three Columns, Zero Fake Numbers) */}
+        <OutcomesFraming />
 
-        {health && (
-          <div className="status-grid">
-            <div className="metric-item">
-              <span className="metric-label">API Status</span>
-              <span className="metric-value status-tag-ok">
-                ✓ {health.status.toUpperCase()}
-              </span>
-            </div>
+        {/* 4. Core Capabilities (Pathways, Counselling, Employer Pipeline) */}
+        <CoreCapabilities />
 
-            <div className="metric-item">
-              <span className="metric-label">PostgreSQL Database</span>
-              <span className={`metric-value ${health.database === 'ok' ? 'status-tag-ok' : 'status-tag-warn'}`}>
-                {health.database === 'ok' ? '✓ Connected' : health.database}
-              </span>
-            </div>
+        {/* 5. Four Workspaces, One Record */}
+        <WorkspacesSection />
 
-            <div className="metric-item">
-              <span className="metric-label">pgvector Extension</span>
-              <span className="metric-value status-tag-ok">
-                ✓ {health.pgvector}
-              </span>
-            </div>
+        {/* 6. Grounded AI Assistant Demo */}
+        <AiAssistantDemo />
 
-            <div className="metric-item">
-              <span className="metric-label">Roundtrip Latency</span>
-              <span className="metric-value">
-                {latency !== null ? `${latency} ms` : '—'}
-              </span>
-            </div>
-          </div>
-        )}
+        {/* 7. Institutional Oversight & Taxonomy */}
+        <InstitutionalOversight />
 
-        <div className="status-footer">
-          <span>Backend Target: <code>{apiUrl}</code></span>
-          {lastChecked && <span>Last verified: {lastChecked}</span>}
-        </div>
-      </section>
+        {/* 8. Social Proof & Early Partner Advisory Voice */}
+        <SocialProof
+          onOpenPartnerModal={() => setPartnerModalOpen(true)}
+        />
 
-      {/* Quick Access Links */}
-      <section className="links-section">
-        <h3 className="section-title">Quick Developer Links</h3>
-        <div className="cards-grid">
-          <a
-            href={`${apiUrl}/api/docs/`}
-            target="_blank"
-            rel="noreferrer"
-            className="link-card"
-          >
-            <div className="card-header">
-              <span className="card-badge">Swagger / OpenAPI</span>
-              <span className="card-arrow">↗</span>
-            </div>
-            <h4>Interactive API Docs</h4>
-            <p>Explore all available endpoints via OpenAPI Swagger UI schema.</p>
-          </a>
+        {/* 9. Professional Alignment */}
+        <ProfessionalAlignment />
 
-          <a
-            href={`${apiUrl}/admin/`}
-            target="_blank"
-            rel="noreferrer"
-            className="link-card"
-          >
-            <div className="card-header">
-              <span className="card-badge">Django Admin</span>
-              <span className="card-arrow">↗</span>
-            </div>
-            <h4>Administration Portal</h4>
-            <p>Log in with your superuser account to manage models and users.</p>
-          </a>
+        {/* 10. Walkthrough Booking & Closing CTA with Trust Strip */}
+        <WalkthroughBooking />
+      </main>
 
-          <a
-            href="http://localhost:8025"
-            target="_blank"
-            rel="noreferrer"
-            className="link-card"
-          >
-            <div className="card-header">
-              <span className="card-badge">Mailpit</span>
-              <span className="card-arrow">↗</span>
-            </div>
-            <h4>Email Sandbox</h4>
-            <p>Inspect outgoing transactional emails and verification tokens locally.</p>
-          </a>
+      {/* 11. Footer */}
+      <Footer
+        health={health}
+        onOpenScoreModal={() => setScoreModalOpen(true)}
+        onOpenPartnerModal={() => setPartnerModalOpen(true)}
+      />
 
-          <a
-            href="http://localhost:5555"
-            target="_blank"
-            rel="noreferrer"
-            className="link-card"
-          >
-            <div className="card-header">
-              <span className="card-badge">Flower</span>
-              <span className="card-arrow">↗</span>
-            </div>
-            <h4>Celery Task Dashboard</h4>
-            <p>Monitor asynchronous worker tasks, queues, and background jobs.</p>
-          </a>
-        </div>
-      </section>
+      {/* Modals */}
+      <ScoreExplainerModal
+        isOpen={scoreModalOpen}
+        onClose={() => setScoreModalOpen(false)}
+        onOpenBooking={handleScrollToBooking}
+      />
 
-      {/* Tech Stack Summary */}
-      <section className="tech-stack-section">
-        <h3 className="section-title">Architecture & Tech Stack</h3>
-        <div className="tech-pills">
-          <span className="tech-pill">Django 6.0</span>
-          <span className="tech-pill">Django REST Framework</span>
-          <span className="tech-pill">PostgreSQL 16</span>
-          <span className="tech-pill">pgvector</span>
-          <span className="tech-pill">Celery + Redis</span>
-          <span className="tech-pill">React 19 + TypeScript</span>
-          <span className="tech-pill">Vite</span>
-          <span className="tech-pill">Docker Compose</span>
-        </div>
-      </section>
+      <PartnerModal
+        isOpen={partnerModalOpen}
+        onClose={() => setPartnerModalOpen(false)}
+      />
     </div>
   );
 }
