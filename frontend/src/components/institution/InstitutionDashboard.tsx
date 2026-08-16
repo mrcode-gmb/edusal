@@ -116,10 +116,11 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
   const activeTab: TabKey = PATH_TO_TAB[pathSeg] || 'pulse';
 
   useEffect(() => {
-    if (!PATH_TO_TAB[pathSeg]) {
+    const isStaff = !!currentUser && !currentUser.student_profile;
+    if (isStaff && !PATH_TO_TAB[pathSeg]) {
       navigate(`/portal/institution/${TAB_PATHS.pulse}`, { replace: true });
     }
-  }, [pathSeg, navigate]);
+  }, [pathSeg, navigate, currentUser]);
 
   // Hierarchy & Governance Data
   const [tree, setTree] = useState<InstitutionHierarchyTree | null>(null);
