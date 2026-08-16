@@ -1,14 +1,13 @@
 import { useState, useEffect, type FC } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import type {
   InstitutionSummary,
   InstitutionHierarchyTree,
   GovernanceSummary,
   InstitutionalDocument,
-  LoginResponse,
-  AuthUser,
 } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
-import { InstitutionLogin } from './InstitutionLogin';
+import { useAuth } from '../../context/AuthContext';
 import { GovernancePulse } from './GovernancePulse';
 import { AcademicHierarchyTree } from './AcademicHierarchyTree';
 import { KnowledgeBaseManager } from './KnowledgeBaseManager';
@@ -29,24 +28,34 @@ import {
   FileTextIcon,
 } from '../icons';
 
-interface InstitutionDashboardProps {
-  onBackToLanding: () => void;
-}
-
-export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLanding }) => {
-  // Authentication State
-  const [authToken, setAuthToken] = useState<string | null>(() => {
-    return localStorage.getItem('edusal_auth_token') || null;
-  });
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
-    const saved = localStorage.getItem('edusal_auth_user');
-    return saved ? JSON.parse(saved) : null;
-  });
+export const InstitutionDashboard: FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { authToken, currentUser, logout } = useAuth();
 
   // Institution State locked to the logged-in staff member's institution
   const [institution, setInstitution] = useState<InstitutionSummary | null>(null);
   const selectedInstId = currentUser?.staff_profile?.institution || '';
-  const [activeTab, setActiveTab] = useState<'pulse' | 'tree' | 'kb' | 'staff'>('pulse');
+
+  // Determine active tab directly from URL path
+  const getTabFromPath = (path: string): 'pulse' | 'tree' | 'kb' | 'staff' => {
+    if (path.includes('/structure') || path.includes('/tree')) return 'tree';
+    if (path.includes('/documents') || path.includes('/kb')) return 'kb';
+    if (path.includes('/staff')) return 'staff';
+    return 'pulse';
+  };
+
+  const activeTab = getTabFromPath(location.pathname);
+
+  const handleTabChange = (tab: 'pulse' | 'tree' | 'kb' | 'staff') => {
+    const routeMap = {
+      pulse: '/institution/pulse',
+      tree: '/institution/structure',
+      kb: '/institution/documents',
+      staff: '/institution/staff',
+    };
+    navigate(routeMap[tab]);
+  };
 
   // Hierarchy & Governance Data
   const [tree, setTree] = useState<InstitutionHierarchyTree | null>(null);
@@ -62,27 +71,10 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
   const [selectedDeptForProg, setSelectedDeptForProg] = useState<string>('');
   const [showSenateModal, setShowSenateModal] = useState(false);
 
-  // Handle Login Success
-  const handleLoginSuccess = (authData: LoginResponse) => {
-    setAuthToken(authData.token);
-    setCurrentUser(authData.user);
-    localStorage.setItem('edusal_auth_token', authData.token);
-    localStorage.setItem('edusal_auth_user', JSON.stringify(authData.user));
-  };
-
   // Handle Logout
   const handleLogout = async () => {
-    if (authToken) {
-      await institutionApi.logout(authToken).catch(() => {});
-    }
-    setAuthToken(null);
-    setCurrentUser(null);
-    setInstitution(null);
-    setTree(null);
-    setSummary(null);
-    setDocuments([]);
-    localStorage.removeItem('edusal_auth_token');
-    localStorage.removeItem('edusal_auth_user');
+    await logout();
+    navigate('/institution/login');
   };
 
   // Load single institution data strictly matching current logged-in user
@@ -115,14 +107,8 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
     }
   }, [selectedInstId, authToken]);
 
-  // If not logged in, render the login view
-  if (!authToken || !currentUser) {
-    return (
-      <InstitutionLogin
-        onLoginSuccess={handleLoginSuccess}
-        onBackToLanding={onBackToLanding}
-      />
-    );
+  if (!currentUser) {
+    return null;
   }
 
   // Handlers for adding division/department/program
@@ -190,7 +176,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
       {/* Top Portal Navigation Bar */}
       <header className="portal-navbar">
         <div className="portal-nav-left">
-          <button type="button" className="btn-back-link" onClick={onBackToLanding}>
+          <button type="button" className="btn-back-link" onClick={() => navigate('/')}>
             <ArrowLeftIcon size={14} /> Back to Landing
           </button>
           <div className="portal-brand-block">
@@ -265,33 +251,33 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({ onBackToLa
               </div>
             </div>
 
-            {/* View Tabs */}
+            {/* View Tabs with URL-backed Navigation */}
             <div className="portal-tabs">
               <button
                 type="button"
                 className={`portal-tab ${activeTab === 'pulse' ? 'active' : ''}`}
-                onClick={() => setActiveTab('pulse')}
+                onClick={() => handleTabChange('pulse')}
               >
                 <BarChartIcon size={16} /> Governance Pulse
               </button>
               <button
                 type="button"
                 className={`portal-tab ${activeTab === 'tree' ? 'active' : ''}`}
-                onClick={() => setActiveTab('tree')}
+                onClick={() => handleTabChange('tree')}
               >
                 <FolderTreeIcon size={16} /> 4-Tier Hierarchy Explorer
               </button>
               <button
                 type="button"
                 className={`portal-tab ${activeTab === 'kb' ? 'active' : ''}`}
-                onClick={() => setActiveTab('kb')}
+                onClick={() => handleTabChange('kb')}
               >
                 <DatabaseIcon size={16} /> Knowledge Base & Citation Tester
               </button>
               <button
                 type="button"
                 className={`portal-tab ${activeTab === 'staff' ? 'active' : ''}`}
-                onClick={() => setActiveTab('staff')}
+                onClick={() => handleTabChange('staff')}
               >
                 <UsersIcon size={16} /> Staff & Evaluators
               </button>

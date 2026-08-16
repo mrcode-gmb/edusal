@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, type FC, type FormEvent } from 'react';
 import type { InstitutionStaff, AcademicDivision, Department } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
 import {
@@ -35,7 +35,8 @@ export const StaffDirectory: FC<StaffDirectoryProps> = ({
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (!institutionId) return;
     setLoading(true);
     try {
       const [staffData, divData, deptData] = await Promise.all([
@@ -51,11 +52,11 @@ export const StaffDirectory: FC<StaffDirectoryProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [institutionId]);
 
   useEffect(() => {
     loadData();
-  }, [institutionId]);
+  }, [loadData]);
 
   const handleCreateStaff = async (e: FormEvent) => {
     e.preventDefault();
