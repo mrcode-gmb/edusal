@@ -1,20 +1,18 @@
 import { useState, useEffect, useRef, type FC, type FormEvent } from 'react';
-import type {
-  AICoachConversation,
-  AICoachMessage,
-  StudentProfile,
-  Pathway,
-} from '../../types/institution';
+import type { AICoachConversation, AICoachMessage, StudentProfile, Pathway } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
+import { PageHead, Panel, Badge } from '../institution/Shared';
+import { Button, TextField } from '@mui/material';
 import {
-  SparklesIcon,
-  ShieldCheckIcon,
-  FileTextIcon,
-  SendIcon,
-  ClockIcon,
-  PlusIcon,
-  AlertCircleIcon,
-} from '../icons';
+  SmartToy as CoachIcon,
+  Shield as ShieldCheckIcon,
+  Description as FileTextIcon,
+  Send as SendIcon,
+  AccessTime as ClockIcon,
+  Add as PlusIcon,
+  ChatBubbleOutlined as ChatBubbleIcon,
+  WorkspacePremium as PremiumIcon,
+} from '@mui/icons-material';
 
 interface AICareerCoachChatProps {
   studentProfile: StudentProfile;
@@ -55,7 +53,6 @@ export const AICareerCoachChat: FC<AICareerCoachChatProps> = ({
         const msgs = await institutionApi.getAIMessages(firstId, authToken);
         setMessages(msgs);
       } else {
-        // Create initial conversation automatically
         const newConv = await institutionApi.createAIConversation(
           'Career & SIWES Advisory Session',
           studentProfile.id,
@@ -115,7 +112,6 @@ export const AICareerCoachChat: FC<AICareerCoachChatProps> = ({
     setSending(true);
     setError(null);
 
-    // Optimistically append student message
     const tempUserMsg: AICoachMessage = {
       id: `temp-${Date.now()}`,
       conversation: activeConvId,
@@ -142,164 +138,202 @@ export const AICareerCoachChat: FC<AICareerCoachChatProps> = ({
   };
 
   return (
-    <div className="ai-coach-wrapper">
-      {/* Top Identity & Grounding Banner */}
-      <div className="coach-identity-strip">
-        <div className="coach-identity-left">
-          <div className="coach-spark-badge">
-            <SparklesIcon size={18} color="#38bdf8" />
-          </div>
-          <div>
-            <div className="coach-strip-tags">
-              <span className="strip-tag-live">24/7 Grounded AI Coach</span>
-              <span className="strip-tag-inst">{studentProfile.institution_name}</span>
-            </div>
-            <h3 className="coach-strip-title">
-              Personalized for {studentProfile.user_name} · {studentProfile.program_name} ({studentProfile.level_display})
-            </h3>
-          </div>
-        </div>
-
-        <div className="coach-identity-right">
-          <div className="coach-stat-pill">
-            <span className="pill-label">Active Pathway:</span>
-            <span className="pill-val">{activePathway?.title || 'General STEM'}</span>
-          </div>
-          <div className="coach-stat-pill score-pill">
-            <span className="pill-label">Employability Score:</span>
-            <span className="pill-val">{studentProfile.employability_score.toFixed(1)}%</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="coach-main-grid">
-        {/* Left Conversation Threads Sidebar */}
-        <aside className="coach-threads-sidebar">
-          <div className="sidebar-header">
-            <h4>Advisory History</h4>
-            <button
-              type="button"
-              className="btn btn-secondary-sm btn-new-thread"
+    <div>
+      <PageHead
+        eyebrow="24/7 Grounded AI Coach"
+        title="Personalized Institutional AI Career Coach"
+        sub={`Personalized for ${studentProfile.user_name} · ${studentProfile.program_name} (${studentProfile.level_display})`}
+        actions={
+          <>
+            <Badge color="var(--color-charcoal)" bg="rgba(31,41,51,0.08)">
+              Active Pathway: {activePathway?.title || 'General STEM'}
+            </Badge>
+            <Badge color="#fff" bg="var(--color-primary)">
+              <PremiumIcon sx={{ fontSize: 12, mr: 0.5 }} />
+              Employability: {Number(studentProfile.employability_score || 0).toFixed(1)}%
+            </Badge>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<PlusIcon />}
               onClick={handleNewConversation}
             >
-              <PlusIcon size={14} /> New Chat
-            </button>
-          </div>
+              New Chat
+            </Button>
+          </>
+        }
+      />
 
-          <div className="threads-list">
-            {conversations.map((conv) => (
-              <div
-                key={conv.id}
-                className={`thread-item ${conv.id === activeConvId ? 'active' : ''}`}
-                onClick={() => handleSelectConversation(conv.id)}
-              >
-                <div className="thread-title-row">
-                  <span className="thread-title">{conv.title}</span>
-                </div>
-                <div className="thread-meta-row">
-                  <span className="thread-date">
-                    <ClockIcon size={11} /> {new Date(conv.created_at).toLocaleDateString()}
-                  </span>
-                  <span className="thread-msg-count">{conv.messages_count || 1} turns</span>
-                </div>
-              </div>
-            ))}
-          </div>
+      {error && (
+        <div className="mb-4 rounded-[15px] bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
-          <div className="sidebar-security-badge">
-            <ShieldCheckIcon size={14} color="#0284c7" />
-            <span>Grounded strictly in institutional handbooks with zero web hallucination.</span>
-          </div>
+      <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
+        <aside>
+          <Panel className="flex h-full flex-col">
+            <p className="flex items-center gap-2 text-base font-bold text-charcoal">
+              <ChatBubbleIcon sx={{ fontSize: 18, color: 'primary.main' }} />
+              Advisory History
+            </p>
+
+            <div className="mt-4 flex-1 space-y-2">
+              {conversations.map((conv) => {
+                const isActive = conv.id === activeConvId;
+                return (
+                  <button
+                    key={conv.id}
+                    type="button"
+                    onClick={() => handleSelectConversation(conv.id)}
+                    className={`w-full rounded-[15px] px-3.5 py-3 text-left transition-colors ${
+                      isActive ? 'bg-primary-soft' : 'bg-bgsoft hover:bg-primary-faint'
+                    }`}
+                  >
+                    <span
+                      className={`block truncate text-sm font-bold ${
+                        isActive ? 'text-primary' : 'text-charcoal'
+                      }`}
+                    >
+                      {conv.title}
+                    </span>
+                    <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-charcoal-faint">
+                      <ClockIcon sx={{ fontSize: 11 }} />
+                      {new Date(conv.created_at).toLocaleDateString()}
+                      <span className="ml-auto">
+                        {conv.messages_count || 1} turns
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 flex items-start gap-2 rounded-[15px] bg-primary-faint p-3.5">
+              <ShieldCheckIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.25 }} />
+              <p className="text-xs text-charcoal-soft">
+                Grounded strictly in institutional handbooks with zero web hallucination.
+              </p>
+            </div>
+          </Panel>
         </aside>
 
-        {/* Right Active Chat Workspace */}
-        <div className="coach-chat-area">
-          {error && (
-            <div className="login-alert-error" style={{ margin: '14px 20px 0 20px' }}>
-              <AlertCircleIcon size={15} color="#dc2626" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Messages Scroll View */}
-          <div className="coach-messages-scroll">
+        <Panel className="flex flex-col">
+          <div className="h-[520px] space-y-4 overflow-y-auto pr-2">
             {messages.map((msg) => {
               const isUser = msg.role === 'user';
               return (
-                <div key={msg.id} className={`chat-message-row ${isUser ? 'user-row' : 'assistant-row'}`}>
-                  <div className="message-bubble-wrapper">
-                    <div className="message-avatar">
-                      {isUser ? (
-                        <span className="user-initials">{studentProfile.user_name?.charAt(0) || 'S'}</span>
-                      ) : (
-                        <SparklesIcon size={16} color="#0284c7" />
-                      )}
+                <div
+                  key={msg.id}
+                  className={`flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''}`}
+                >
+                  <span
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                      isUser ? 'bg-charcoal text-white' : 'bg-primary-soft text-primary'
+                    }`}
+                  >
+                    {isUser ? (
+                      <span className="text-xs font-extrabold">
+                        {studentProfile.user_name?.charAt(0) || 'S'}
+                      </span>
+                    ) : (
+                      <CoachIcon sx={{ fontSize: 18 }} />
+                    )}
+                  </span>
+
+                  <div
+                    className={`max-w-[78%] rounded-[15px] px-4 py-3 ${
+                      isUser
+                        ? 'rounded-br-md bg-primary text-white'
+                        : 'rounded-bl-md bg-bgsoft text-charcoal'
+                    }`}
+                  >
+                    <div
+                      className={`mb-1 flex items-center gap-2 text-xs font-bold ${
+                        isUser ? 'text-white/80' : 'text-charcoal-faint'
+                      }`}
+                    >
+                      <span className="text-charcoal">
+                        {isUser ? 'You (Student)' : 'EduSal Institutional AI Coach'}
+                      </span>
+                      <span>
+                        {new Date(msg.created_at).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
                     </div>
 
-                    <div className={`message-bubble ${isUser ? 'user-bubble' : 'assistant-bubble'}`}>
-                      <div className="bubble-sender-row">
-                        <strong>{isUser ? 'You (Student)' : 'EduSal Institutional AI Coach'}</strong>
-                        <span className="msg-timestamp">
-                          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-
-                      <div className="bubble-text">
-                        {msg.content.split('\n\n').map((para, idx) => (
-                          <p key={idx}>{para}</p>
-                        ))}
-                      </div>
-
-                      {/* Grounded Document Citations */}
-                      {msg.citations && msg.citations.length > 0 && (
-                        <div className="message-citations-block">
-                          <div className="citations-header">
-                            <FileTextIcon size={13} color="#0284c7" />
-                            <span>Grounded Institutional Sources:</span>
-                          </div>
-                          <div className="citations-list">
-                            {msg.citations.map((cite, idx) => (
-                              <div key={idx} className="citation-chip">
-                                <span className="cite-index">{cite.citation_label}</span>
-                                <span className="cite-doc-title">{cite.document_title}</span>
-                                {cite.section_reference && (
-                                  <span className="cite-sec">· {cite.section_reference}</span>
-                                )}
-                                {cite.page_number && (
-                                  <span className="cite-page">p.{cite.page_number}</span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Telemetry metadata */}
-                      {msg.telemetry && (
-                        <div className="message-telemetry-row">
-                          <span>Model: {msg.telemetry.model}</span>
-                          <span>· Latency: {msg.telemetry.latency_ms}ms</span>
-                        </div>
-                      )}
+                    <div className="space-y-2">
+                      {msg.content.split('\n\n').map((para, idx) => (
+                        <p key={idx} className={`text-sm leading-relaxed ${isUser ? 'text-white' : 'text-charcoal-soft'}`}>
+                          {para}
+                        </p>
+                      ))}
                     </div>
+
+                    {msg.citations && msg.citations.length > 0 && (
+                      <div
+                        className={`mt-3 rounded-[15px] p-3 ${
+                          isUser ? 'bg-white/10' : 'bg-white'
+                        }`}
+                      >
+                        <p
+                          className={`mb-1.5 flex items-center gap-1.5 text-[11px] font-bold ${
+                            isUser ? 'text-white/80' : 'text-charcoal-faint'
+                          }`}
+                        >
+                          <FileTextIcon sx={{ fontSize: 12 }} />
+                          Grounded Institutional Sources
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {msg.citations.map((cite, idx) => (
+                            <span
+                              key={idx}
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                                isUser ? 'bg-white/15 text-white/90' : 'bg-primary-soft text-primary'
+                              }`}
+                            >
+                              <span className="font-extrabold">{cite.citation_label}</span>
+                              {cite.document_title}
+                              {cite.section_reference && (
+                                <span className="opacity-70">· {cite.section_reference}</span>
+                              )}
+                              {cite.page_number && <span className="opacity-70">p.{cite.page_number}</span>}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {msg.telemetry && (
+                      <p
+                        className={`mt-1.5 text-[10px] ${
+                          isUser ? 'text-white/50' : 'text-charcoal-faint'
+                        }`}
+                      >
+                        Model: {msg.telemetry.model} · Latency: {msg.telemetry.latency_ms}ms ·{' '}
+                        {msg.telemetry.chunks_retrieved} sources
+                      </p>
+                    )}
                   </div>
                 </div>
               );
             })}
 
             {sending && (
-              <div className="chat-message-row assistant-row">
-                <div className="message-bubble-wrapper">
-                  <div className="message-avatar">
-                    <SparklesIcon size={16} color="#0284c7" />
-                  </div>
-                  <div className="message-bubble assistant-bubble typing-bubble">
-                    <div className="typing-indicator">
-                      <span></span>
-                      <span></span>
-                      <span></span>
-                    </div>
-                    <span className="typing-text">Evaluating handbooks and synthesizing grounded advice...</span>
+              <div className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+                  <CoachIcon sx={{ fontSize: 18 }} />
+                </span>
+                <div className="max-w-[78%] rounded-[15px] rounded-bl-md bg-bgsoft px-4 py-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-primary" style={{ animationDelay: '0.15s' }} />
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-primary" style={{ animationDelay: '0.3s' }} />
+                    <span className="ml-2 text-xs font-semibold text-charcoal-faint">
+                      Evaluating handbooks and synthesizing grounded advice...
+                    </span>
                   </div>
                 </div>
               </div>
@@ -308,45 +342,44 @@ export const AICareerCoachChat: FC<AICareerCoachChatProps> = ({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Prompt Chips Strip */}
-          <div className="coach-quick-prompts-strip">
-            <span className="prompt-label">Ask about:</span>
-            <div className="prompts-scroll-row">
+          <div className="mt-4 border-t border-line pt-4">
+            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-xs font-bold text-charcoal-faint">Ask about:</span>
               {suggestedPrompts.map((p, idx) => (
                 <button
                   key={idx}
                   type="button"
-                  className="quick-prompt-chip"
                   onClick={() => handleSendMessage(p)}
                   disabled={sending}
+                  className="rounded-full bg-bgsoft px-3 py-1.5 text-xs font-semibold text-charcoal-soft transition-colors hover:bg-primary-soft hover:text-primary"
                 >
                   {p}
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Input Bar */}
-          <div className="coach-input-container">
-            <form onSubmit={handleSubmit} className="coach-input-form">
-              <input
-                type="text"
-                className="coach-text-input"
+            <form onSubmit={handleSubmit} className="flex items-center gap-2.5">
+              <TextField
+                fullWidth
+                size="medium"
                 placeholder="Ask about cover letters, SIWES logbooks, milestone evidence, or degree pathways..."
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 disabled={sending}
               />
-              <button
+              <Button
                 type="submit"
-                className="btn btn-primary btn-send-message"
+                variant="contained"
+                color="primary"
+                startIcon={<SendIcon />}
                 disabled={!inputText.trim() || sending}
+                sx={{ px: 3, whiteSpace: 'nowrap' }}
               >
-                <SendIcon size={16} /> Send
-              </button>
+                Send
+              </Button>
             </form>
           </div>
-        </div>
+        </Panel>
       </div>
     </div>
   );

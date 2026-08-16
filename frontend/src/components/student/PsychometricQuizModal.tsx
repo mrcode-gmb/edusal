@@ -1,15 +1,27 @@
 import { useState, type FC } from 'react';
-import type { DiagnosticAssessment, DiagnosticQuestion, StudentAssessmentSession } from '../../types/institution';
+import type {
+  DiagnosticAssessment,
+  DiagnosticQuestion,
+  StudentAssessmentSession,
+} from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
 import {
-  XIcon,
-  AlertCircleIcon,
-  ArrowRightIcon,
-  ArrowLeftIcon,
-  ClockIcon,
-  SparklesIcon,
-  BrainIcon,
-} from '../icons';
+  Button,
+  Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  LinearProgress,
+} from '@mui/material';
+import {
+  Psychology as BrainIcon,
+  Close as CloseIcon,
+  Schedule as ClockIcon,
+  ArrowForward as ArrowRightIcon,
+  ArrowBack as ArrowLeftIcon,
+  AutoAwesome as SparklesIcon,
+} from '@mui/icons-material';
 
 interface PsychometricQuizModalProps {
   assessment: DiagnosticAssessment;
@@ -19,6 +31,8 @@ interface PsychometricQuizModalProps {
   onClose: () => void;
   onCompleted: (result: StudentAssessmentSession) => void;
 }
+
+const LIKERT_LABELS = ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'];
 
 export const PsychometricQuizModal: FC<PsychometricQuizModalProps> = ({
   assessment,
@@ -39,34 +53,24 @@ export const PsychometricQuizModal: FC<PsychometricQuizModalProps> = ({
 
   const handleSelectLikert = (value: number) => {
     if (!currentQuestion) return;
-    setResponses((prev) => ({
-      ...prev,
-      [currentQuestion.id]: value,
-    }));
+    setResponses((prev) => ({ ...prev, [currentQuestion.id]: value }));
   };
 
   const handleSelectChoice = (optionId: string) => {
     if (!currentQuestion) return;
-    setResponses((prev) => ({
-      ...prev,
-      [currentQuestion.id]: optionId,
-    }));
+    setResponses((prev) => ({ ...prev, [currentQuestion.id]: optionId }));
   };
 
-  const isCurrentAnswered = currentQuestion && responses[currentQuestion.id] !== undefined;
+  const isCurrentAnswered = !!currentQuestion && responses[currentQuestion.id] !== undefined;
   const answeredCount = Object.keys(responses).length;
   const progressPercent = Math.round((answeredCount / (total || 1)) * 100);
 
   const handleNext = () => {
-    if (currentIndex < total - 1) {
-      setCurrentIndex(currentIndex + 1);
-    }
+    if (currentIndex < total - 1) setCurrentIndex(currentIndex + 1);
   };
 
   const handlePrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
+    if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
   };
 
   const handleSubmit = async () => {
@@ -93,157 +97,206 @@ export const PsychometricQuizModal: FC<PsychometricQuizModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="quiz-modal-container">
-        {/* Modal Header */}
-        <div className="quiz-modal-header">
-          <div className="quiz-header-title-row">
-            <div className="quiz-badge-icon">
-              <BrainIcon size={20} color="#0284c7" />
+    <Dialog
+      open
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      slotProps={{ paper: { sx: { borderRadius: '15px' } } }}
+    >
+      <DialogTitle
+        sx={{
+          p: 3,
+          pb: 2,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 2,
+        }}
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[15px] bg-primary-soft">
+            <BrainIcon sx={{ fontSize: 22, color: 'primary.main' }} />
+          </span>
+          <div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Chip
+                size="small"
+                label={assessment.assessment_type_display}
+                sx={{ bgcolor: 'primary.soft', color: 'primary.main', fontWeight: 700 }}
+              />
+              <Chip
+                size="small"
+                icon={<ClockIcon sx={{ fontSize: 13 }} />}
+                label={`${assessment.estimated_minutes} mins`}
+                sx={{ bgcolor: 'bgsoft.main', color: 'charcoal.soft', fontWeight: 700 }}
+              />
             </div>
-            <div>
-              <div className="quiz-tag-pill">{assessment.assessment_type_display}</div>
-              <h3 className="quiz-title">{assessment.title}</h3>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn-modal-close"
-            onClick={onClose}
-            aria-label="Close Quiz"
-          >
-            <XIcon size={18} />
-          </button>
-        </div>
-
-        {/* Progress Bar & Counter */}
-        <div className="quiz-progress-bar-wrapper">
-          <div className="quiz-progress-meta">
-            <span className="quiz-counter-text">
-              Question <strong>{currentIndex + 1}</strong> of <strong>{total}</strong>
-            </span>
-            <span className="quiz-pct-text">
-              <ClockIcon size={13} /> {answeredCount}/{total} answered ({progressPercent}%)
-            </span>
-          </div>
-          <div className="quiz-progress-track">
-            <div
-              className="quiz-progress-fill"
-              style={{ width: `${progressPercent}%` }}
-            ></div>
+            <p className="mt-1.5 text-base font-bold text-charcoal">{assessment.title}</p>
           </div>
         </div>
+        <IconButton size="medium" onClick={onClose} aria-label="Close Quiz">
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
 
-        {/* Question Body */}
-        <div className="quiz-question-body">
-          {error && (
-            <div className="login-alert-error" style={{ marginBottom: '16px' }}>
-              <AlertCircleIcon size={16} color="#dc2626" />
-              <span>{error}</span>
-            </div>
-          )}
+      <DialogContent sx={{ p: 3, pt: 1 }}>
+        <div className="mb-4">
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm text-charcoal-soft">
+              Question <strong className="text-charcoal">{currentIndex + 1}</strong> of{' '}
+              <strong className="text-charcoal">{total}</strong>
+            </span>
+            <span className="flex items-center gap-1 text-xs font-bold text-primary">
+              <ClockIcon sx={{ fontSize: 13 }} /> {answeredCount}/{total} answered ({progressPercent}%)
+            </span>
+          </div>
+          <LinearProgress
+            variant="determinate"
+            value={progressPercent}
+            sx={{
+              height: 8,
+              borderRadius: 99,
+              bgcolor: 'primary.soft',
+              '& .MuiLinearProgress-bar': { borderRadius: 99, bgcolor: 'primary.main' },
+            }}
+          />
+        </div>
 
-          {currentQuestion ? (
-            <div className="quiz-active-card">
-              <div className="question-prompt-box">
-                <span className="question-number-pill">#{currentIndex + 1}</span>
-                <p className="question-prompt-text">{currentQuestion.prompt}</p>
+        {error && (
+          <div className="mb-4 rounded-[15px] bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {currentQuestion ? (
+          <div>
+            <div className="rounded-[15px] bg-bgsoft p-5">
+              <div className="flex items-start gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                  {currentIndex + 1}
+                </span>
+                <p className="text-[15px] leading-relaxed font-semibold text-charcoal">
+                  {currentQuestion.prompt}
+                </p>
               </div>
+            </div>
 
-              {/* Options Interface */}
-              {isLikert ? (
-                <div className="likert-scale-container">
-                  <div className="likert-labels-row">
-                    <span className="likert-end-label">1 = Very Inaccurate / Dislike</span>
-                    <span className="likert-end-label">5 = Very Accurate / Enjoy</span>
-                  </div>
-                  <div className="likert-options-grid">
-                    {[1, 2, 3, 4, 5].map((val) => {
-                      const isSelected = responses[currentQuestion.id] === val;
-                      return (
-                        <button
-                          key={val}
-                          type="button"
-                          className={`likert-btn ${isSelected ? 'selected' : ''}`}
-                          onClick={() => handleSelectLikert(val)}
-                        >
-                          <span className="likert-num">{val}</span>
-                          <span className="likert-desc">
-                            {val === 1 && 'Strongly Disagree'}
-                            {val === 2 && 'Disagree'}
-                            {val === 3 && 'Neutral'}
-                            {val === 4 && 'Agree'}
-                            {val === 5 && 'Strongly Agree'}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+            {isLikert ? (
+              <div className="mt-5">
+                <div className="mb-3 flex items-center justify-between text-xs text-charcoal-faint">
+                  <span>1 = Strongly Disagree</span>
+                  <span>5 = Strongly Agree</span>
                 </div>
-              ) : (
-                <div className="multiple-choice-grid">
-                  {currentQuestion.options.map((opt) => {
-                    const isSelected = responses[currentQuestion.id] === opt.id;
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+                  {[1, 2, 3, 4, 5].map((val) => {
+                    const isSelected = responses[currentQuestion.id] === val;
                     return (
                       <button
-                        key={opt.id}
+                        key={val}
                         type="button"
-                        className={`choice-card-btn ${isSelected ? 'selected' : ''}`}
-                        onClick={() => handleSelectChoice(opt.id)}
+                        onClick={() => handleSelectLikert(val)}
+                        className={`rounded-[15px] border-2 px-3 py-3 text-center transition-colors ${
+                          isSelected
+                            ? 'border-primary bg-primary-soft'
+                            : 'border-line bg-white hover:border-primary-strong hover:bg-primary-faint'
+                        }`}
                       >
-                        <span className="choice-opt-id">{opt.id}</span>
-                        <span className="choice-opt-text">{opt.text}</span>
+                        <span
+                          className={`block text-lg font-extrabold ${
+                            isSelected ? 'text-primary' : 'text-charcoal'
+                          }`}
+                        >
+                          {val}
+                        </span>
+                        <span
+                          className={`mt-0.5 block text-[11px] font-semibold leading-tight ${
+                            isSelected ? 'text-primary' : 'text-charcoal-faint'
+                          }`}
+                        >
+                          {LIKERT_LABELS[val - 1]}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="quiz-empty-state">No questions found for this assessment.</div>
-          )}
-        </div>
-
-        {/* Modal Footer Controls */}
-        <div className="quiz-modal-footer">
-          <button
-            type="button"
-            className="btn btn-secondary-sm"
-            onClick={handlePrev}
-            disabled={currentIndex === 0}
-          >
-            <ArrowLeftIcon size={15} /> Previous
-          </button>
-
-          <div className="footer-right-actions">
-            {currentIndex < total - 1 ? (
-              <button
-                type="button"
-                className="btn btn-primary-sm"
-                onClick={handleNext}
-                disabled={!isCurrentAnswered}
-              >
-                Next Question <ArrowRightIcon size={15} />
-              </button>
+              </div>
             ) : (
-              <button
-                type="button"
-                className="btn btn-primary-sm btn-submit-quiz"
-                onClick={handleSubmit}
-                disabled={submitting || answeredCount < total}
-              >
-                {submitting ? (
-                  'Calculating Psychometric Profile...'
-                ) : (
-                  <>
-                    <SparklesIcon size={15} /> Complete & Evaluate Profile
-                  </>
-                )}
-              </button>
+              <div className="mt-5 space-y-2.5">
+                {currentQuestion.options.map((opt) => {
+                  const isSelected = responses[currentQuestion.id] === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleSelectChoice(opt.id)}
+                      className={`flex w-full items-center gap-3 rounded-[15px] border-2 px-4 py-3 text-left transition-colors ${
+                        isSelected
+                          ? 'border-primary bg-primary-soft'
+                          : 'border-line bg-white hover:border-primary-strong hover:bg-primary-faint'
+                      }`}
+                    >
+                      <span
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                          isSelected ? 'bg-primary text-white' : 'bg-bgsoft text-charcoal-faint'
+                        }`}
+                      >
+                        {String.fromCharCode(65 + opt.id.charCodeAt(0) % 26)}
+                      </span>
+                      <span
+                        className={`text-sm font-semibold ${
+                          isSelected ? 'text-primary' : 'text-charcoal-soft'
+                        }`}
+                      >
+                        {opt.text}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
+        ) : (
+          <div className="rounded-[15px] bg-bgsoft p-8 text-center text-sm text-charcoal-faint">
+            No questions found for this assessment.
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <Button
+            variant="outlined"
+            color="inherit"
+            startIcon={<ArrowLeftIcon />}
+            onClick={handlePrev}
+            disabled={currentIndex === 0}
+            sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+          >
+            Previous
+          </Button>
+
+          {currentIndex < total - 1 ? (
+            <Button
+              variant="contained"
+              color="primary"
+              endIcon={<ArrowRightIcon />}
+              onClick={handleNext}
+              disabled={!isCurrentAnswered}
+            >
+              Next Question
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={submitting ? undefined : <SparklesIcon />}
+              onClick={handleSubmit}
+              disabled={submitting || answeredCount < total}
+            >
+              {submitting ? 'Calculating Psychometric Profile...' : 'Complete & Evaluate Profile'}
+            </Button>
+          )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -291,7 +291,7 @@ export const StudentDashboard: FC<StudentDashboardProps> = ({
                 </div>
               </div>
             )}
-
+  
             {!loading && (error || !data) && (
               <Panel>
                 <div className="py-10 text-center">

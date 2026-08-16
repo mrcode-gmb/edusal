@@ -7,16 +7,19 @@ import type {
 import { institutionApi } from '../../services/institutionApi';
 import { PsychometricQuizModal } from './PsychometricQuizModal';
 import { AssessmentRadarCard } from './AssessmentRadarCard';
+import { PageHead, Panel, Badge } from '../institution/Shared';
+import { Alert, Button, Chip, CircularProgress } from '@mui/material';
 import {
-  BrainIcon,
-  SparklesIcon,
-  CompassIcon,
-  BarChartIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  ArrowRightIcon,
-  RotateCcwIcon,
-} from '../icons';
+  Psychology as BrainIcon,
+  Explore as CompassIcon,
+  AutoGraph as BarChartIcon,
+  AutoAwesome as SparklesIcon,
+  Schedule as ClockIcon,
+  ArrowForward as ArrowRightIcon,
+  RestartAlt as RotateCcwIcon,
+  CheckCircle as CheckCircleIcon,
+  Refresh as RefreshIcon,
+} from '@mui/icons-material';
 
 interface AssessmentCatalogProps {
   studentId?: string;
@@ -32,7 +35,6 @@ export const AssessmentCatalog: FC<AssessmentCatalogProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Active quiz modal state
   const [selectedAssessment, setSelectedAssessment] = useState<DiagnosticAssessment | null>(null);
   const [quizQuestions, setQuizQuestions] = useState<DiagnosticQuestion[]>([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
@@ -75,113 +77,140 @@ export const AssessmentCatalog: FC<AssessmentCatalogProps> = ({
   const handleQuizCompleted = (result: StudentAssessmentSession) => {
     setSelectedAssessment(null);
     setQuizQuestions([]);
-    // Update results list
     setResults((prev) => [result, ...prev.filter((r) => r.assessment !== result.assessment)]);
   };
 
   if (loading) {
     return (
-      <div className="section-loading-container">
-        <div className="spinner"></div>
-        <p>Loading accredited psychometric item banks and diagnostic results...</p>
-      </div>
+      <Panel>
+        <div className="flex flex-col items-center justify-center py-16">
+          <CircularProgress size={40} sx={{ color: 'primary.main' }} />
+          <p className="mt-4 text-sm text-charcoal-faint">
+            Loading accredited psychometric item banks and diagnostic results...
+          </p>
+        </div>
+      </Panel>
     );
   }
 
   return (
-    <div className="assessment-catalog-container">
-      {/* Top Banner */}
-      <div className="assessment-hero-banner">
-        <div className="assessment-hero-content">
-          <div className="assessment-tag-badge">
-            <SparklesIcon size={14} color="#38bdf8" />
-            <span>Accredited Psychometric Item Banks</span>
-          </div>
-          <h2>Diagnostic Assessments & Vocational Profiling</h2>
-          <p>
-            Complete standardized psychometric and cognitive assessments to discover your Holland Vocational Code,
-            evaluate workplace execution traits, and calibrate your accredited Employability Score.
-          </p>
-        </div>
-      </div>
+    <div>
+      <PageHead
+        eyebrow="Diagnostic Assessments"
+        title="Psychometric Assessment & Vocational Profiling"
+        sub="Complete standardized psychometric and cognitive assessments to discover your Holland Vocational Code, evaluate workplace execution traits, and calibrate your accredited Employability Score."
+        actions={
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<RefreshIcon />}
+            onClick={fetchData}
+          >
+            Refresh Catalog
+          </Button>
+        }
+      />
 
       {error && (
-        <div className="login-alert-error" style={{ marginBottom: '20px' }}>
-          <span>{error}</span>
-        </div>
+        <Alert severity="error" sx={{ mb: 4, borderRadius: '15px' }}>
+          {error}
+        </Alert>
       )}
 
-      {/* Catalog Cards Grid */}
-      <div className="assessment-cards-grid">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {assessments.map((assessment) => {
-          const completedResult = results.find((r) => r.assessment === assessment.id || r.assessment_type === assessment.assessment_type);
+          const completedResult = results.find(
+            (r) => r.assessment === assessment.id || r.assessment_type === assessment.assessment_type
+          );
           const isCompleted = !!completedResult;
 
+          const TypeIcon =
+            assessment.assessment_type === 'BIG_FIVE'
+              ? BrainIcon
+              : assessment.assessment_type === 'HOLLAND_RIASEC'
+                ? CompassIcon
+                : BarChartIcon;
+
           return (
-            <div key={assessment.id} className={`assessment-card ${isCompleted ? 'completed' : ''}`}>
-              <div className="assessment-card-top">
-                <div className="assessment-type-icon">
-                  {assessment.assessment_type === 'BIG_FIVE' && <BrainIcon size={22} color="#0284c7" />}
-                  {assessment.assessment_type === 'HOLLAND_RIASEC' && <CompassIcon size={22} color="#059669" />}
-                  {assessment.assessment_type === 'NUMERICAL_REASONING' && <BarChartIcon size={22} color="#7c3aed" />}
-                </div>
-                <div className="assessment-meta-pills">
-                  <span className="pill-minutes">
-                    <ClockIcon size={12} /> {assessment.estimated_minutes} mins
-                  </span>
-                  <span className="pill-questions">{assessment.total_questions} Items</span>
+            <Panel key={assessment.id} className="flex flex-col">
+              <div className="flex items-start justify-between gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[15px] bg-primary-soft">
+                  <TypeIcon sx={{ fontSize: 22, color: 'primary.main' }} />
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <Chip
+                    size="small"
+                    icon={<ClockIcon sx={{ fontSize: 13 }} />}
+                    label={`${assessment.estimated_minutes} mins`}
+                    sx={{ bgcolor: 'bgsoft.main', color: 'charcoal.soft', fontWeight: 700 }}
+                  />
+                  <Chip
+                    size="small"
+                    label={`${assessment.total_questions} Items`}
+                    sx={{ bgcolor: 'bgsoft.main', color: 'charcoal.soft', fontWeight: 700 }}
+                  />
                 </div>
               </div>
 
-              <div className="assessment-card-body">
-                <h3 className="assessment-card-title">{assessment.title}</h3>
-                <p className="assessment-card-desc">{assessment.description}</p>
+              <div className="mt-4 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge>{assessment.assessment_type_display}</Badge>
+                </div>
+                <h3 className="mt-2.5 text-base font-bold text-charcoal">{assessment.title}</h3>
+                <p className="mt-1.5 text-sm text-charcoal-soft">{assessment.description}</p>
               </div>
 
-              <div className="assessment-card-footer">
+              <div className="mt-5">
                 {isCompleted ? (
-                  <div className="completed-action-row">
-                    <div className="completed-status-tag">
-                      <CheckCircleIcon size={15} color="#059669" />
-                      <span>Completed ({completedResult.summary_code})</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-secondary-sm btn-retake"
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Badge color="var(--color-signoff)" bg="var(--color-primary-soft)">
+                      <CheckCircleIcon sx={{ fontSize: 13, mr: 0.5 }} />
+                      Completed ({completedResult.summary_code})
+                    </Badge>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="small"
+                      startIcon={<RotateCcwIcon />}
                       onClick={() => handleStartQuiz(assessment)}
                       disabled={loadingQuestions}
                     >
-                      <RotateCcwIcon size={13} /> Retake
-                    </button>
+                      Retake
+                    </Button>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-start-assessment"
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    endIcon={<ArrowRightIcon />}
                     onClick={() => handleStartQuiz(assessment)}
                     disabled={loadingQuestions}
                   >
-                    Start Diagnostic <ArrowRightIcon size={15} />
-                  </button>
+                    Start Diagnostic
+                  </Button>
                 )}
               </div>
-            </div>
+            </Panel>
           );
         })}
       </div>
 
-      {/* Completed Results Section */}
       {results.length > 0 && (
-        <div className="completed-results-section">
-          <div className="results-section-header">
-            <SparklesIcon size={20} color="#0284c7" />
+        <div className="mt-8">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-[15px] bg-primary-soft">
+              <SparklesIcon sx={{ fontSize: 20, color: 'primary.main' }} />
+            </span>
             <div>
-              <h3>Your Evaluated Psychometric Profile</h3>
-              <p>Standardized diagnostic traits and algorithmic pathway alignment</p>
+              <h3 className="text-base font-bold text-charcoal">Your Evaluated Psychometric Profile</h3>
+              <p className="text-sm text-charcoal-faint">
+                Standardized diagnostic traits and algorithmic pathway alignment
+              </p>
             </div>
           </div>
 
-          <div className="radar-cards-list">
+          <div className="space-y-4">
             {results.map((sess) => (
               <AssessmentRadarCard key={sess.id} session={sess} />
             ))}
@@ -189,7 +218,6 @@ export const AssessmentCatalog: FC<AssessmentCatalogProps> = ({
         </div>
       )}
 
-      {/* Quiz Modal */}
       {selectedAssessment && quizQuestions.length > 0 && (
         <PsychometricQuizModal
           assessment={selectedAssessment}

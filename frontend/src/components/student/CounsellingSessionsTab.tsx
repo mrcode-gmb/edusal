@@ -1,26 +1,34 @@
 import { useState, useEffect, type FC } from 'react';
-import type {
-  CounsellingSession,
-  AvailableCounsellor,
-  StudentProfile,
-} from '../../types/institution';
+import type { CounsellingSession, AvailableCounsellor, StudentProfile } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
 import { BookCounsellorModal } from './BookCounsellorModal';
+import { PageHead, Panel } from '../institution/Shared';
+import { Button, Chip, CircularProgress } from '@mui/material';
 import {
-  UserCheckIcon,
-  CalendarIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  BuildingIcon,
-  PlusIcon,
-  FileTextIcon,
-  CompassIcon,
-} from '../icons';
+  SupportAgent as UserCheckIcon,
+  CalendarMonth as CalendarIcon,
+  Schedule as ClockIcon,
+  LocationOn as BuildingIcon,
+  Add as PlusIcon,
+  Description as FileTextIcon,
+  Explore as CompassIcon,
+} from '@mui/icons-material';
 
 interface CounsellingSessionsTabProps {
   studentProfile: StudentProfile;
   authToken?: string;
 }
+
+const STATUS_CHIP: Record<
+  string,
+  { label: string; bg: string; color: string }
+> = {
+  CONFIRMED: { label: 'Confirmed', bg: 'var(--color-primary-soft)', color: 'var(--color-primary)' },
+  REQUESTED: { label: 'Pending Confirmation', bg: '#fef3c7', color: '#92400e' },
+  COMPLETED: { label: 'Completed', bg: '#dcfce7', color: 'var(--color-signoff)' },
+  RESCHEDULED: { label: 'Rescheduled', bg: '#ede9fe', color: '#5b21b6' },
+  CANCELLED: { label: 'Cancelled', bg: '#fee2e2', color: '#b91c1c' },
+};
 
 export const CounsellingSessionsTab: FC<CounsellingSessionsTabProps> = ({
   studentProfile,
@@ -64,159 +72,167 @@ export const CounsellingSessionsTab: FC<CounsellingSessionsTabProps> = ({
 
   if (loading) {
     return (
-      <div className="section-loading-container">
-        <div className="spinner"></div>
-        <p>Loading scheduled counselling sessions and assigned departmental advisors...</p>
-      </div>
+      <Panel>
+        <div className="flex flex-col items-center justify-center py-16">
+          <CircularProgress size={40} sx={{ color: 'primary.main' }} />
+          <p className="mt-4 text-sm text-charcoal-faint">
+            Loading scheduled counselling sessions and assigned departmental advisors...
+          </p>
+        </div>
+      </Panel>
     );
   }
 
   return (
-    <div className="counselling-tab-container">
-      {/* Top Banner */}
-      <div className="counselling-hero-banner">
-        <div className="counselling-hero-left">
-          <div className="counselling-hero-tag">
-            <UserCheckIcon size={14} color="#38bdf8" />
-            <span>Seamless Counsellor Handoff</span>
-          </div>
-          <h2>Departmental Career Counselling & Advisory</h2>
-          <p>
-            Connect directly with your University HOD, SIWES Coordinator, or Career Advisory Officer.
-            Your complete psychometric radar, Holland Code, and verified milestone progress are automatically shared with your counsellor.
-          </p>
-        </div>
-
-        <div className="counselling-hero-right">
-          <button
-            type="button"
-            className="btn btn-primary btn-book-hero"
+    <div>
+      <PageHead
+        eyebrow="Counsellor Handoff"
+        title="Departmental Career Counselling & Advisory"
+        sub="Connect directly with your University HOD, SIWES Coordinator, or Career Advisory Officer. Your complete psychometric radar, Holland Code, and verified milestone progress are automatically shared with your counsellor."
+        actions={
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<PlusIcon />}
             onClick={() => setShowBookModal(true)}
           >
-            <PlusIcon size={16} /> Book 1-on-1 Session
-          </button>
-        </div>
-      </div>
+            Book 1-on-1 Session
+          </Button>
+        }
+      />
 
       {error && (
-        <div className="login-alert-error" style={{ marginBottom: '20px' }}>
-          <span>{error}</span>
+        <div className="mb-4 rounded-[15px] bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
         </div>
       )}
 
-      {/* Main Grid: Left Sessions List, Right Assigned Counsellors Card */}
-      <div className="counselling-layout-grid">
-        {/* Left Column: Scheduled Appointments & History */}
-        <div className="sessions-list-column">
-          <div className="column-section-header">
-            <h3>Your Counselling Sessions</h3>
-            <span className="count-badge">{sessions.length} Sessions</span>
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-base font-bold text-charcoal">Your Counselling Sessions</h3>
+            <Chip
+              size="small"
+              label={`${sessions.length} Sessions`}
+              sx={{ bgcolor: 'primary.soft', color: 'primary.main', fontWeight: 700 }}
+            />
           </div>
 
           {sessions.length === 0 ? (
-            <div className="empty-sessions-card">
-              <UserCheckIcon size={36} color="#94a3b8" />
-              <h4>No Counselling Sessions Requested Yet</h4>
-              <p>
-                Have questions about SIWES logbooks, milestone evidence, or career pathway alignment?
-                Book a confidential 1-on-1 advisory session with your department counsellor.
-              </p>
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                onClick={() => setShowBookModal(true)}
-              >
-                Schedule First Session
-              </button>
-            </div>
+            <Panel>
+              <div className="flex flex-col items-center py-12 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-[15px] bg-bgsoft">
+                  <UserCheckIcon sx={{ fontSize: 28, color: 'charcoal.faint' }} />
+                </span>
+                <h4 className="mt-4 text-lg font-bold text-charcoal">
+                  No Counselling Sessions Requested Yet
+                </h4>
+                <p className="mx-auto mt-1 max-w-md text-sm text-charcoal-faint">
+                  Have questions about SIWES logbooks, milestone evidence, or career pathway
+                  alignment? Book a confidential 1-on-1 advisory session with your department
+                  counsellor.
+                </p>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  sx={{ mt: 5 }}
+                  startIcon={<PlusIcon />}
+                  onClick={() => setShowBookModal(true)}
+                >
+                  Schedule First Session
+                </Button>
+              </div>
+            </Panel>
           ) : (
-            <div className="sessions-cards-stack">
+            <div className="space-y-4">
               {sessions.map((sess) => {
-                const isConfirmed = sess.status === 'CONFIRMED';
-                const isRequested = sess.status === 'REQUESTED';
-                const isCompleted = sess.status === 'COMPLETED';
+                const statusMeta = STATUS_CHIP[sess.status] || {
+                  label: sess.status_display || sess.status,
+                  bg: 'var(--color-bgsoft)',
+                  color: 'var(--color-charcoal-soft)',
+                };
 
                 return (
-                  <div key={sess.id} className={`session-card ${sess.status.toLowerCase()}`}>
-                    <div className="session-card-header">
-                      <div className="session-topic-group">
-                        <span className="session-topic-title">{sess.topic_display}</span>
-                        <div className="session-meta-row">
-                          <span className="session-meta-item">
-                            <CalendarIcon size={13} /> {sess.preferred_date}
+                  <Panel key={sess.id}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h4 className="text-[15px] font-bold text-charcoal">{sess.topic_display}</h4>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-charcoal-faint">
+                          <span className="flex items-center gap-1">
+                            <CalendarIcon sx={{ fontSize: 13 }} /> {sess.preferred_date}
                           </span>
-                          <span className="session-meta-item">
-                            <ClockIcon size={13} /> {sess.preferred_time_slot}
+                          <span className="flex items-center gap-1">
+                            <ClockIcon sx={{ fontSize: 13 }} /> {sess.preferred_time_slot}
                           </span>
-                          <span className="session-meta-item mode-tag">
-                            {sess.meeting_mode === 'IN_PERSON' ? '🏢 In-Person' : '📹 Virtual Call'}
+                          <span className="flex items-center gap-1 font-semibold text-charcoal-soft">
+                            {sess.meeting_mode === 'IN_PERSON' ? 'In-Person' : 'Virtual Call'}
                           </span>
                         </div>
                       </div>
-
-                      <div className="session-status-badge">
-                        {isConfirmed && (
-                          <span className="status-pill confirmed">
-                            <CheckCircleIcon size={13} /> Confirmed
-                          </span>
-                        )}
-                        {isRequested && (
-                          <span className="status-pill requested">
-                            <ClockIcon size={13} /> Pending Confirmation
-                          </span>
-                        )}
-                        {isCompleted && (
-                          <span className="status-pill completed">
-                            <CheckCircleIcon size={13} /> Completed
-                          </span>
-                        )}
-                      </div>
+                      <Chip
+                        size="small"
+                        label={statusMeta.label}
+                        sx={{ bgcolor: statusMeta.bg, color: statusMeta.color, fontWeight: 700 }}
+                      />
                     </div>
 
-                    <div className="session-card-body">
+                    <div className="mt-4 space-y-2.5 border-t border-line pt-4">
                       {sess.counsellor_name && (
-                        <div className="assigned-counsellor-strip">
-                          <UserCheckIcon size={15} color="#0284c7" />
-                          <span>
-                            Assigned Advisor: <strong>{sess.counsellor_name}</strong> ({sess.counsellor_title})
-                          </span>
-                        </div>
+                        <p className="flex items-center gap-2 text-sm text-charcoal-soft">
+                          <UserCheckIcon sx={{ fontSize: 15, color: 'primary.main' }} />
+                          Assigned Advisor:{' '}
+                          <strong className="text-charcoal">{sess.counsellor_name}</strong>
+                          {sess.counsellor_title ? ` (${sess.counsellor_title})` : ''}
+                        </p>
                       )}
-
                       {sess.meeting_location && (
-                        <div className="location-strip">
-                          <BuildingIcon size={14} color="#64748b" />
-                          <span>Venue / Link: {sess.meeting_location}</span>
-                        </div>
+                        <p className="flex items-center gap-2 text-sm text-charcoal-soft">
+                          <BuildingIcon sx={{ fontSize: 14, color: 'charcoal.faint' }} />
+                          Venue / Link: {sess.meeting_location}
+                        </p>
                       )}
-
                       {sess.student_notes && (
-                        <div className="student-notes-box">
-                          <span className="notes-label">Your Note:</span>
-                          <p>{sess.student_notes}</p>
+                        <div className="rounded-[15px] bg-bgsoft p-3.5">
+                          <span className="text-xs font-bold text-charcoal-faint">Your Note:</span>
+                          <p className="mt-0.5 text-sm text-charcoal-soft">{sess.student_notes}</p>
                         </div>
                       )}
 
-                      {/* Case Notes & Action Items if present */}
                       {sess.case_notes && sess.case_notes.length > 0 && (
-                        <div className="counsellor-remarks-section">
-                          <div className="remarks-header">
-                            <FileTextIcon size={14} color="#0284c7" />
-                            <strong>Counsellor Remarks & Action Items:</strong>
-                          </div>
+                        <div className="rounded-[15px] bg-primary-faint p-3.5">
+                          <p className="flex items-center gap-2 text-sm font-bold text-charcoal">
+                            <FileTextIcon sx={{ fontSize: 14, color: 'primary.main' }} />
+                            Counsellor Remarks & Action Items
+                          </p>
                           {sess.case_notes.map((note) => (
-                            <div key={note.id} className="case-note-entry">
-                              <p className="note-summary">{note.summary}</p>
+                            <div key={note.id} className="mt-2">
+                              <p className="text-sm text-charcoal-soft">{note.summary}</p>
                               {note.action_items && note.action_items.length > 0 && (
-                                <ul className="action-items-checklist">
+                                <ul className="mt-2 space-y-1.5">
                                   {note.action_items.map((act, i) => (
-                                    <li key={i} className={act.done ? 'done' : ''}>
-                                      <span className="action-bullet">
-                                        {act.done ? '✓' : '○'}
+                                    <li key={i} className="flex items-center gap-2 text-sm">
+                                      <span
+                                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                                          act.done
+                                            ? 'bg-signoff text-white'
+                                            : 'border border-line-strong bg-white text-transparent'
+                                        }`}
+                                      >
+                                        ✓
                                       </span>
-                                      <span className="action-task-text">{act.task}</span>
+                                      <span
+                                        className={
+                                          act.done
+                                            ? 'text-charcoal-faint line-through'
+                                            : 'text-charcoal-soft'
+                                        }
+                                      >
+                                        {act.task}
+                                      </span>
                                       {act.due_date && (
-                                        <span className="action-due-date">Due: {act.due_date}</span>
+                                        <span className="text-xs text-charcoal-faint">
+                                          Due: {act.due_date}
+                                        </span>
                                       )}
                                     </li>
                                   ))}
@@ -227,60 +243,69 @@ export const CounsellingSessionsTab: FC<CounsellingSessionsTabProps> = ({
                         </div>
                       )}
                     </div>
-                  </div>
+                  </Panel>
                 );
               })}
             </div>
           )}
         </div>
 
-        {/* Right Column: Assigned Departmental Advisors Card */}
-        <aside className="counsellors-sidebar-column">
-          <div className="advisors-panel-card">
-            <div className="panel-header">
-              <BuildingIcon size={18} color="#0284c7" />
-              <h4>Departmental Career Officers</h4>
-            </div>
-            <p className="panel-desc">
-              Accredited faculty advisers available for 1-on-1 roadmap guidance at {studentProfile.institution_name}:
+        <aside>
+          <Panel>
+            <p className="flex items-center gap-2 text-base font-bold text-charcoal">
+              <BuildingIcon sx={{ fontSize: 18, color: 'primary.main' }} />
+              Departmental Career Officers
+            </p>
+            <p className="mt-1 text-sm text-charcoal-faint">
+              Accredited faculty advisers available for 1-on-1 roadmap guidance at{' '}
+              {studentProfile.institution_name}:
             </p>
 
-            <div className="advisors-list">
+            <div className="mt-4 space-y-2.5">
               {counsellors.map((c) => (
-                <div key={c.id} className="advisor-card-mini">
-                  <div className="advisor-avatar">
-                    <span>{c.name.charAt(0)}</span>
-                  </div>
-                  <div className="advisor-info">
-                    <strong className="advisor-name">{c.name}</strong>
-                    <span className="advisor-title">{c.title}</span>
+                <div
+                  key={c.id}
+                  className="flex items-center gap-3 rounded-[15px] bg-bgsoft p-3.5"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-white">
+                    {c.name.charAt(0)}
+                  </span>
+                  <div className="min-w-0">
+                    <strong className="block truncate text-sm font-bold text-charcoal">
+                      {c.name}
+                    </strong>
+                    <span className="block truncate text-xs text-charcoal-faint">{c.title}</span>
                     {c.office_location && (
-                      <span className="advisor-office">{c.office_location}</span>
+                      <span className="block truncate text-xs text-charcoal-faint">
+                        {c.office_location}
+                      </span>
                     )}
                   </div>
                 </div>
               ))}
               {counsellors.length === 0 && (
-                <div className="no-advisors-state">
-                  <span>General Departmental Career Services Office</span>
+                <div className="rounded-[15px] bg-bgsoft p-4 text-sm text-charcoal-faint">
+                  General Departmental Career Services Office
                 </div>
               )}
             </div>
 
-            <div className="dossier-preview-callout">
-              <CompassIcon size={16} color="#059669" />
+            <div className="mt-4 flex items-start gap-2.5 rounded-[15px] bg-primary-soft/50 p-4">
+              <CompassIcon sx={{ fontSize: 16, color: 'var(--color-signoff)', mt: 0.25 }} />
               <div>
-                <strong>Automatic Dossier Handoff:</strong>
-                <p>
-                  Your counsellor sees your Big Five radar, Holland code, and verified milestone evidence before your session begins.
+                <strong className="block text-sm font-bold text-charcoal">
+                  Automatic Dossier Handoff
+                </strong>
+                <p className="mt-0.5 text-sm text-charcoal-soft">
+                  Your counsellor sees your Big Five radar, Holland code, and verified milestone
+                  evidence before your session begins.
                 </p>
               </div>
             </div>
-          </div>
+          </Panel>
         </aside>
       </div>
 
-      {/* Booking Modal */}
       {showBookModal && (
         <BookCounsellorModal
           institutionId={studentProfile.institution}

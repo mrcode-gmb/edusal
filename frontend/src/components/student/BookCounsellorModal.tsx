@@ -1,12 +1,25 @@
 import { useState, useEffect, type FC, type FormEvent } from 'react';
-import type { AvailableCounsellor, CounsellingSession, CounsellingTopic } from '../../types/institution';
+import type {
+  AvailableCounsellor,
+  CounsellingSession,
+  CounsellingTopic,
+} from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
 import {
-  XIcon,
-  UserCheckIcon,
-  AlertCircleIcon,
-  CheckCircleIcon,
-} from '../icons';
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  MenuItem,
+  Radio,
+  TextField,
+} from '@mui/material';
+import {
+  SupportAgent as UserCheckIcon,
+  Close as CloseIcon,
+  CheckCircle as CheckCircleIcon,
+} from '@mui/icons-material';
 
 interface BookCounsellorModalProps {
   institutionId: string;
@@ -16,6 +29,22 @@ interface BookCounsellorModalProps {
   onClose: () => void;
   onSuccess: (session: CounsellingSession) => void;
 }
+
+const TOPICS: { value: CounsellingTopic; label: string }[] = [
+  { value: 'PATHWAY_ALIGNMENT', label: 'Career Pathway & Milestone Planning' },
+  { value: 'SIWES_CLEARANCE', label: 'SIWES Placement, Logbook & Clearance' },
+  { value: 'ASSESSMENT_DEBRIEF', label: 'Psychometric & Skills Diagnostic Debrief' },
+  { value: 'RESUME_CV_REVIEW', label: 'Resume, Portfolio & Cover Letter Review' },
+  { value: 'EMPLOYER_PLACEMENT', label: 'Graduate Job Placement & Internship Advisory' },
+];
+
+const TIME_SLOTS = [
+  '09:00 AM - 09:45 AM',
+  '10:00 AM - 10:45 AM',
+  '11:00 AM - 11:45 AM',
+  '02:00 PM - 02:45 PM',
+  '03:00 PM - 03:45 PM',
+];
 
 export const BookCounsellorModal: FC<BookCounsellorModalProps> = ({
   institutionId,
@@ -44,11 +73,13 @@ export const BookCounsellorModal: FC<BookCounsellorModalProps> = ({
     const loadCounsellors = async () => {
       try {
         setFetchingStaff(true);
-        const list = await institutionApi.getAvailableCounsellors(institutionId, departmentId, authToken);
+        const list = await institutionApi.getAvailableCounsellors(
+          institutionId,
+          departmentId,
+          authToken
+        );
         setCounsellors(list);
-        if (list.length > 0) {
-          setSelectedCounsellor(list[0].id);
-        }
+        if (list.length > 0) setSelectedCounsellor(list[0].id);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to load counsellors');
       } finally {
@@ -89,202 +120,186 @@ export const BookCounsellorModal: FC<BookCounsellorModalProps> = ({
     }
   };
 
-  const topicsList: { value: CounsellingTopic; label: string; desc: string }[] = [
-    {
-      value: 'PATHWAY_ALIGNMENT',
-      label: 'Career Pathway & Milestone Planning',
-      desc: 'Review multi-year deliverables and align milestones with target job roles.',
-    },
-    {
-      value: 'SIWES_CLEARANCE',
-      label: 'SIWES Placement, Logbook & Clearance',
-      desc: 'Guidance on ITCC Form 08, monthly clearance, and industrial supervisor sign-offs.',
-    },
-    {
-      value: 'ASSESSMENT_DEBRIEF',
-      label: 'Psychometric & Skills Diagnostic Debrief',
-      desc: 'In-depth analysis of your Big Five traits and Holland RIASEC Code.',
-    },
-    {
-      value: 'RESUME_CV_REVIEW',
-      label: 'Resume, Portfolio & Cover Letter Review',
-      desc: 'Tailor your GitHub repos, technical writeups, and applications for Nigerian employers.',
-    },
-    {
-      value: 'EMPLOYER_PLACEMENT',
-      label: 'Graduate Job Placement & Internship Advisory',
-      desc: 'Direct recommendations to partner companies and corporate hiring pipelines.',
-    },
-  ];
-
   return (
-    <div className="modal-backdrop">
-      <div className="modal-content modal-content-md">
-        {/* Header */}
-        <div className="modal-header">
-          <div className="modal-title-group">
-            <div className="modal-icon-badge">
-              <UserCheckIcon size={20} color="#0284c7" />
-            </div>
-            <div>
-              <h3 className="modal-title">Book 1-on-1 Career Counselling Session</h3>
-              <p className="modal-sub">
-                Connect directly with your Departmental Counsellor or HOD with your full assessment dossier automatically linked.
-              </p>
-            </div>
+    <Dialog
+      open
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      slotProps={{ paper: { sx: { borderRadius: '15px' } } }}
+    >
+      <DialogTitle
+        sx={{
+          p: 3,
+          pb: 2,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 2,
+        }}
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[15px] bg-primary-soft">
+            <UserCheckIcon sx={{ fontSize: 22, color: 'primary.main' }} />
+          </span>
+          <div>
+            <p className="text-base font-bold text-charcoal">
+              Book 1-on-1 Career Counselling Session
+            </p>
+            <p className="mt-0.5 text-sm text-charcoal-faint">
+              Connect directly with your Departmental Counsellor or HOD with your full assessment
+              dossier automatically linked.
+            </p>
           </div>
-          <button type="button" className="btn-modal-close" onClick={onClose}>
-            <XIcon size={18} />
-          </button>
         </div>
+        <IconButton size="medium" onClick={onClose}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
 
+      <DialogContent sx={{ p: 3, pt: 1 }}>
         {error && (
-          <div className="login-alert-error" style={{ margin: '16px 24px 0 24px' }}>
-            <AlertCircleIcon size={16} color="#dc2626" />
-            <span>{error}</span>
+          <div className="mb-4 rounded-[15px] bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="modal-form-body">
-          {/* Select Topic */}
-          <div className="form-group">
-            <label className="form-label" htmlFor="counsel-topic">
-              Counselling Topic / Agenda <span className="text-red">*</span>
-            </label>
-            <select
-              id="counsel-topic"
-              className="form-input form-select"
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TextField
+              select
+              fullWidth
+              size="medium"
+              label="Counselling Topic / Agenda"
               value={topic}
               onChange={(e) => setTopic(e.target.value as CounsellingTopic)}
             >
-              {topicsList.map((t) => (
-                <option key={t.value} value={t.value}>
+              {TOPICS.map((t) => (
+                <MenuItem key={t.value} value={t.value}>
                   {t.label}
-                </option>
+                </MenuItem>
               ))}
-            </select>
-          </div>
+            </TextField>
 
-          {/* Select Assigned Staff */}
-          <div className="form-group">
-            <label className="form-label" htmlFor="counsel-staff">
-              Select Assigned Counsellor or HOD
-            </label>
-            <select
-              id="counsel-staff"
-              className="form-input form-select"
+            <TextField
+              select
+              fullWidth
+              size="medium"
+              label="Select Assigned Counsellor or HOD"
               value={selectedCounsellor}
               onChange={(e) => setSelectedCounsellor(e.target.value)}
               disabled={fetchingStaff}
+              helperText={
+                fetchingStaff
+                  ? 'Loading available advisors...'
+                  : counsellors.length === 0
+                    ? 'Any available departmental counsellor will be assigned.'
+                    : ''
+              }
             >
               {counsellors.map((c) => (
-                <option key={c.id} value={c.id}>
+                <MenuItem key={c.id} value={c.id}>
                   {c.name} — {c.title}
-                </option>
+                </MenuItem>
               ))}
               {counsellors.length === 0 && (
-                <option value="">Any Available Departmental Counsellor</option>
+                <MenuItem value="">Any Available Departmental Counsellor</MenuItem>
               )}
-            </select>
+            </TextField>
           </div>
 
-          {/* Date & Time Slot Grid */}
-          <div className="form-grid-2">
-            <div className="form-group">
-              <label className="form-label" htmlFor="counsel-date">
-                Preferred Date <span className="text-red">*</span>
-              </label>
-              <input
-                id="counsel-date"
-                type="date"
-                required
-                className="form-input"
-                value={preferredDate}
-                onChange={(e) => setPreferredDate(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="counsel-slot">
-                Preferred Time Slot
-              </label>
-              <select
-                id="counsel-slot"
-                className="form-input form-select"
-                value={preferredTimeSlot}
-                onChange={(e) => setPreferredTimeSlot(e.target.value)}
-              >
-                <option value="09:00 AM - 09:45 AM">09:00 AM - 09:45 AM</option>
-                <option value="10:00 AM - 10:45 AM">10:00 AM - 10:45 AM</option>
-                <option value="11:00 AM - 11:45 AM">11:00 AM - 11:45 AM</option>
-                <option value="02:00 PM - 02:45 PM">02:00 PM - 02:45 PM</option>
-                <option value="03:00 PM - 03:45 PM">03:00 PM - 03:45 PM</option>
-              </select>
-            </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TextField
+              fullWidth
+              size="medium"
+              label="Preferred Date"
+              type="date"
+              required
+              value={preferredDate}
+              onChange={(e) => setPreferredDate(e.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+            <TextField
+              select
+              fullWidth
+              size="medium"
+              label="Preferred Time Slot"
+              value={preferredTimeSlot}
+              onChange={(e) => setPreferredTimeSlot(e.target.value)}
+            >
+              {TIME_SLOTS.map((slot) => (
+                <MenuItem key={slot} value={slot}>
+                  {slot}
+                </MenuItem>
+              ))}
+            </TextField>
           </div>
 
-          {/* Meeting Mode */}
-          <div className="form-group">
-            <label className="form-label">Meeting Format</label>
-            <div className="meeting-mode-options">
-              <label className={`mode-card-label ${meetingMode === 'IN_PERSON' ? 'active' : ''}`}>
-                <input
-                  type="radio"
-                  name="meeting_mode"
-                  value="IN_PERSON"
-                  checked={meetingMode === 'IN_PERSON'}
-                  onChange={() => setMeetingMode('IN_PERSON')}
-                />
-                <span>🏢 In-Person (Department Office)</span>
-              </label>
-              <label className={`mode-card-label ${meetingMode === 'VIRTUAL_CALL' ? 'active' : ''}`}>
-                <input
-                  type="radio"
-                  name="meeting_mode"
-                  value="VIRTUAL_CALL"
-                  checked={meetingMode === 'VIRTUAL_CALL'}
-                  onChange={() => setMeetingMode('VIRTUAL_CALL')}
-                />
-                <span>📹 Virtual Video / Call</span>
-              </label>
+          <div>
+            <p className="mb-2 text-sm font-bold text-charcoal">Meeting Format</p>
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              {(['IN_PERSON', 'VIRTUAL_CALL'] as const).map((mode) => (
+                <label
+                  key={mode}
+                  className={`flex cursor-pointer items-center gap-3 rounded-[15px] border-2 px-4 py-3 transition-colors ${
+                    meetingMode === mode
+                      ? 'border-primary bg-primary-soft'
+                      : 'border-line bg-white hover:bg-primary-faint'
+                  }`}
+                >
+                  <Radio
+                    checked={meetingMode === mode}
+                    onChange={() => setMeetingMode(mode)}
+                    value={mode}
+                    size="small"
+                  />
+                  <span
+                    className={`text-sm font-semibold ${
+                      meetingMode === mode ? 'text-primary' : 'text-charcoal-soft'
+                    }`}
+                  >
+                    {mode === 'IN_PERSON' ? 'In-Person (Department Office)' : 'Virtual Video / Call'}
+                  </span>
+                </label>
+              ))}
             </div>
           </div>
 
-          {/* Student Description */}
-          <div className="form-group">
-            <label className="form-label" htmlFor="counsel-notes">
-              Specific Questions or Background for Your Counsellor
-            </label>
-            <textarea
-              id="counsel-notes"
-              rows={3}
-              className="form-textarea"
-              placeholder="e.g. I need guidance on preparing for my 400L SIWES defense and tailoring my resume for backend cloud internships..."
-              value={studentNotes}
-              onChange={(e) => setStudentNotes(e.target.value)}
-            ></textarea>
+          <TextField
+            fullWidth
+            size="medium"
+            label="Specific Questions or Background for Your Counsellor"
+            multiline
+            rows={3}
+            placeholder="e.g. I need guidance on preparing for my 400L SIWES defense and tailoring my resume for backend cloud internships..."
+            value={studentNotes}
+            onChange={(e) => setStudentNotes(e.target.value)}
+          />
+
+          <div className="flex items-start gap-2.5 rounded-[15px] bg-primary-soft/50 p-4">
+            <CheckCircleIcon sx={{ fontSize: 18, color: 'var(--color-signoff)', mt: 0.25 }} />
+            <p className="text-sm text-charcoal-soft">
+              Your complete Big Five radar, Holland RIASEC code, and verified milestone progress
+              will be automatically attached to this session.
+            </p>
           </div>
 
-          {/* Security Note */}
-          <div className="counsel-dossier-note">
-            <CheckCircleIcon size={15} color="#059669" />
-            <span>
-              Your complete Big Five radar, Holland RIASEC code, and verified milestone progress will be automatically attached to this session.
-            </span>
-          </div>
-
-          {/* Footer */}
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary-sm" onClick={onClose} disabled={loading}>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="outlined"
+              color="inherit"
+              onClick={onClose}
+              disabled={loading}
+              sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+            >
               Cancel
-            </button>
-            <button type="submit" className="btn btn-primary-sm" disabled={loading}>
+            </Button>
+            <Button type="submit" variant="contained" color="primary" disabled={loading}>
               {loading ? 'Submitting Request...' : 'Confirm Appointment Request'}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
