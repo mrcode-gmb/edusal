@@ -130,7 +130,7 @@ class StudentAICoachService:
                 "document_title": ch["document_title"],
                 "section_reference": ch["section_reference"],
                 "page_number": ch["page_number"],
-                "similarity_score": ch["similarity_score"],
+                "similarity_score": ch["relevance_score"],
             })
 
         grounding_text = "\n---\n".join(context_blocks) if context_blocks else "No institutional handbook chunks retrieved for this specific query."
