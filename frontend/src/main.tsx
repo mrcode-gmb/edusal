@@ -5,7 +5,7 @@ import './App.css'
 import './index.css'
 import App from './App'
 
-createRoot(document.getElementById('root')).render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <App />

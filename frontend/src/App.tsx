@@ -91,15 +91,15 @@ const theme = createTheme({
       contrastText: '#FFFFFF',
       soft: '#e6f2ec',
       faint: '#f0f7f3',
-    },
+    } as any,
     secondary: { main: '#1F2933' },
     background: { default: '#FFFFFF', paper: '#FFFFFF' },
     text: { primary: '#1F2933', secondary: '#4B5563' },
     divider: '#E6EBE8',
     success: { main: '#0D8A5F' },
-    charcoal: { main: '#1F2933', soft: '#4B5563', faint: '#6B7280' },
-    border: { main: '#e6ebe8', strong: '#d3dcd7' },
-  },
+    charcoal: { main: '#1F2933', soft: '#4B5563', faint: '#6B7280' } as any,
+    border: { main: '#e6ebe8', strong: '#d3dcd7' } as any,
+  } as any,
   typography: {
     fontFamily:
       "'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
@@ -141,7 +141,7 @@ const theme = createTheme({
    Small shared pieces
 -------------------------------------------------------------------------- */
 
-function Eyebrow({ children }) {
+function Eyebrow({ children }: any) {
   return (
     <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
       {children}
@@ -157,7 +157,7 @@ function SectionHead({
   align = 'left',
   dark = false,
   wide = false,
-}) {
+}: any) {
   return (
     <div
       className={`mb-12 md:mb-16 ${align === 'center' ? 'mx-auto text-center' : ''} ${wide ? 'max-w-3xl' : 'max-w-2xl'}`}
@@ -301,7 +301,7 @@ function Navbar() {
                 <ListItemText
                   primary={l.label}
                   slotProps={{
-                    primary: { fontWeight: 600, color: 'text.primary' },
+                    primary: { sx: { fontWeight: 600, color: 'text.primary' } } as any,
                   }}
                 />
               </ListItemButton>
@@ -2129,7 +2129,7 @@ function ScoreModal({ open, onClose }) {
       maxWidth="md"
       fullWidth
       scroll="body"
-      PaperProps={{ sx: { borderRadius: 4, overflow: 'hidden' } }}
+      slotProps={{ paper: { sx: { borderRadius: 4, overflow: 'hidden' } } }}
     >
       <DialogTitle
         sx={{
@@ -2345,7 +2345,7 @@ function PartnerModal({ open, onClose }) {
       maxWidth="md"
       fullWidth
       scroll="body"
-      PaperProps={{ sx: { borderRadius: 4, overflow: 'hidden' } }}
+      slotProps={{ paper: { sx: { borderRadius: 4, overflow: 'hidden' } } }}
     >
       <DialogTitle
         sx={{
