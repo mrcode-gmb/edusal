@@ -1,6 +1,15 @@
 import { useState, type FC, type FormEvent } from 'react';
 import type { PathwayMilestone, MilestoneType, VerificationMethod, RequiredEvidenceType } from '../../types/institution';
-import { CompassIcon, CheckCircleIcon } from '../icons';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  MenuItem,
+  TextField,
+} from '@mui/material';
+import { Explore as CompassIcon, Close as CloseIcon, Verified as CheckCircleIcon } from '@mui/icons-material';
 
 interface AddMilestoneModalProps {
   isOpen: boolean;
@@ -87,156 +96,175 @@ export const AddMilestoneModal: FC<AddMilestoneModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-md" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-with-icon">
-            <CompassIcon size={20} color="#0284c7" />
-            <div>
-              <h3>{existingMilestone ? 'Edit Pathway Milestone' : 'Add Verifiable Milestone'}</h3>
-              <p>Define an industry-aligned milestone with measurable rubric criteria and points</p>
-            </div>
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      slotProps={{ paper: { sx: { borderRadius: '15px' } } }}
+    >
+      <DialogTitle
+        sx={{
+          p: 3,
+          pb: 2,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 2,
+        }}
+      >
+        <div className="flex items-start gap-2">
+          <CompassIcon sx={{ fontSize: 22, color: 'primary.main', mt: 0.5 }} />
+          <div>
+            <p className="text-base font-bold text-charcoal">
+              {existingMilestone ? 'Edit Pathway Milestone' : 'Add Verifiable Milestone'}
+            </p>
+            <p className="mt-0.5 text-sm text-charcoal-faint">
+              Define an industry-aligned milestone with measurable rubric criteria and points
+            </p>
           </div>
-          <button type="button" className="modal-close-btn" onClick={onClose}>
-            ✕
-          </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-group">
-            <label>Milestone Title *</label>
-            <input
-              type="text"
+        <IconButton size="medium" onClick={onClose}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ p: 3, pt: 1 }}>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <TextField
+            fullWidth
+            size="medium"
+            label="Milestone Title"
+            required
+            placeholder="e.g. Relational Database Normalization & PostgreSQL Schema Design"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <TextField
+            fullWidth
+            size="medium"
+            multiline
+            rows={4}
+            label="Deliverable Description & Rubric Criteria"
+            required
+            placeholder="Detail specific deliverables, criteria, and requirements needed for counsellor sign-off..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Target Level / Year"
+              value={yearOfStudy}
+              onChange={(e) => setYearOfStudy(Number(e.target.value))}
+            >
+              {Array.from({ length: durationYears || 4 }, (_, i) => i + 1).map((yr) => (
+                <MenuItem key={yr} value={yr}>
+                  Year {yr} ({yr * 100} Level)
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Target Semester"
+              value={targetSemester}
+              onChange={(e) => setTargetSemester(e.target.value as any)}
+            >
+              <MenuItem value="FIRST">First Semester</MenuItem>
+              <MenuItem value="SECOND">Second Semester</MenuItem>
+              <MenuItem value="BOTH">Both Semesters / Annual</MenuItem>
+            </TextField>
+            <TextField
+              fullWidth
+              size="medium"
+              label="Employability Points"
+              type="number"
               required
-              placeholder="e.g. Relational Database Normalization & PostgreSQL Schema Design"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              slotProps={{ htmlInput: { min: 10, max: 500, step: 10 } }}
+              value={points}
+              onChange={(e) => setPoints(Number(e.target.value))}
             />
           </div>
-
-          <div className="form-group">
-            <label>Deliverable Description & Rubric Criteria *</label>
-            <textarea
-              rows={3}
-              required
-              placeholder="Detail specific deliverables, criteria, and requirements needed for counsellor sign-off..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Milestone Type"
+              value={milestoneType}
+              onChange={(e) => setMilestoneType(e.target.value as MilestoneType)}
+            >
+              <MenuItem value="TECHNICAL_SKILL">Technical Skill Mastery</MenuItem>
+              <MenuItem value="GITHUB_PROJECT">Production Repository / Live App</MenuItem>
+              <MenuItem value="INDUSTRY_CERTIFICATION">Industry Recognized Certification</MenuItem>
+              <MenuItem value="SIWES_PREREQUISITE">SIWES / ITCC Clearance Prerequisite</MenuItem>
+              <MenuItem value="INTERNSHIP_EXPERIENCE">Internship / Work Placement</MenuItem>
+              <MenuItem value="CAPSTONE_PROJECT">Final Year Capstone Project Defense</MenuItem>
+              <MenuItem value="FOUNDATIONAL_COURSEWORK">Foundational Coursework Prerequisite</MenuItem>
+              <MenuItem value="CAREER_READINESS">Portfolio & Interview Readiness</MenuItem>
+            </TextField>
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Verification Method"
+              value={verificationMethod}
+              onChange={(e) => setVerificationMethod(e.target.value as VerificationMethod)}
+            >
+              <MenuItem value="SUPERVISOR_SIGN_OFF">Counsellor / HOD Sign-Off</MenuItem>
+              <MenuItem value="URL_VERIFICATION">Live URL / Repository Review</MenuItem>
+              <MenuItem value="DOCUMENT_UPLOAD">Certificate / Document PDF Upload</MenuItem>
+              <MenuItem value="AUTOMATED_ASSESSMENT">Automated Skill Check / Quiz</MenuItem>
+            </TextField>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Required Evidence Submission"
+              value={requiredEvidenceType}
+              onChange={(e) => setRequiredEvidenceType(e.target.value as RequiredEvidenceType)}
+            >
+              <MenuItem value="GITHUB_REPO">GitHub / GitLab Repository URL</MenuItem>
+              <MenuItem value="LIVE_URL">Live Deployed Project URL</MenuItem>
+              <MenuItem value="CERTIFICATE_PDF">Certificate PDF / Verified Credential</MenuItem>
+              <MenuItem value="PORTFOLIO_LINK">Portfolio Link (Behance / Web)</MenuItem>
+              <MenuItem value="SUPERVISOR_ENDORSEMENT">Faculty / Industry Supervisor Form</MenuItem>
+            </TextField>
+            <TextField
+              fullWidth
+              size="medium"
+              label="Competency Tags (comma-separated)"
+              placeholder="e.g. PostgreSQL, Docker, Django, CI/CD"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
             />
           </div>
-
-          <div className="form-row-3">
-            <div className="form-group">
-              <label>Target Level / Year *</label>
-              <select value={yearOfStudy} onChange={(e) => setYearOfStudy(Number(e.target.value))}>
-                {Array.from({ length: durationYears || 4 }, (_, i) => i + 1).map((yr) => (
-                  <option key={yr} value={yr}>
-                    Year {yr} ({yr * 100} Level)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Target Semester *</label>
-              <select
-                value={targetSemester}
-                onChange={(e) => setTargetSemester(e.target.value as any)}
-              >
-                <option value="FIRST">First Semester</option>
-                <option value="SECOND">Second Semester</option>
-                <option value="BOTH">Both Semesters / Annual</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Employability Points *</label>
-              <input
-                type="number"
-                min="10"
-                max="500"
-                step="10"
-                required
-                value={points}
-                onChange={(e) => setPoints(Number(e.target.value))}
-              />
-            </div>
-          </div>
-
-          <div className="form-row-2">
-            <div className="form-group">
-              <label>Milestone Type *</label>
-              <select
-                value={milestoneType}
-                onChange={(e) => setMilestoneType(e.target.value as MilestoneType)}
-              >
-                <option value="TECHNICAL_SKILL">Technical Skill Mastery</option>
-                <option value="GITHUB_PROJECT">Production Repository / Live App</option>
-                <option value="INDUSTRY_CERTIFICATION">Industry Recognized Certification</option>
-                <option value="SIWES_PREREQUISITE">SIWES / ITCC Clearance Prerequisite</option>
-                <option value="INTERNSHIP_EXPERIENCE">Internship / Work Placement</option>
-                <option value="CAPSTONE_PROJECT">Final Year Capstone Project Defense</option>
-                <option value="FOUNDATIONAL_COURSEWORK">Foundational Coursework Prerequisite</option>
-                <option value="CAREER_READINESS">Portfolio & Interview Readiness</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Verification Method *</label>
-              <select
-                value={verificationMethod}
-                onChange={(e) => setVerificationMethod(e.target.value as VerificationMethod)}
-              >
-                <option value="SUPERVISOR_SIGN_OFF">Counsellor / HOD Sign-Off</option>
-                <option value="URL_VERIFICATION">Live URL / Repository Review</option>
-                <option value="DOCUMENT_UPLOAD">Certificate / Document PDF Upload</option>
-                <option value="AUTOMATED_ASSESSMENT">Automated Skill Check / Quiz</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-row-2">
-            <div className="form-group">
-              <label>Required Evidence Submission *</label>
-              <select
-                value={requiredEvidenceType}
-                onChange={(e) => setRequiredEvidenceType(e.target.value as RequiredEvidenceType)}
-              >
-                <option value="GITHUB_REPO">GitHub / GitLab Repository URL</option>
-                <option value="LIVE_URL">Live Deployed Project URL</option>
-                <option value="CERTIFICATE_PDF">Certificate PDF / Verified Credential</option>
-                <option value="PORTFOLIO_LINK">Portfolio Link (Behance / Web)</option>
-                <option value="SUPERVISOR_ENDORSEMENT">Faculty / Industry Supervisor Form</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Competency Tags (comma-separated)</label>
-              <input
-                type="text"
-                placeholder="e.g. PostgreSQL, Docker, Django, CI/CD"
-                value={tagsInput}
-                onChange={(e) => setTagsInput(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary-sm" onClick={onClose}>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outlined"
+              color="inherit"
+              onClick={onClose}
+              sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+            >
               Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-              {isSubmitting ? (
-                'Saving Milestone...'
-              ) : (
-                <>
-                  <CheckCircleIcon size={14} /> Save Milestone
-                </>
-              )}
-            </button>
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={isSubmitting}
+              startIcon={<CheckCircleIcon />}
+            >
+              {isSubmitting ? 'Saving Milestone...' : 'Save Milestone'}
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

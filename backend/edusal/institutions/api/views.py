@@ -27,6 +27,13 @@ from edusal.institutions.models import (
     PathwayMilestone,
     StudentMilestoneSubmission,
     SubmissionStatus,
+    DiagnosticAssessment,
+    DiagnosticQuestion,
+    StudentAssessmentSession,
+    AICoachConversation,
+    AICoachMessage,
+    CounsellingSession,
+    CounsellingCaseNote,
 )
 from ..services.document_parser import DocumentParserService
 from ..services.embedding_service import EmbeddingService
@@ -34,6 +41,8 @@ from ..services.vector_search_service import VectorSearchService
 from ..services.groq_advisor_service import GroqAdvisorService
 from ..services.pathway_template_service import PathwayTemplateService
 from ..services.student_credential_service import StudentCredentialService
+from ..services.psychometric_service import PsychometricService
+from ..services.student_ai_coach_service import StudentAICoachService
 from .serializers import (
     InstitutionListSerializer,
     InstitutionDetailSerializer,
@@ -63,6 +72,19 @@ from .serializers import (
     StudentCredentialGenerationSerializer,
     StudentEnrollPathwaySerializer,
     StudentDashboardDataSerializer,
+    DiagnosticAssessmentListSerializer,
+    DiagnosticAssessmentDetailSerializer,
+    DiagnosticQuestionSerializer,
+    StudentAssessmentSubmitSerializer,
+    StudentAssessmentSessionSerializer,
+    AICoachMessageSerializer,
+    AICoachConversationSerializer,
+    AICoachChatPayloadSerializer,
+    CounsellingSessionSerializer,
+    CounsellingSessionCreateSerializer,
+    CounsellingSessionConfirmSerializer,
+    CounsellingCaseNoteSerializer,
+    StudentDossierSerializer,
     AuthLoginSerializer,
     AuthUserSerializer,
 )
@@ -914,6 +936,40 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
             "employability_summary": employability_summary,
         })
 
+    @action(detail=True, methods=["get"], url_path="dossier")
+    def student_dossier(self, request, id=None):
+        """Assembles and returns a complete 360° student dossier for departmental counsellors and HODs."""
+        student = self.get_object()
+        submissions = student.milestone_submissions.select_related("milestone").order_by("milestone__order_index")
+        assessments = student.assessment_sessions.select_related("assessment").order_by("-completed_at")
+        counselling_sessions = student.counselling_sessions.select_related("counsellor", "counsellor__user").prefetch_related("case_notes").order_by("-created_at")
+        case_notes = student.counsellor_case_notes.select_related("author", "author__user").order_by("-created_at")
+
+        latest_ai_conv = student.ai_conversations.order_by("-updated_at").first()
+        ai_summary = latest_ai_conv.case_summary if latest_ai_conv else ""
+
+        emp_summary = {
+            "employability_score": float(student.employability_score),
+            "verified_points_total": student.verified_points_total,
+            "milestones_completed_count": student.milestones_completed_count,
+            "cgpa": float(student.cgpa) if student.cgpa else 0.0,
+            "is_siwes_year": student.is_siwes_year,
+            "academic_standing": student.get_academic_standing_display(),
+        }
+
+        dossier_data = {
+            "profile": StudentProfileSerializer(student).data,
+            "active_pathway": PathwayDetailSerializer(student.active_pathway).data if student.active_pathway else None,
+            "submissions": StudentMilestoneSubmissionSerializer(submissions, many=True).data,
+            "assessments": StudentAssessmentSessionSerializer(assessments, many=True).data,
+            "counselling_sessions": CounsellingSessionSerializer(counselling_sessions, many=True).data,
+            "case_notes": CounsellingCaseNoteSerializer(case_notes, many=True).data,
+            "ai_coach_summary": ai_summary,
+            "employability_summary": emp_summary,
+        }
+        return Response(dossier_data, status=status.HTTP_200_OK)
+
+
 
 
 class PathwayViewSet(viewsets.ModelViewSet):
@@ -1175,6 +1231,330 @@ class StudentMilestoneSubmissionViewSet(viewsets.ModelViewSet):
             StudentMilestoneSubmissionSerializer(submission).data,
             status=status.HTTP_200_OK,
         )
+
+
+# =============================================================================
+# Diagnostic Assessments ViewSets
+# =============================================================================
+
+class DiagnosticAssessmentViewSet(viewsets.ReadOnlyModelViewSet):
+    """Catalog of scientific psychometric models, Holland RIASEC tests, and skill diagnostics."""
+
+    queryset = (
+        DiagnosticAssessment.objects.filter(is_active=True)
+        .prefetch_related("questions")
+        .order_by("assessment_type", "title")
+    )
+    permission_classes = [AllowAny]
+    lookup_field = "slug"
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return DiagnosticAssessmentDetailSerializer
+        return DiagnosticAssessmentListSerializer
+
+    @action(detail=True, methods=["get"], url_path="questions")
+    def questions(self, request, slug=None):
+        """Returns all questions and choices for this assessment."""
+        assessment = self.get_object()
+        questions = assessment.questions.all().order_by("order_index")
+        serializer = DiagnosticQuestionSerializer(questions, many=True)
+        return Response(serializer.data)
+
+
+class StudentAssessmentSessionViewSet(viewsets.ModelViewSet):
+    """Execution and historical results for student diagnostic tests."""
+
+    queryset = (
+        StudentAssessmentSession.objects.all()
+        .select_related("student", "student__user", "assessment")
+        .order_by("-completed_at", "-started_at")
+    )
+    serializer_class = StudentAssessmentSessionSerializer
+    permission_classes = [AllowAny]
+    lookup_field = "id"
+
+    def create(self, request, *args, **kwargs):
+        """Submits assessment answers, executes psychometric algorithm, and saves completed session."""
+        serializer = StudentAssessmentSubmitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        assessment_id = data["assessment_id"]
+        raw_responses = data["raw_responses"]
+
+        # Identify student
+        student = None
+        if request.user.is_authenticated and hasattr(request.user, "student_profile") and request.user.student_profile:
+            student = request.user.student_profile
+        else:
+            student_id = request.data.get("student_id")
+            if student_id:
+                student = StudentProfile.objects.get(id=student_id)
+            else:
+                student = StudentProfile.objects.first()
+
+        if not student:
+            return Response({"error": "Student profile not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        session = PsychometricService.evaluate_and_save_session(
+            student_id=str(student.id),
+            assessment_id=str(assessment_id),
+            raw_responses=raw_responses,
+        )
+
+        return Response(
+            StudentAssessmentSessionSerializer(session).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=["get"], url_path="my-results")
+    def my_results(self, request):
+        """Returns all completed diagnostic assessment results for the current student."""
+        student = None
+        if request.user.is_authenticated and hasattr(request.user, "student_profile") and request.user.student_profile:
+            student = request.user.student_profile
+        else:
+            student = StudentProfile.objects.first()
+
+        if not student:
+            return Response([])
+
+        sessions = (
+            StudentAssessmentSession.objects.filter(student=student, status="COMPLETED")
+            .select_related("assessment")
+            .order_by("-completed_at")
+        )
+        return Response(StudentAssessmentSessionSerializer(sessions, many=True).data)
+
+
+# =============================================================================
+# 24/7 AI Career Coach ViewSet
+# =============================================================================
+
+class AICoachViewSet(viewsets.ViewSet):
+    """24/7 AI Career Coaching endpoints grounded in institutional handbooks and student dossier."""
+
+    permission_classes = [AllowAny]
+
+    def _get_student(self, request):
+        if request.user.is_authenticated and hasattr(request.user, "student_profile") and request.user.student_profile:
+            return request.user.student_profile
+        student_id = request.query_params.get("student_id") or request.data.get("student_id")
+        if student_id:
+            try:
+                return StudentProfile.objects.get(id=student_id)
+            except StudentProfile.DoesNotExist:
+                pass
+        return StudentProfile.objects.first()
+
+    @action(detail=False, methods=["get", "post"], url_path="conversations")
+    def conversations(self, request):
+        """List or create AI Coach conversation threads for the current student."""
+        student = self._get_student(request)
+        if not student:
+            return Response({"error": "Student profile not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if request.method == "POST":
+            title = request.data.get("title", "Career & SIWES Advisory Session")
+            conv = AICoachConversation.objects.create(
+                student=student,
+                title=title,
+                is_active=True,
+            )
+            # Create initial welcoming message from assistant
+            initial_content = (
+                f"Hello {student.user.name or 'Student'}! I am your 24/7 AI Career Coach at **{student.institution.name}**. "
+                f"I am grounded in your official student handbook, departmental SIWES guidelines, and your active "
+                f"**{student.active_pathway.title if student.active_pathway else 'Career Pathway'}** roadmap.\n\n"
+                f"How can I assist you with your cover letters, milestone evidence, or SIWES preparations today?"
+            )
+            AICoachMessage.objects.create(
+                conversation=conv,
+                role="assistant",
+                content=initial_content,
+            )
+            return Response(AICoachConversationSerializer(conv).data, status=status.HTTP_201_CREATED)
+
+        conversations = (
+            AICoachConversation.objects.filter(student=student)
+            .prefetch_related("messages")
+            .order_by("-updated_at")
+        )
+        return Response(AICoachConversationSerializer(conversations, many=True).data)
+
+    @action(detail=True, methods=["get", "post"], url_path="messages")
+    def messages(self, request, pk=None):
+        """Get messages for a conversation or send a new student question to the grounded AI Coach."""
+        try:
+            conversation = AICoachConversation.objects.get(id=pk)
+        except AICoachConversation.DoesNotExist:
+            return Response({"error": "Conversation not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "POST":
+            serializer = AICoachChatPayloadSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user_msg = serializer.validated_data["message"]
+
+            response_data = StudentAICoachService.ask_coach(
+                conversation_id=str(conversation.id),
+                user_message=user_msg,
+            )
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        messages = conversation.messages.all().order_by("created_at")
+        return Response(AICoachMessageSerializer(messages, many=True).data)
+
+
+# =============================================================================
+# Seamless Counsellor Handoff & Booking ViewSets
+# =============================================================================
+
+class CounsellingSessionViewSet(viewsets.ModelViewSet):
+    """Appointment booking and session lifecycle management for students and counsellors."""
+
+    queryset = (
+        CounsellingSession.objects.all()
+        .select_related(
+            "student",
+            "student__user",
+            "student__program",
+            "counsellor",
+            "counsellor__user",
+        )
+        .prefetch_related("case_notes")
+        .order_by("-preferred_date", "-created_at")
+    )
+    permission_classes = [AllowAny]
+    lookup_field = "id"
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return CounsellingSessionCreateSerializer
+        return CounsellingSessionSerializer
+
+    def perform_create(self, serializer):
+        student = None
+        if self.request.user.is_authenticated and hasattr(self.request.user, "student_profile") and self.request.user.student_profile:
+            student = self.request.user.student_profile
+        else:
+            student_id = self.request.data.get("student_id")
+            if student_id:
+                student = StudentProfile.objects.get(id=student_id)
+            else:
+                student = StudentProfile.objects.first()
+
+        if not student:
+            raise ValueError("Student profile could not be determined for this counselling appointment.")
+
+        serializer.save(student=student, status="REQUESTED")
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            CounsellingSessionSerializer(serializer.instance).data,
+            status=status.HTTP_201_CREATED,
+            headers=headers,
+        )
+
+    @action(detail=False, methods=["get"], url_path="my-sessions")
+    def my_sessions(self, request):
+        """Returns sessions for the logged-in student or assigned counsellor."""
+        if request.user.is_authenticated and hasattr(request.user, "student_profile") and request.user.student_profile:
+            sessions = self.get_queryset().filter(student=request.user.student_profile)
+        elif request.user.is_authenticated and hasattr(request.user, "staff_profile") and request.user.staff_profile:
+            sessions = self.get_queryset().filter(counsellor=request.user.staff_profile)
+        else:
+            # Fallback for demo
+            student = StudentProfile.objects.first()
+            sessions = self.get_queryset().filter(student=student) if student else self.get_queryset()
+
+        return Response(CounsellingSessionSerializer(sessions, many=True).data)
+
+    @action(detail=False, methods=["get"], url_path="available-counsellors")
+    def available_counsellors(self, request):
+        """Lists available staff counsellors and HODs for appointment booking."""
+        institution_id = request.query_params.get("institution")
+        department_id = request.query_params.get("department")
+
+        qs = InstitutionStaff.objects.filter(is_active=True).select_related("user", "institution")
+        if institution_id:
+            qs = qs.filter(institution_id=institution_id)
+        if department_id:
+            qs = qs.filter(assignments__department_id=department_id)
+
+        counsellors_data = []
+        for staff in qs.distinct()[:10]:
+            counsellors_data.append({
+                "id": str(staff.id),
+                "name": staff.user.name,
+                "email": staff.user.email,
+                "title": staff.title,
+                "phone": getattr(staff, "phone_number", ""),
+                "office_location": getattr(staff, "office_location", "Department Career Advisory Office"),
+                "institution": staff.institution.name,
+            })
+        return Response(counsellors_data)
+
+    @action(detail=True, methods=["post"], url_path="confirm")
+    def confirm_session(self, request, id=None):
+        """Counsellor confirms session and designates meeting venue or virtual call link."""
+        session = self.get_object()
+        serializer = CounsellingSessionConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        session.status = data.get("status", "CONFIRMED")
+        if data.get("scheduled_datetime"):
+            session.scheduled_datetime = data["scheduled_datetime"]
+        if data.get("meeting_location"):
+            session.meeting_location = data["meeting_location"]
+
+        if request.user.is_authenticated and hasattr(request.user, "staff_profile") and request.user.staff_profile:
+            session.counsellor = request.user.staff_profile
+
+        session.save()
+        return Response(CounsellingSessionSerializer(session).data, status=status.HTTP_200_OK)
+
+
+class CounsellingCaseNoteViewSet(viewsets.ModelViewSet):
+    """Confidential case notes documented by counsellors and linked to student profiles."""
+
+    queryset = (
+        CounsellingCaseNote.objects.all()
+        .select_related("student", "author", "author__user", "session")
+        .order_by("-created_at")
+    )
+    serializer_class = CounsellingCaseNoteSerializer
+    permission_classes = [AllowAny]
+    lookup_field = "id"
+
+    def perform_create(self, serializer):
+        author = None
+        if self.request.user.is_authenticated and hasattr(self.request.user, "staff_profile") and self.request.user.staff_profile:
+            author = self.request.user.staff_profile
+        else:
+            author_id = self.request.data.get("author_id")
+            if author_id:
+                author = InstitutionStaff.objects.get(id=author_id)
+            else:
+                author = InstitutionStaff.objects.first()
+
+        student_id = self.request.data.get("student")
+        student = StudentProfile.objects.get(id=student_id)
+
+        session_id = self.request.data.get("session")
+        session = CounsellingSession.objects.get(id=session_id) if session_id else None
+
+        serializer.save(
+            student=student,
+            author=author,
+            session=session,
+        )
+
 
 
 

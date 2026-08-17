@@ -5,14 +5,24 @@ import { MilestoneTimeline } from './MilestoneTimeline';
 import { CreatePathwayModal } from './CreatePathwayModal';
 import { TemplateCloneModal } from './TemplateCloneModal';
 import {
-  CompassIcon,
-  SparklesIcon,
-  PlusIcon,
-  SearchIcon,
-  CheckCircleIcon,
-  RefreshCwIcon,
-  FileTextIcon,
-} from '../icons';
+  Button,
+  Chip,
+  IconButton,
+  MenuItem,
+  TextField,
+  LinearProgress,
+} from '@mui/material';
+import {
+  Explore as CompassIcon,
+  AutoAwesome as SparklesIcon,
+  Add as PlusIcon,
+  Search as SearchIcon,
+  CheckCircle as CheckCircleIcon,
+  Refresh as RefreshCwIcon,
+  Description as FileTextIcon,
+  Download as DownloadIcon,
+} from '@mui/icons-material';
+import { PageHead, Panel } from './Shared';
 
 interface PathwaysManagerProps {
   institutionId: string;
@@ -116,282 +126,367 @@ export const PathwaysManager: FC<PathwaysManagerProps> = ({
     : [];
 
   return (
-    <div className="pathways-manager-container">
-      {/* Navigation Subtabs Strip */}
-      <div className="pathways-subnav-strip">
-        <div className="pathways-subtabs">
-          <button
-            type="button"
-            className={`pathways-subtab ${subTab === 'active' ? 'active' : ''}`}
-            onClick={() => setSubTab('active')}
-          >
-            <CompassIcon size={15} color={subTab === 'active' ? '#0284c7' : '#64748b'} />
-            Active Department Pathways ({pathways.length})
-          </button>
-          <button
-            type="button"
-            className={`pathways-subtab ${subTab === 'templates' ? 'active' : ''}`}
-            onClick={() => setSubTab('templates')}
-          >
-            <SparklesIcon size={15} color={subTab === 'templates' ? '#0284c7' : '#64748b'} />
-            Master Blueprint Catalog ({templates.length})
-          </button>
-        </div>
+    <div>
+      <PageHead
+        eyebrow="Career Architecture"
+        title="Career Pathways & Milestones"
+        sub="Progressive, verifiable milestone roadmaps mapped to degree programmes with exact evaluator sign-off."
+        actions={
+          <>
+            <Button
+              variant="outlined"
+              color="inherit"
+              startIcon={<DownloadIcon />}
+              onClick={() => setSubTab('templates')}
+              sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+            >
+              Browse Blueprint Catalog
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<PlusIcon />}
+              onClick={() => setShowCreateModal(true)}
+            >
+              Create Pathway from Scratch
+            </Button>
+          </>
+        }
+      />
 
-        <div className="pathways-nav-actions">
-          <button
-            type="button"
-            className="btn btn-outline-sm"
-            onClick={() => setSubTab('templates')}
-          >
-            <SparklesIcon size={14} /> Browse Blueprint Catalog
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary-sm"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <PlusIcon size={14} /> Create Pathway from Scratch
-          </button>
-        </div>
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setSubTab('active')}
+          className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+            subTab === 'active'
+              ? 'bg-primary text-white'
+              : 'bg-bgsoft text-charcoal-faint hover:bg-primary-soft'
+          }`}
+        >
+          <CompassIcon sx={{ fontSize: 16 }} />
+          Active Department Pathways ({pathways.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubTab('templates')}
+          className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+            subTab === 'templates'
+              ? 'bg-primary text-white'
+              : 'bg-bgsoft text-charcoal-faint hover:bg-primary-soft'
+          }`}
+        >
+          <SparklesIcon sx={{ fontSize: 16 }} />
+          Master Blueprint Catalog ({templates.length})
+        </button>
       </div>
 
-      {/* Subtab 1: Active Department Pathways Directory */}
       {subTab === 'active' && (
-        <div className="pathways-active-view">
-          {/* Filtering Bar */}
-          <div className="pathways-filter-bar">
-            <div className="filter-group">
-              <label>Filter {tierTwoTerm}:</label>
-              <select
+        <div>
+          <Panel>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+              <TextField
+                size="small"
+                select
+                label={`Filter ${tierTwoTerm}`}
                 value={filterDivision}
                 onChange={(e) => {
                   setFilterDivision(e.target.value);
                   setFilterDept('');
                 }}
+                sx={{ minWidth: 220 }}
               >
-                <option value="">All {tierTwoTerm}s</option>
+                <MenuItem value="">All {tierTwoTerm}s</MenuItem>
                 {tree?.divisions.map((d) => (
-                  <option key={d.id} value={d.id}>
+                  <MenuItem key={d.id} value={d.id}>
                     {d.name}
-                  </option>
+                  </MenuItem>
                 ))}
-              </select>
-            </div>
-
-            <div className="filter-group">
-              <label>Filter Department:</label>
-              <select
+              </TextField>
+              <TextField
+                size="small"
+                select
+                label="Filter Department"
                 value={filterDept}
                 onChange={(e) => setFilterDept(e.target.value)}
                 disabled={!filterDivision}
+                sx={{ minWidth: 220 }}
               >
-                <option value="">All Departments</option>
+                <MenuItem value="">All Departments</MenuItem>
                 {availableDepts.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
+                  <MenuItem key={dept.id} value={dept.id}>
                     {dept.name}
-                  </option>
+                  </MenuItem>
                 ))}
-              </select>
-            </div>
-
-            <div className="search-input-group">
-              <SearchIcon size={14} color="#64748b" />
-              <input
-                type="text"
-                placeholder="Search pathway title, role..."
+              </TextField>
+              <TextField
+                size="small"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search pathway title, role..."
+                className="lg:flex-1"
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <SearchIcon sx={{ fontSize: 18, mr: 1, color: 'charcoal.faint' }} />
+                    ),
+                  },
+                }}
               />
             </div>
-          </div>
+          </Panel>
 
-          {loading ? (
-            <div className="pathways-loading">Loading career pathways...</div>
-          ) : pathways.length === 0 ? (
-            <div className="pathways-empty-card">
-              <CompassIcon size={36} color="#94a3b8" />
-              <h4>No Active Pathways Found</h4>
-              <p>Create a customized pathway for your degree program or clone a master template blueprint.</p>
-              <div className="empty-btn-row">
-                <button
-                  type="button"
-                  className="btn btn-primary-sm"
-                  onClick={() => setShowCreateModal(true)}
-                >
-                  <PlusIcon size={14} /> Create Pathway
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary-sm"
-                  onClick={() => setSubTab('templates')}
-                >
-                  <SparklesIcon size={14} /> Browse Master Templates
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="pathways-split-layout">
-              {/* Left Column: Pathway Selector Cards */}
-              <div className="pathways-list-column">
-                <div className="column-head">
-                  <h5>Department Pathways ({pathways.length})</h5>
-                  <button type="button" className="btn-icon-refresh" onClick={loadData} title="Refresh">
-                    <RefreshCwIcon size={14} color="#64748b" />
-                  </button>
+          <div className="mt-4">
+            {loading ? (
+              <LinearProgress sx={{ borderRadius: 99, height: 6 }} />
+            ) : pathways.length === 0 ? (
+              <Panel>
+                <div className="flex flex-col items-center gap-3 py-10 text-center">
+                  <CompassIcon sx={{ fontSize: 40, color: 'charcoal.faint' }} />
+                  <h4 className="text-base font-bold text-charcoal">No Active Pathways Found</h4>
+                  <p className="max-w-sm text-sm text-charcoal-faint">
+                    Create a customized pathway for your degree program or clone a master
+                    template blueprint.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      startIcon={<PlusIcon />}
+                      onClick={() => setShowCreateModal(true)}
+                    >
+                      Create Pathway
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="inherit"
+                      size="small"
+                      startIcon={<SparklesIcon />}
+                      onClick={() => setSubTab('templates')}
+                      sx={{ color: 'primary.main', borderColor: 'primary.main' }}
+                    >
+                      Browse Master Templates
+                    </Button>
+                  </div>
                 </div>
+              </Panel>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-3">
+                <Panel>
+                  <div className="mb-4 flex items-center justify-between">
+                    <h5 className="text-sm font-bold text-charcoal">
+                      Department Pathways ({pathways.length})
+                    </h5>
+                    <IconButton size="small" onClick={loadData} title="Refresh">
+                      <RefreshCwIcon fontSize="small" sx={{ color: 'charcoal.soft' }} />
+                    </IconButton>
+                  </div>
+                  <div className="space-y-2.5">
+                    {pathways.map((pw) => {
+                      const isSelected = selectedPathway?.id === pw.id;
+                      return (
+                        <button
+                          key={pw.id}
+                          type="button"
+                          onClick={() => handleSelectPathway(pw)}
+                          className={`w-full rounded-[15px] p-4 text-left transition-colors ${
+                            isSelected
+                              ? 'border border-primary bg-primary-soft'
+                              : 'bg-bgsoft hover:bg-primary-soft'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <Chip
+                              label={pw.department_name}
+                              size="small"
+                              sx={{
+                                bgcolor: 'white',
+                                color: 'primary.main',
+                                fontWeight: 700,
+                              }}
+                            />
+                            <span className="text-xs font-extrabold text-primary">
+                              {pw.total_points} pts
+                            </span>
+                          </div>
+                          <p className="mt-2.5 text-sm font-bold text-charcoal">{pw.title}</p>
+                          <p className="mt-0.5 text-xs text-charcoal-faint">
+                            Target Role: <strong>{pw.career_role}</strong>
+                          </p>
+                          <div className="mt-2 flex items-center gap-2 text-[11px] text-charcoal-faint">
+                            <strong className="text-charcoal">{pw.total_milestones_count}</strong>{' '}
+                            Milestones · {pw.duration_years} Years
+                            {pw.is_template && (
+                              <Chip
+                                label="Master Blueprint"
+                                size="small"
+                                sx={{ bgcolor: 'charcoal', color: '#fff', fontWeight: 700 }}
+                              />
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Panel>
 
-                <div className="pathway-cards-stack">
-                  {pathways.map((pw) => {
-                    const isSelected = selectedPathway?.id === pw.id;
-                    return (
-                      <div
-                        key={pw.id}
-                        className={`pathway-item-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => handleSelectPathway(pw)}
-                      >
-                        <div className="pw-card-top">
-                          <span className="pw-dept-tag">{pw.department_name}</span>
-                          <span className="pw-points-tag">{pw.total_points} pts</span>
-                        </div>
-
-                        <h5 className="pw-title">{pw.title}</h5>
-                        <p className="pw-role">Target Role: <strong>{pw.career_role}</strong></p>
-
-                        <div className="pw-card-footer">
-                          <span className="pw-milestones-count">
-                            <strong>{pw.total_milestones_count}</strong> Milestones
-                          </span>
-                          <span className="pw-duration-tag">{pw.duration_years} Years</span>
-                        </div>
-
-                        {pw.is_template && (
-                          <div className="pw-template-badge">Master Blueprint</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Right Column: Progressive Milestone Timeline Canvas */}
-              <div className="pathway-timeline-column">
-                {selectedPathway ? (
-                  <div className="selected-pathway-wrapper">
-                    <div className="timeline-toolbar">
-                      <div className="active-pathway-info">
-                        <span className="pathway-status-active">
-                          <CheckCircleIcon size={12} /> Active Pathway
-                        </span>
+                <div className="lg:col-span-2">
+                  {selectedPathway ? (
+                    <div>
+                      <div className="mb-3 flex flex-wrap items-center gap-3">
+                        <Chip
+                          icon={<CheckCircleIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
+                          label="Active Pathway"
+                          size="small"
+                          sx={{ bgcolor: 'primary.soft', color: 'primary.main', fontWeight: 700 }}
+                        />
                         {!selectedPathway.is_template && (
                           <button
                             type="button"
-                            className="btn-link-publish"
+                            className="text-xs font-bold text-primary hover:underline"
                             onClick={() => handlePublishAsTemplate(selectedPathway.id)}
                           >
-                            <SparklesIcon size={13} /> Publish as Blueprint Template
+                            <SparklesIcon sx={{ fontSize: 13, verticalAlign: 'text-bottom', mr: 0.5 }} />
+                            Publish as Blueprint Template
                           </button>
                         )}
                       </div>
+                      <MilestoneTimeline
+                        pathway={selectedPathway}
+                        authToken={authToken}
+                        onRefresh={loadData}
+                      />
                     </div>
-
-                    <MilestoneTimeline
-                      pathway={selectedPathway}
-                      authToken={authToken}
-                      onRefresh={loadData}
-                    />
-                  </div>
-                ) : (
-                  <div className="no-pathway-selected">
-                    <FileTextIcon size={32} color="#94a3b8" />
-                    <p>Select a pathway from the left directory to view its progressive milestone roadmap.</p>
-                  </div>
-                )}
+                  ) : (
+                    <Panel>
+                      <div className="flex flex-col items-center gap-3 py-10 text-center">
+                        <FileTextIcon sx={{ fontSize: 36, color: 'charcoal.faint' }} />
+                        <p className="text-sm text-charcoal-faint">
+                          Select a pathway from the left directory to view its progressive
+                          milestone roadmap.
+                        </p>
+                      </div>
+                    </Panel>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
-      {/* Subtab 2: Master Blueprint Catalog */}
       {subTab === 'templates' && (
-        <div className="pathways-templates-view">
-          <div className="template-catalog-header">
-            <div>
-              <div className="template-badge-row">
-                <span className="catalog-tag">
-                  <SparklesIcon size={12} color="#0284c7" /> National & Institutional Blueprint Library
-                </span>
+        <div>
+          <Panel>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <Chip
+                  icon={<SparklesIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
+                  label="National & Institutional Blueprint Library"
+                  size="small"
+                  sx={{ bgcolor: 'primary.soft', color: 'primary.main', fontWeight: 700 }}
+                />
+                <h3 className="mt-2 text-lg font-bold text-charcoal">
+                  Master Career Pathway Blueprints
+                </h3>
+                <p className="mt-1 max-w-2xl text-sm text-charcoal-faint">
+                  Pre-configured, industry-accredited roadmap templates. 1-click clone to your
+                  department and adapt milestones.
+                </p>
               </div>
-              <h3>Master Career Pathway Blueprints</h3>
-              <p>
-                Pre-configured, industry-accredited roadmap templates. 1-click clone to your department and adapt milestones.
-              </p>
-            </div>
-
-            <div className="catalog-filters">
-              <select
+              <TextField
+                size="small"
+                select
+                label="Award Level"
                 value={templateAwardFilter}
                 onChange={(e) => setTemplateAwardFilter(e.target.value)}
+                sx={{ minWidth: 260 }}
               >
-                <option value="">All Award Levels (Degree, ND, NCE)</option>
-                <option value="BTECH">B.Tech / B.Eng (5-Year University)</option>
-                <option value="BSC">B.Sc. (4-Year University)</option>
-                <option value="ND">National Diploma (2-Year Polytechnic)</option>
-                <option value="HND">Higher National Diploma (2-Year Polytechnic)</option>
-                <option value="NCE">NCE (3-Year College of Education)</option>
-              </select>
+                <MenuItem value="">All Award Levels (Degree, ND, NCE)</MenuItem>
+                <MenuItem value="BTECH">B.Tech / B.Eng (5-Year University)</MenuItem>
+                <MenuItem value="BSC">B.Sc. (4-Year University)</MenuItem>
+                <MenuItem value="ND">National Diploma (2-Year Polytechnic)</MenuItem>
+                <MenuItem value="HND">Higher National Diploma (2-Year Polytechnic)</MenuItem>
+                <MenuItem value="NCE">NCE (3-Year College of Education)</MenuItem>
+              </TextField>
             </div>
-          </div>
+          </Panel>
 
-          <div className="template-blueprints-grid">
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {templates.map((tpl) => (
-              <div key={tpl.id} className="template-blueprint-card">
-                <div className="blueprint-card-header">
-                  <div className="blueprint-pills">
-                    <span className="award-pill">{tpl.award_level_display || tpl.award_level}</span>
-                    <span className="duration-pill">{tpl.duration_years} Years</span>
-                    <span className="points-pill">{tpl.total_points} Total Pts</span>
+              <Panel key={tpl.id}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    <Chip
+                      label={tpl.award_level_display || tpl.award_level}
+                      size="small"
+                      sx={{ bgcolor: 'primary.soft', color: 'primary.main', fontWeight: 700 }}
+                    />
+                    <Chip
+                      label={`${tpl.duration_years} Years`}
+                      size="small"
+                      variant="outlined"
+                      sx={{ color: 'charcoal.soft', borderColor: 'border.strong', fontWeight: 700 }}
+                    />
+                    <Chip
+                      label={`${tpl.total_points} Total Pts`}
+                      size="small"
+                      variant="outlined"
+                      sx={{ color: 'charcoal.faint', borderColor: 'border.strong', fontWeight: 700 }}
+                    />
                   </div>
-                  <span className="blueprint-badge">Blueprint</span>
+                  <Chip
+                    label="Blueprint"
+                    size="small"
+                    sx={{ bgcolor: 'charcoal', color: '#fff', fontWeight: 700 }}
+                  />
                 </div>
 
-                <h4 className="blueprint-card-title">{tpl.title}</h4>
-                <p className="blueprint-card-role">
-                  Target Career: <strong>{tpl.career_role}</strong>
+                <h4 className="mt-3 text-base font-bold text-charcoal">{tpl.title}</h4>
+                <p className="mt-1 text-sm text-charcoal-faint">
+                  Target Career: <strong className="text-charcoal">{tpl.career_role}</strong>
                 </p>
-                <p className="blueprint-card-desc">{tpl.description}</p>
+                <p className="mt-1.5 text-sm text-charcoal-faint">{tpl.description}</p>
 
-                <div className="blueprint-meta-details">
-                  <div className="meta-stat">
-                    <span className="stat-label">Milestones:</span>
-                    <span className="stat-val">{tpl.total_milestones_count} Sequenced Steps</span>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-[15px] bg-bgsoft px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-charcoal-faint">
+                      Milestones
+                    </p>
+                    <p className="mt-0.5 text-sm font-bold text-charcoal">
+                      {tpl.total_milestones_count} Sequenced Steps
+                    </p>
                   </div>
-                  <div className="meta-stat">
-                    <span className="stat-label">Min CGPA:</span>
-                    <span className="stat-val">{tpl.target_cgpa_recommendation || '3.00'}</span>
+                  <div className="rounded-[15px] bg-bgsoft px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-charcoal-faint">
+                      Min CGPA
+                    </p>
+                    <p className="mt-0.5 text-sm font-bold text-charcoal">
+                      {tpl.target_cgpa_recommendation || '3.00'}
+                    </p>
                   </div>
                 </div>
 
-                <div className="blueprint-card-actions">
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={() => {
-                      setTemplateToClone(tpl);
-                      setShowCloneModal(true);
-                    }}
-                  >
-                    <SparklesIcon size={14} /> Use Template / Clone for My Department
-                  </button>
-                </div>
-              </div>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="primary"
+                  className="mt-4"
+                  startIcon={<SparklesIcon />}
+                  onClick={() => {
+                    setTemplateToClone(tpl);
+                    setShowCloneModal(true);
+                  }}
+                >
+                  Use Template / Clone for My Department
+                </Button>
+              </Panel>
             ))}
           </div>
         </div>
       )}
 
-      {/* Create Pathway Modal */}
       <CreatePathwayModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
@@ -402,7 +497,6 @@ export const PathwaysManager: FC<PathwaysManagerProps> = ({
         createFn={institutionApi.createPathway}
       />
 
-      {/* Template Clone Modal */}
       {showCloneModal && templateToClone && (
         <TemplateCloneModal
           isOpen={showCloneModal}

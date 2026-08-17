@@ -1,6 +1,20 @@
 import { useState, type FC, type FormEvent } from 'react';
 import type { InstitutionHierarchyTree, AcademicSession } from '../../types/institution';
-import { FileTextIcon, UploadIcon, DatabaseIcon } from '../icons';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  MenuItem,
+  TextField,
+} from '@mui/material';
+import {
+  Storage as StorageIcon,
+  UploadFile as UploadFileIcon,
+  Description as DescriptionIcon,
+  Close as CloseIcon,
+} from '@mui/icons-material';
 
 interface UploadDocumentModalProps {
   isOpen: boolean;
@@ -12,6 +26,14 @@ interface UploadDocumentModalProps {
   onSuccess: () => Promise<void>;
   uploadFn: (formData: FormData, token?: string) => Promise<any>;
 }
+
+const docTypes = [
+  { value: 'STUDENT_HANDBOOK', label: 'Student Academic Handbook' },
+  { value: 'SIWES_CALENDAR', label: 'SIWES / ITCC Operational Calendar' },
+  { value: 'INTERNSHIP_RUBRIC', label: 'Internship & Milestone Rubric' },
+  { value: 'FACULTY_POLICY', label: 'Faculty / Senate Guidelines' },
+  { value: 'CURRICULUM_GUIDE', label: 'Curriculum & Course Outline' },
+];
 
 export const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   isOpen,
@@ -107,48 +129,77 @@ export const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-md" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-with-icon">
-            <DatabaseIcon size={20} color="#0284c7" />
-            <div>
-              <h3>Ingest Institutional Document into pgvector</h3>
-              <p>Upload official handbook, SIWES calendar, or curriculum rubric for zero-hallucination AI advisory</p>
-            </div>
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      slotProps={{ paper: { sx: { borderRadius: '15px' } } }}
+    >
+      <DialogTitle
+        sx={{
+          p: 3,
+          pb: 2,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 2,
+        }}
+      >
+        <div className="flex items-start gap-2">
+          <StorageIcon sx={{ fontSize: 22, color: 'primary.main', mt: 0.5 }} />
+          <div>
+            <p className="text-base font-bold text-charcoal">
+              Ingest Institutional Document into pgvector
+            </p>
+            <p className="mt-0.5 text-sm text-charcoal-faint">
+              Upload official handbook, SIWES calendar, or curriculum rubric for
+              zero-hallucination AI advisory
+            </p>
           </div>
-          <button type="button" className="modal-close-btn" onClick={onClose}>
-            ✕
-          </button>
         </div>
-
-        <div className="upload-mode-selector">
+        <IconButton size="medium" onClick={onClose}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ p: 3, pt: 1 }}>
+        <div className="mb-4 flex gap-2">
           <button
             type="button"
-            className={`mode-btn ${uploadMode === 'file' ? 'active' : ''}`}
             onClick={() => setUploadMode('file')}
+            className={`flex items-center gap-2 rounded-[15px] px-4 py-2 text-sm font-bold transition-colors ${
+              uploadMode === 'file'
+                ? 'bg-primary text-white'
+                : 'bg-bgsoft text-charcoal-faint hover:bg-primary-soft'
+            }`}
           >
-            <UploadIcon size={14} /> Upload File (PDF / DOCX / TXT)
+            <UploadFileIcon sx={{ fontSize: 16 }} /> Upload File (PDF / DOCX / TXT)
           </button>
           <button
             type="button"
-            className={`mode-btn ${uploadMode === 'text' ? 'active' : ''}`}
             onClick={() => setUploadMode('text')}
+            className={`flex items-center gap-2 rounded-[15px] px-4 py-2 text-sm font-bold transition-colors ${
+              uploadMode === 'text'
+                ? 'bg-primary text-white'
+                : 'bg-bgsoft text-charcoal-faint hover:bg-primary-soft'
+            }`}
           >
-            <FileTextIcon size={14} /> Paste Handbook Text
+            <DescriptionIcon sx={{ fontSize: 16 }} /> Paste Handbook Text
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-form">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {uploadMode === 'file' ? (
             <div
-              className={`file-drop-zone ${dragOver ? 'drag-over' : ''} ${selectedFile ? 'file-selected' : ''}`}
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragOver(true);
               }}
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
+              className={`flex flex-col items-center justify-center gap-2 rounded-[15px] border-2 border-dashed px-6 py-8 text-center transition-colors ${
+                dragOver ? 'border-primary bg-primary-soft' : 'border-border-strong bg-bgsoft'
+              }`}
             >
               <input
                 type="file"
@@ -157,125 +208,138 @@ export const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
               />
-              <label htmlFor="doc-file-input" className="drop-zone-label">
-                <UploadIcon size={28} color={selectedFile ? '#059669' : '#0284c7'} />
+              <label htmlFor="doc-file-input" className="flex cursor-pointer flex-col items-center gap-2">
+                <UploadFileIcon sx={{ fontSize: 32, color: selectedFile ? 'primary.main' : 'charcoal.faint' }} />
                 {selectedFile ? (
-                  <div className="selected-file-info">
-                    <span className="file-name">{selectedFile.name}</span>
-                    <span className="file-size">
+                  <>
+                    <span className="text-sm font-bold text-charcoal">{selectedFile.name}</span>
+                    <span className="text-xs text-charcoal-faint">
                       ({(selectedFile.size / 1024).toFixed(1)} KB) · Click or drag to change
                     </span>
-                  </div>
+                  </>
                 ) : (
-                  <div className="drop-zone-text">
-                    <span className="primary-text">Click to browse or drag and drop official document</span>
-                    <span className="secondary-text">PDF, Word (.docx), or Plain Text (.txt) up to 25MB</span>
-                  </div>
+                  <>
+                    <span className="text-sm font-bold text-charcoal">
+                      Click to browse or drag and drop official document
+                    </span>
+                    <span className="text-xs text-charcoal-faint">
+                      PDF, Word (.docx), or Plain Text (.txt) up to 25MB
+                    </span>
+                  </>
                 )}
               </label>
             </div>
           ) : (
-            <div className="form-group">
-              <label>Official Document Text Content *</label>
-              <textarea
-                required
-                rows={6}
-                placeholder="Paste the full guidelines, SIWES prerequisites, or handbook sections here..."
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-              />
-            </div>
+            <TextField
+              fullWidth
+              multiline
+              rows={6}
+              label="Official Document Text Content"
+              required
+              placeholder="Paste the full guidelines, SIWES prerequisites, or handbook sections here..."
+              value={rawText}
+              onChange={(e) => setRawText(e.target.value)}
+            />
           )}
 
-          <div className="form-row-2">
-            <div className="form-group">
-              <label>Document Title *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. FUTMinna 2025/2026 SIWES Operational Manual"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label>Document Type *</label>
-              <select value={docType} onChange={(e) => setDocType(e.target.value)}>
-                <option value="STUDENT_HANDBOOK">Student Academic Handbook</option>
-                <option value="SIWES_CALENDAR">SIWES / ITCC Operational Calendar</option>
-                <option value="INTERNSHIP_RUBRIC">Internship & Milestone Rubric</option>
-                <option value="FACULTY_POLICY">Faculty / Senate Guidelines</option>
-                <option value="CURRICULUM_GUIDE">Curriculum & Course Outline</option>
-              </select>
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              fullWidth
+              size="medium"
+              label="Document Title"
+              required
+              placeholder="e.g. FUTMinna 2025/2026 SIWES Operational Manual"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Document Type"
+              value={docType}
+              onChange={(e) => setDocType(e.target.value)}
+            >
+              {docTypes.map((t) => (
+                <MenuItem key={t.value} value={t.value}>
+                  {t.label}
+                </MenuItem>
+              ))}
+            </TextField>
           </div>
 
-          <div className="form-row-3">
-            <div className="form-group">
-              <label>Scope: Faculty / School</label>
-              <select
-                value={selectedDivision}
-                onChange={(e) => {
-                  setSelectedDivision(e.target.value);
-                  setSelectedDepartment('');
-                }}
-              >
-                <option value="">Institution-Wide (All Units)</option>
-                {tree?.divisions.map((div) => (
-                  <option key={div.id} value={div.id}>
-                    {div.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Scope: Department</label>
-              <select
-                value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
-                disabled={!selectedDivision}
-              >
-                <option value="">All Departments in Unit</option>
-                {availableDepts.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Academic Session</label>
-              <select
-                value={selectedSession}
-                onChange={(e) => setSelectedSession(e.target.value)}
-              >
-                {sessions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.session_label} {s.is_current ? '(Current)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Scope: Faculty / School"
+              value={selectedDivision}
+              onChange={(e) => {
+                setSelectedDivision(e.target.value);
+                setSelectedDepartment('');
+              }}
+            >
+              <MenuItem value="">Institution-Wide (All Units)</MenuItem>
+              {tree?.divisions.map((div) => (
+                <MenuItem key={div.id} value={div.id}>
+                  {div.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Scope: Department"
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              disabled={!selectedDivision}
+            >
+              <MenuItem value="">All Departments in Unit</MenuItem>
+              {availableDepts.map((dept) => (
+                <MenuItem key={dept.id} value={dept.id}>
+                  {dept.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              fullWidth
+              size="medium"
+              select
+              label="Academic Session"
+              value={selectedSession}
+              onChange={(e) => setSelectedSession(e.target.value)}
+            >
+              {sessions.map((s) => (
+                <MenuItem key={s.id} value={s.id}>
+                  {s.session_label} {s.is_current ? '(Current)' : ''}
+                </MenuItem>
+              ))}
+            </TextField>
           </div>
 
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary-sm" onClick={onClose}>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outlined"
+              color="inherit"
+              onClick={onClose}
+              sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+            >
               Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>Parsing & Embedding in pgvector...</>
-              ) : (
-                <>
-                  <UploadIcon size={14} /> Ingest & Index Document
-                </>
-              )}
-            </button>
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={isSubmitting}
+              startIcon={<UploadFileIcon />}
+            >
+              {isSubmitting ? 'Parsing & Embedding in pgvector...' : 'Ingest & Index Document'}
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

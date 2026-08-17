@@ -1,0 +1,27 @@
+# Deploy manifest for the edusal-backend Heroku app.
+#
+# This monorepo manifest targets ONLY the Django backend under backend/.
+# The frontend and every other directory are intentionally not part of this app.
+#
+# Heroku container builds use the directory containing each Dockerfile as the
+# build context, so `backend/Dockerfile` (context = backend/) is used here.
+build:
+  docker:
+    web: backend/Dockerfile
+release:
+  image: web
+  command:
+    - python manage.py migrate --noinput
+run:
+  web:
+    image: web
+    command:
+      - /start
+  worker:
+    image: web
+    command:
+      - /start-celeryworker
+  beat:
+    image: web
+    command:
+      - /start-celerybeat

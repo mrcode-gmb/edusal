@@ -1,15 +1,23 @@
 import { useState, type FC } from 'react';
 import type { InstitutionHierarchyTree } from '../../types/institution';
 import {
-  FolderTreeIcon,
-  LayersIcon,
-  PlusIcon,
-  ClockIcon,
-  BriefcaseIcon,
-  BuildingIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-} from '../icons';
+  Button,
+  Chip,
+  IconButton,
+} from '@mui/material';
+import {
+  AccountTree as AccountTreeIcon,
+  School as SchoolIcon,
+  Domain as DomainIcon,
+  AutoAwesome as AutoAwesomeIcon,
+  ExpandMore as ExpandMoreIcon,
+  ChevronRight as ChevronRightIcon,
+  Verified as VerifiedIcon,
+  Add as AddIcon,
+  PlaylistAdd as PlaylistAddIcon,
+  LibraryAdd as LibraryAddIcon,
+} from '@mui/icons-material';
+import { Panel, PageHead, StatCard } from './Shared';
 
 interface AcademicHierarchyTreeProps {
   tree: InstitutionHierarchyTree | null;
@@ -19,6 +27,259 @@ interface AcademicHierarchyTreeProps {
   onAddProgram: (departmentId: string) => void;
 }
 
+type TreeNode = {
+  id: string;
+  name: string;
+  tier: string;
+  meta: Record<string, string | number | boolean | undefined>;
+  children?: TreeNode[];
+};
+
+const tierMeta = [
+  { tier: 'Tier 1', label: 'Institution', icon: SchoolIcon, note: 'Native scope root' },
+  { tier: 'Tier 2', label: 'School / Faculty', icon: DomainIcon, note: 'Native Tier-2 scope' },
+  { tier: 'Tier 3', label: 'Department', icon: AccountTreeIcon, note: 'SIWES-eligible unit' },
+  { tier: 'Tier 4', label: 'Degree Option', icon: AutoAwesomeIcon, note: 'Rubric-mapped' },
+];
+
+function buildTree(tree: InstitutionHierarchyTree): TreeNode {
+  const t2Label = tree.tier_two_term === 'SCHOOL' ? 'School' : tree.tier_two_term === 'COLLEGE' ? 'College' : 'Faculty';
+  return {
+    id: tree.id,
+    name: tree.name,
+    tier: 'Tier 1 · Institution',
+    meta: { reg: `${tree.regulator} Regulated`, type: tree.institution_type },
+    children: tree.divisions.map((div) => ({
+      id: div.id,
+      name: div.name,
+      tier: `Tier 2 · ${t2Label}`,
+      meta: { code: div.code, depts: div.departments.length, dean: div.dean_name || 'Not assigned' },
+      children: div.departments.map((dept) => ({
+        id: dept.id,
+        name: dept.name,
+        tier: 'Tier 3 · Department',
+        meta: {
+          code: dept.code,
+          programmes: dept.programs.length,
+          siwes: dept.siwes_eligible,
+          hod: dept.hod_name || 'Unassigned',
+        },
+        children: dept.programs.map((prog) => ({
+          id: prog.id,
+          name: prog.name,
+          tier: 'Tier 4 · Degree Option',
+          meta: {
+            code: prog.program_code,
+            rubric: prog.award_level_display,
+            siwes: prog.siwes_duration_months > 0,
+          },
+        })),
+      })),
+    })),
+  };
+}
+
+function TierNode({
+  node,
+  depth = 0,
+  selected,
+  onSelect,
+  expanded,
+  onToggle,
+  onAddDepartment,
+  onAddProgram,
+}: {
+  node: TreeNode;
+  depth?: number;
+  selected: TreeNode;
+  onSelect: (n: TreeNode) => void;
+  expanded: Record<string, boolean>;
+  onToggle: (id: string) => void;
+  onAddDepartment: (divisionId: string) => void;
+  onAddProgram: (departmentId: string) => void;
+}) {
+  const hasChildren = node.children && node.children.length > 0;
+  const isOpen = expanded[node.id];
+  const isSel = selected.id === node.id;
+  const isTier2 = node.tier.includes('Tier 2');
+  const isTier3 = node.tier.includes('Tier 3');
+
+  return (
+    <div>
+      <div
+        className={`flex w-full items-center gap-2 rounded-[15px] border px-3 py-2.5 text-left transition-colors ${
+          isSel
+            ? 'border-primary bg-primary-soft'
+            : 'border-transparent hover:border-line hover:bg-bgsoft'
+        }`}
+        style={{ marginLeft: depth * 18 }}
+      >
+        <IconButton
+          size="small"
+          onClick={() => {
+            if (hasChildren) onToggle(node.id);
+          }}
+          aria-label="Expand"
+        >
+          {isOpen ? <ExpandMoreIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
+        </IconButton>
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          onClick={() => onSelect(node)}
+        >
+          <span className="truncate text-sm font-semibold text-charcoal">{node.name}</span>
+        </button>
+        {isTier2 && (
+          <IconButton
+            size="small"
+            title="Add Department"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddDepartment(node.id);
+            }}
+          >
+            <PlaylistAddIcon fontSize="small" sx={{ color: 'primary.main' }} />
+          </IconButton>
+        )}
+        {isTier3 && (
+          <IconButton
+            size="small"
+            title="Add Program"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddProgram(node.id);
+            }}
+          >
+            <LibraryAddIcon fontSize="small" sx={{ color: 'primary.main' }} />
+          </IconButton>
+        )}
+      </div>
+      {isOpen &&
+        node.children?.map((c) => (
+          <TierNode
+            key={c.id}
+            node={c}
+            depth={depth + 1}
+            selected={selected}
+            onSelect={onSelect}
+            expanded={expanded}
+            onToggle={onToggle}
+            onAddDepartment={onAddDepartment}
+            onAddProgram={onAddProgram}
+          />
+        ))}
+    </div>
+  );
+}
+
+function DetailPanel({
+  node,
+  onAddDepartment,
+  onAddProgram,
+}: {
+  node: TreeNode;
+  onAddDepartment: (divisionId: string) => void;
+  onAddProgram: (departmentId: string) => void;
+}) {
+  const icon = node.tier.includes('Tier 1')
+    ? SchoolIcon
+    : node.tier.includes('Tier 2')
+      ? DomainIcon
+      : node.tier.includes('Tier 3')
+        ? AccountTreeIcon
+        : AutoAwesomeIcon;
+  const Icon = icon;
+  const m = node.meta;
+  const siwes = Boolean(m.siwes);
+
+  return (
+    <Panel>
+      <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
+        Node Detail
+      </p>
+      <div className="mt-4 flex items-center gap-4">
+        <span className="flex h-14 w-14 items-center justify-center rounded-[15px] bg-primary-soft">
+          <Icon sx={{ fontSize: 28, color: 'primary.main' }} />
+        </span>
+        <div>
+          <h3 className="text-lg font-bold text-charcoal">{node.name}</h3>
+          <p className="text-sm text-charcoal-faint">{node.tier}</p>
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {'siwes' in m && (
+          <Chip
+            icon={<VerifiedIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
+            label={siwes ? 'SIWES Eligible' : 'Not Eligible'}
+            size="small"
+            sx={{
+              bgcolor: siwes ? 'primary.soft' : 'action.hover',
+              color: siwes ? 'primary.main' : 'text.secondary',
+              fontWeight: 700,
+            }}
+          />
+        )}
+        {m.code && (
+          <Chip
+            label={String(m.code)}
+            size="small"
+            variant="outlined"
+            sx={{ color: 'charcoal.soft', borderColor: 'border.strong', fontWeight: 700 }}
+          />
+        )}
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        {[
+          { k: 'Registry', v: m.reg || '—' },
+          { k: 'Type', v: m.type || '—' },
+          { k: 'Dean', v: m.dean || '—' },
+          { k: 'HOD', v: m.hod || '—' },
+          { k: 'Departments', v: m.depts ?? '—' },
+          { k: 'Programmes', v: m.programmes ?? '—' },
+          { k: 'Rubric', v: m.rubric || '—' },
+        ].map((r) => (
+          <div key={r.k} className="rounded-[15px] bg-bgsoft px-4 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-charcoal-faint">
+              {r.k}
+            </p>
+            <p className="mt-0.5 text-sm font-bold text-charcoal">{r.v}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        {node.tier.includes('Tier 2') && (
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            startIcon={<PlaylistAddIcon />}
+            onClick={() => onAddDepartment(node.id)}
+            sx={{ color: 'primary.main', borderColor: 'primary.main' }}
+          >
+            Add Department
+          </Button>
+        )}
+        {node.tier.includes('Tier 3') && (
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            startIcon={<LibraryAddIcon />}
+            onClick={() => onAddProgram(node.id)}
+            sx={{ color: 'primary.main', borderColor: 'primary.main' }}
+          >
+            Add Program
+          </Button>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
 export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
   tree,
   loading,
@@ -26,229 +287,131 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
   onAddDepartment,
   onAddProgram,
 }) => {
-  const [collapsedDivisions, setCollapsedDivisions] = useState<Record<string, boolean>>({});
-  const [collapsedDepartments, setCollapsedDepartments] = useState<Record<string, boolean>>({});
+  const [selected, setSelected] = useState<TreeNode | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   if (loading) {
     return (
-      <div className="tree-loading-box">
-        <div className="tree-spinner"></div>
-        <p>Loading 4-tier academic hierarchy tree...</p>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="h-24 animate-pulse rounded-[15px] bg-bgsoft"
+          />
+        ))}
       </div>
     );
   }
 
   if (!tree) {
-    return <div className="tree-empty-box">No institutional hierarchy data available.</div>;
+    return (
+      <Panel>
+        <p className="text-sm text-charcoal-faint">No institutional hierarchy data available.</p>
+      </Panel>
+    );
   }
 
-  const toggleDivision = (divId: string) => {
-    setCollapsedDivisions((prev) => ({ ...prev, [divId]: !prev[divId] }));
-  };
+  const root = buildTree(tree);
+  const active = selected || root;
+  const t2Label = tree.tier_two_term === 'SCHOOL' ? 'School' : tree.tier_two_term === 'COLLEGE' ? 'College' : 'Faculty';
 
-  const toggleDepartment = (deptId: string) => {
-    setCollapsedDepartments((prev) => ({ ...prev, [deptId]: !prev[deptId] }));
-  };
+  const toggle = (id: string) => setExpanded((e) => ({ ...e, [id]: !e[id] }));
+
+  const totalDepartments = tree.divisions.reduce(
+    (sum, d) => sum + d.departments.length,
+    0,
+  );
+  const totalPrograms = tree.divisions.reduce(
+    (sum, d) =>
+      sum +
+      d.departments.reduce((s2, dept) => s2 + dept.programs.length, 0),
+    0,
+  );
+  const siwesEligible = tree.divisions.reduce(
+    (sum, d) => sum + d.departments.filter((dept) => dept.siwes_eligible).length,
+    0,
+  );
 
   return (
-    <div className="hierarchy-tree-card">
-      {/* Tree Top Bar */}
-      <div className="tree-header-bar">
-        <div className="tree-title-group">
-          <div className="tree-badge-row">
-            <span className="tier-tag tier-1">
-              <BuildingIcon size={13} /> Tier 1: Institutional Root
-            </span>
-            <span className="regulator-pill">{tree.regulator} Regulated</span>
-            <span className="type-pill">{tree.institution_type}</span>
-          </div>
-          <h3 className="tree-institution-name">{tree.name}</h3>
-          <p className="tree-institution-sub">
-            Native Tier-2 Terminology: <strong>{tree.tier_two_term}</strong> · Standardized 4-Tier Hierarchy Architecture
-          </p>
-        </div>
+    <div>
+      <PageHead
+        eyebrow="Institutional Structure"
+        title="4-Tier Hierarchy Explorer"
+        sub="Every faculty, department, and degree option mapped as a strictly relational governance tree."
+        actions={
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={onAddDivision}
+          >
+            Add Academic Division
+          </Button>
+        }
+      />
 
-        <button type="button" className="btn btn-primary-sm" onClick={onAddDivision}>
-          <PlusIcon size={15} /> Add {tree.tier_two_term === 'SCHOOL' ? 'School' : 'Faculty'}
-        </button>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {tierMeta.map((t) => {
+          const Icon = t.icon;
+          return (
+            <Panel key={t.tier} className="p-5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-[15px] bg-primary-soft">
+                  <Icon sx={{ fontSize: 20, color: 'primary.main' }} />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-charcoal">{t.label}</p>
+                  <p className="text-xs font-semibold text-primary">{t.tier}</p>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-charcoal-faint">{t.note}</p>
+            </Panel>
+          );
+        })}
       </div>
 
-      {/* Tree Visual Body */}
-      <div className="tree-body">
-        {tree.divisions.length === 0 ? (
-          <div className="tree-empty-divisions">
-            <FolderTreeIcon size={32} color="#94a3b8" />
-            <p>No academic divisions configured yet.</p>
-            <button type="button" className="btn btn-secondary-sm" onClick={onAddDivision}>
-              Create First {tree.tier_two_term === 'SCHOOL' ? 'School' : 'Faculty'}
-            </button>
-          </div>
-        ) : (
-          <div className="divisions-tree-list">
-            {tree.divisions.map((div) => {
-              const isDivCollapsed = collapsedDivisions[div.id] || false;
-              return (
-                <div key={div.id} className="division-node">
-                  {/* Division Node Header */}
-                  <div className="division-header">
-                    <button
-                      type="button"
-                      className="collapse-btn"
-                      onClick={() => toggleDivision(div.id)}
-                      aria-label="Toggle division details"
-                    >
-                      {isDivCollapsed ? <ChevronRightIcon size={16} /> : <ChevronDownIcon size={16} />}
-                    </button>
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <Panel className="lg:col-span-2">
+          <p className="mb-4 text-sm font-bold text-charcoal">
+            Hierarchy Tree — click to inspect any node
+          </p>
+          <TierNode
+            node={root}
+            depth={0}
+            selected={active}
+            onSelect={setSelected}
+            expanded={expanded}
+            onToggle={toggle}
+            onAddDepartment={onAddDepartment}
+            onAddProgram={onAddProgram}
+          />
+        </Panel>
+        <DetailPanel
+          node={active}
+          onAddDepartment={onAddDepartment}
+          onAddProgram={onAddProgram}
+        />
+      </div>
 
-                    <div className="node-icon-box division-icon">
-                      <LayersIcon size={16} color="#ffffff" />
-                    </div>
-
-                    <div className="node-info" onClick={() => toggleDivision(div.id)}>
-                      <div className="node-title-row">
-                        <span className="node-tier-label">Tier 2: {tree.tier_two_term}</span>
-                        <h4 className="node-title">{div.name}</h4>
-                        {div.code && <span className="node-code">[{div.code}]</span>}
-                      </div>
-                      <p className="node-dean">
-                        Dean: <strong>{div.dean_name || 'Not assigned'}</strong>
-                      </p>
-                    </div>
-
-                    <div className="node-actions">
-                      <span className="node-count-badge">
-                        {div.departments.length} {div.departments.length === 1 ? 'Department' : 'Departments'}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn-action-ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onAddDepartment(div.id);
-                        }}
-                      >
-                        <PlusIcon size={13} /> Add Dept
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Division Children (Departments) */}
-                  {!isDivCollapsed && (
-                    <div className="departments-tree-list">
-                      {div.departments.length === 0 ? (
-                        <div className="department-empty-prompt">
-                          <span>No departments under this division yet.</span>
-                          <button
-                            type="button"
-                            className="btn-link"
-                            onClick={() => onAddDepartment(div.id)}
-                          >
-                            Add Department →
-                          </button>
-                        </div>
-                      ) : (
-                        div.departments.map((dept) => {
-                          const isDeptCollapsed = collapsedDepartments[dept.id] || false;
-                          return (
-                            <div key={dept.id} className="department-node">
-                              {/* Department Header */}
-                              <div className="department-header">
-                                <button
-                                  type="button"
-                                  className="collapse-btn-sm"
-                                  onClick={() => toggleDepartment(dept.id)}
-                                >
-                                  {isDeptCollapsed ? (
-                                    <ChevronRightIcon size={14} />
-                                  ) : (
-                                    <ChevronDownIcon size={14} />
-                                  )}
-                                </button>
-
-                                <div className="dept-info" onClick={() => toggleDepartment(dept.id)}>
-                                  <div className="dept-title-row">
-                                    <span className="node-tier-label-sm">Tier 3: Dept</span>
-                                    <h5 className="dept-name">{dept.name}</h5>
-                                    {dept.code && <span className="dept-code">{dept.code}</span>}
-                                    {dept.siwes_eligible ? (
-                                      <span className="siwes-badge siwes-yes">SIWES Eligible</span>
-                                    ) : (
-                                      <span className="siwes-badge siwes-no">Non-SIWES Track</span>
-                                    )}
-                                  </div>
-                                  <span className="dept-hod">HOD: {dept.hod_name || 'Unassigned'}</span>
-                                </div>
-
-                                <div className="dept-actions">
-                                  <span className="program-count-badge">
-                                    {dept.programs.length} {dept.programs.length === 1 ? 'Program' : 'Programs'}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    className="btn-action-ghost-sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onAddProgram(dept.id);
-                                    }}
-                                  >
-                                    <PlusIcon size={12} /> Add Program
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Department Children (Programs) */}
-                              {!isDeptCollapsed && (
-                                <div className="programs-tree-list">
-                                  {dept.programs.length === 0 ? (
-                                    <div className="program-empty-prompt">
-                                      <span>No degree options configured.</span>
-                                      <button
-                                        type="button"
-                                        className="btn-link"
-                                        onClick={() => onAddProgram(dept.id)}
-                                      >
-                                        Add Program Option →
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    dept.programs.map((prog) => (
-                                      <div key={prog.id} className="program-leaf-node">
-                                        <span className="leaf-tier-tag">Tier 4: Leaf Option</span>
-                                        <div className="leaf-info">
-                                          <div className="leaf-title-row">
-                                            <span className="leaf-title">{prog.name}</span>
-                                            {prog.program_code && (
-                                              <code className="leaf-code">{prog.program_code}</code>
-                                            )}
-                                          </div>
-                                          <div className="leaf-meta-row">
-                                            <span className="award-pill">{prog.award_level_display}</span>
-                                            <span className="duration-pill">
-                                              <ClockIcon size={12} /> {prog.duration_years} Years
-                                            </span>
-                                            {prog.siwes_duration_months > 0 && (
-                                              <span className="siwes-duration-pill">
-                                                <BriefcaseIcon size={12} /> {prog.siwes_duration_months} Months SIWES
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ))
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <StatCard
+          icon={SchoolIcon}
+          value="1"
+          label="Institution (Tier 1)"
+          sub={`${tree.name} — ${tree.regulator} regulated`}
+        />
+        <StatCard
+          icon={DomainIcon}
+          value={tree.divisions_count}
+          label={`${t2Label}s (Tier 2)`}
+          sub={`${tree.divisions.length} mapped ${t2Label.toLowerCase()}s`}
+        />
+        <StatCard
+          icon={AccountTreeIcon}
+          value={totalDepartments}
+          label="Departments (Tier 3)"
+          sub={`${siwesEligible} SIWES eligible · ${totalPrograms} programmes`}
+        />
       </div>
     </div>
   );

@@ -1,7 +1,21 @@
 import { useState, type FC, type FormEvent } from 'react';
 import type { StudentProfile, StudentCredentialResult } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
-import { KeyIcon, CheckCircleIcon, SparklesIcon, ExternalLinkIcon } from '../icons';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  TextField,
+} from '@mui/material';
+import {
+  Key as KeyIcon,
+  Verified as CheckCircleIcon,
+  AutoAwesome as SparklesIcon,
+  OpenInNew as ExternalLinkIcon,
+  Close as CloseIcon,
+} from '@mui/icons-material';
 
 interface GenerateCredentialModalProps {
   isOpen: boolean;
@@ -46,122 +60,172 @@ export const GenerateCredentialModal: FC<GenerateCredentialModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-md" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-with-icon">
-            <KeyIcon size={20} color="#0284c7" />
-            <div>
-              <h3>Generate Student Login Credentials</h3>
-              <p>Issue password and dispatch welcome email via Mailpit SMTP</p>
-            </div>
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      slotProps={{ paper: { sx: { borderRadius: '15px' } } }}
+    >
+      <DialogTitle
+        sx={{
+          p: 3,
+          pb: 2,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 2,
+        }}
+      >
+        <div className="flex items-start gap-2">
+          <KeyIcon sx={{ fontSize: 22, color: 'primary.main', mt: 0.5 }} />
+          <div>
+            <p className="text-base font-bold text-charcoal">
+              Generate Student Login Credentials
+            </p>
+            <p className="mt-0.5 text-sm text-charcoal-faint">
+              Issue password and dispatch welcome email via Mailpit SMTP
+            </p>
           </div>
-          <button type="button" className="modal-close-btn" onClick={onClose}>
-            ✕
-          </button>
         </div>
-
+        <IconButton size="medium" onClick={onClose}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ p: 3, pt: 1 }}>
         {result ? (
-          <div className="credential-success-state">
-            <div className="success-banner">
-              <CheckCircleIcon size={24} color="#059669" />
+          <div>
+            <div className="flex items-center gap-3 rounded-[15px] bg-primary-soft/40 p-4">
+              <CheckCircleIcon sx={{ fontSize: 28, color: 'primary.main' }} />
               <div>
-                <h4>Credentials Generated & Email Sent!</h4>
-                <p>Welcome email dispatched via SMTP to <strong>{result.recipient}</strong></p>
+                <p className="text-base font-bold text-charcoal">
+                  Credentials Generated & Email Sent!
+                </p>
+                <p className="text-sm text-charcoal-faint">
+                  Welcome email dispatched via SMTP to <strong>{result.recipient}</strong>
+                </p>
               </div>
             </div>
 
-            <div className="credential-details-box">
-              <div className="cred-item">
-                <span className="cred-label">Student Name:</span>
-                <span className="cred-val">{student.user_name}</span>
-              </div>
-              <div className="cred-item">
-                <span className="cred-label">Matric Number:</span>
-                <span className="cred-val">{student.matric_number}</span>
-              </div>
-              <div className="cred-item">
-                <span className="cred-label">Login Email:</span>
-                <span className="cred-val">{result.email}</span>
-              </div>
-              <div className="cred-item">
-                <span className="cred-label">Generated Password:</span>
-                <span className="cred-val-highlight">{result.plain_password}</span>
+            <div className="mt-4 rounded-[15px] bg-bgsoft p-5">
+              <div className="space-y-2.5 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-charcoal-faint">Student Name</span>
+                  <strong className="text-charcoal">{student.user_name}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-charcoal-faint">Matric Number</span>
+                  <strong className="text-charcoal">{student.matric_number}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-charcoal-faint">Login Email</span>
+                  <strong className="text-charcoal">{result.email}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-charcoal-faint">Generated Password</span>
+                  <code className="rounded bg-primary-soft px-2 py-0.5 font-mono text-primary">
+                    {result.plain_password}
+                  </code>
+                </div>
               </div>
             </div>
 
-            <div className="mailpit-test-action">
-              <p>You can inspect this email immediately in the local Mailpit web console:</p>
-              <a
+            <div className="mt-4 rounded-[15px] bg-bgsoft p-4">
+              <p className="text-sm text-charcoal-faint">
+                You can inspect this email immediately in the local Mailpit web console:
+              </p>
+              <Button
+                variant="outlined"
+                color="inherit"
+                className="mt-2"
+                component="a"
                 href="http://localhost:8025"
                 target="_blank"
                 rel="noreferrer"
-                className="btn btn-outline-sm mailpit-link"
+                startIcon={<ExternalLinkIcon />}
+                sx={{ color: 'primary.main', borderColor: 'primary.main' }}
               >
-                <ExternalLinkIcon size={14} /> Open Mailpit Inbox (Port 8025)
-              </a>
+                Open Mailpit Inbox (Port 8025)
+              </Button>
             </div>
 
-            <div className="modal-actions">
-              <button type="button" className="btn btn-primary" onClick={onClose}>
+            <div className="flex justify-end pt-4">
+              <Button variant="contained" color="primary" onClick={onClose}>
                 Done
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleGenerate} className="modal-form">
-            <div className="student-target-summary">
-              <div className="summary-row">
-                <span>Student:</span> <strong>{student.user_name} ({student.matric_number})</strong>
-              </div>
-              <div className="summary-row">
-                <span>Degree Programme:</span> <strong>{student.program_name}</strong>
-              </div>
-              <div className="summary-row">
-                <span>Level:</span> <strong>{student.level_display}</strong>
-              </div>
-              <div className="summary-row">
-                <span>Target Email:</span> <strong>{student.user_email}</strong>
+          <form onSubmit={handleGenerate} className="space-y-5">
+            <div className="rounded-[15px] bg-bgsoft p-4">
+              <div className="space-y-2 text-sm">
+                <p className="flex items-center justify-between text-charcoal-faint">
+                  <span>Student</span>
+                  <strong className="text-charcoal">
+                    {student.user_name} ({student.matric_number})
+                  </strong>
+                </p>
+                <p className="flex items-center justify-between text-charcoal-faint">
+                  <span>Degree Programme</span>
+                  <strong className="text-charcoal">{student.program_name}</strong>
+                </p>
+                <p className="flex items-center justify-between text-charcoal-faint">
+                  <span>Level</span>
+                  <strong className="text-charcoal">{student.level_display}</strong>
+                </p>
+                <p className="flex items-center justify-between text-charcoal-faint">
+                  <span>Target Email</span>
+                  <strong className="text-charcoal">{student.user_email}</strong>
+                </p>
               </div>
             </div>
 
-            <div className="form-group">
-              <label>Custom Temporary Password (Optional)</label>
-              <input
-                type="text"
-                placeholder="Leave blank to auto-generate secure password (e.g. EduSal-2026!7xK)"
-                value={customPassword}
-                onChange={(e) => setCustomPassword(e.target.value)}
-              />
-              <span className="field-hint">
-                If left blank, a cryptographically secure random password will be created automatically.
-              </span>
-            </div>
+            <TextField
+              fullWidth
+              size="medium"
+              label="Custom Temporary Password (Optional)"
+              placeholder="Leave blank to auto-generate secure password (e.g. EduSal-2026!7xK)"
+              value={customPassword}
+              onChange={(e) => setCustomPassword(e.target.value)}
+            />
+            <p className="-mt-2 text-xs text-charcoal-faint">
+              If left blank, a cryptographically secure random password will be created
+              automatically.
+            </p>
 
-            <div className="email-dispatch-notice">
-              <SparklesIcon size={16} color="#0284c7" />
-              <p>
-                The system will set the student password and send a formatted HTML welcome email with login instructions to <strong>{student.user_email}</strong> via Mailpit.
+            <div className="flex items-start gap-2 rounded-[15px] bg-primary-soft/40 p-4">
+              <SparklesIcon sx={{ fontSize: 18, color: 'primary.main', mt: 0.5 }} />
+              <p className="text-sm text-charcoal">
+                The system will set the student password and send a formatted HTML welcome
+                email with login instructions to <strong>{student.user_email}</strong> via
+                Mailpit.
               </p>
             </div>
 
-            <div className="modal-actions">
-              <button type="button" className="btn btn-secondary-sm" onClick={onClose}>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outlined"
+                color="inherit"
+                onClick={onClose}
+                sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+              >
                 Cancel
-              </button>
-              <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  'Generating & Sending Email...'
-                ) : (
-                  <>
-                    <KeyIcon size={14} /> Generate & Send Credentials Email
-                  </>
-                )}
-              </button>
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                disabled={isSubmitting}
+                startIcon={<KeyIcon />}
+              >
+                {isSubmitting
+                  ? 'Generating & Sending Email...'
+                  : 'Generate & Send Credentials Email'}
+              </Button>
             </div>
           </form>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
