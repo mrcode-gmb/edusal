@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { institutionApi } from '../services/institutionApi'
 import {
   Button,
   TextField,
@@ -11,23 +12,20 @@ import {
   FormControlLabel,
   LinearProgress,
   Alert,
-  InputAdornment,
+  CircularProgress,
 } from '@mui/material'
 import {
-  School as SchoolIcon,
   ArrowBack as ArrowBackIcon,
   ArrowForward as ArrowForwardIcon,
   CheckCircle as CheckCircleIcon,
   Check as CheckIcon,
   Domain as DomainIcon,
   ContactMail as ContactMailIcon,
-  Tune as TuneIcon,
-  WorkspacePremium as WorkspacePremiumIcon,
   VerifiedUser as VerifiedUserIcon,
   Verified as VerifiedIcon,
   Lock as LockIcon,
   Info as InfoIcon,
-  CheckCircleOutlineOutlined as CheckCircleOutlineIcon,
+  ReceiptLong as ReceiptLongIcon,
 } from '@mui/icons-material'
 
 const inputSx = {
@@ -40,13 +38,19 @@ const fieldSx = (extra = {}) => ({ ...inputSx, ...extra })
 const Steps = [
   {
     label: 'Institution',
-    sub: 'Profile & regional defaults',
+    sub: 'Campus profile & location',
     icon: DomainIcon,
   },
-  { label: 'Contacts', sub: 'Primary contacts', icon: ContactMailIcon },
-  { label: 'Scope', sub: 'Faculties, seats, modules', icon: TuneIcon },
-  { label: 'Plan', sub: 'Tier & add-ons', icon: WorkspacePremiumIcon },
-  { label: 'Compliance', sub: 'DPO & policies', icon: VerifiedUserIcon },
+  {
+    label: 'Administrator',
+    sub: 'Primary contact & login credentials',
+    icon: ContactMailIcon,
+  },
+  {
+    label: 'Compliance',
+    sub: 'NDPR & statutory sign-off',
+    icon: VerifiedUserIcon,
+  },
 ]
 
 const NigerianStates = [
@@ -67,81 +71,6 @@ const InstitutionTypes = [
   'Other Tertiary Institution',
 ]
 
-const Faculties = [
-  'Agricultural Sciences',
-  'Arts & Humanities',
-  'Basic Medical Sciences',
-  'Clinical Sciences',
-  'Computing & IT',
-  'Education',
-  'Engineering',
-  'Environmental Sciences',
-  'Law',
-  'Management Sciences',
-  'Pharmaceutical Sciences',
-  'Physical & Life Sciences',
-  'Social Sciences',
-  'Veterinary Medicine',
-  'Allied Health Sciences',
-  'Communication & Media',
-]
-
-const Modules = [
-  'Pathways & Curriculum Engine',
-  'Assessments & Skills Diagnostics',
-  'Counselling & Case Management',
-  'SIWES / ITF Placement Tracking',
-  'Employer Pipeline & Match',
-  'Analytics & Institutional Reporting',
-  'Institution-Grounded AI Assistant',
-]
-
-const Tiers = [
-  {
-    key: 'foundation',
-    name: 'Foundation',
-    desc: 'Colleges of education & specialist institutions',
-    features: [
-      'Sponsored onboarding',
-      'Up to 2,500 student seats',
-      'Core assessments & pathways',
-      'Standard support SLA',
-    ],
-  },
-  {
-    key: 'standard',
-    name: 'Standard',
-    badge: 'Most common',
-    desc: 'State universities, polytechnics & private institutions',
-    features: [
-      'Sponsored onboarding',
-      'Up to 8,000 student seats',
-      'All modules + analytics',
-      'Priority support & training',
-    ],
-  },
-  {
-    key: 'flagship',
-    name: 'Flagship',
-    desc: 'Federal universities & flagship institutions',
-    features: [
-      'Sponsored onboarding',
-      'Unlimited seats',
-      'SSO/SAML, custom SLA',
-      'Dedicated success manager',
-    ],
-  },
-]
-
-const Addons = [
-  'SSO / SAML Single Sign-On',
-  'API & Data Export Access',
-  'Advanced Analytics Studio',
-  'Branded Student Portal',
-  'Bulk Data Migration',
-  'Dedicated Training Workshops',
-]
-
 const initialForm = {
   legalName: '',
   shortName: '',
@@ -156,12 +85,7 @@ const initialForm = {
   role: '',
   contactEmail: '',
   mobile: '',
-  faculties: [],
-  counsellorSeats: '',
-  studentSeats: '',
-  modules: Modules,
-  tier: 'standard',
-  addons: [],
+  password: '',
   dpoName: '',
   dpoEmail: '',
   acceptMsa: false,
@@ -176,10 +100,6 @@ const validate = (step, form) => {
     if (!form.type) e.type = true
     if (!form.state) e.state = true
     if (!form.city) e.city = true
-    if (!form.website) e.website = true
-    else if (!/^https?:\/\/.+/.test(form.website)) e.website = true
-    if (!form.yearFounded) e.yearFounded = true
-    if (!form.population) e.population = true
   }
   if (step === 1) {
     if (!form.contactName) e.contactName = true
@@ -187,12 +107,10 @@ const validate = (step, form) => {
     if (!form.contactEmail) e.contactEmail = true
     else if (!/^\S+@\S+\.\S+$/.test(form.contactEmail)) e.contactEmail = true
     if (!form.mobile) e.mobile = true
+    if (!form.password) e.password = true
+    else if (form.password.length < 6) e.password = true
   }
   if (step === 2) {
-    if (!form.counsellorSeats) e.counsellorSeats = true
-    if (!form.studentSeats) e.studentSeats = true
-  }
-  if (step === 4) {
     if (!form.dpoName) e.dpoName = true
     if (!form.dpoEmail) e.dpoEmail = true
     else if (!/^\S+@\S+\.\S+$/.test(form.dpoEmail)) e.dpoEmail = true
@@ -205,7 +123,7 @@ const validate = (step, form) => {
 function Logo() {
   return (
     <Link to="/" className="flex items-center">
-      <img src="/logo.png" alt="Edusal Consult" className="h-9 w-auto" />
+      <img src="/logo.png" alt="Nexus Edutech Consult Ltd" className="h-9 w-auto" />
     </Link>
   )
 }
@@ -225,7 +143,7 @@ function StepIndicator({ current }) {
           const Icon = s.icon
           return (
             <div key={s.label} className="flex flex-1 items-start">
-              <div className="flex w-20 flex-col items-center text-center">
+              <div className="flex w-24 flex-col items-center text-center">
                 <span
                   className={`flex h-11 w-11 items-center justify-center rounded-full border-2 text-sm font-bold transition-colors ${
                     active
@@ -308,50 +226,17 @@ function ProgressCard({ current }) {
   )
 }
 
-function ChipSelect({ label, items, selected, onToggle, required }) {
-  return (
-    <div>
-      <p className="mb-2 text-sm font-semibold text-charcoal">
-        {label} {required && <span className="text-primary">*</span>}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {items.map((item) => {
-          const on = selected.includes(item)
-          return (
-            <button
-              key={item}
-              type="button"
-              onClick={() => onToggle(item)}
-              className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors ${
-                on
-                  ? 'border-primary bg-primary-soft text-primary'
-                  : 'border-line bg-white text-charcoal-soft hover:border-primary/40'
-              }`}
-            >
-              {on && <CheckIcon sx={{ fontSize: 15 }} />}
-              {item}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 function InstitutionRegister() {
+  const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState({})
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
+  const [registrationData, setRegistrationData] = useState(null)
 
   const update = (k) => (e) => setForm({ ...form, [k]: e.target.value })
-  const toggleItem = (k) => (item) =>
-    setForm((f) => ({
-      ...f,
-      [k]: f[k].includes(item)
-        ? f[k].filter((x) => x !== item)
-        : [...f[k], item],
-    }))
 
   const next = () => {
     const e = validate(step, form)
@@ -362,11 +247,58 @@ function InstitutionRegister() {
 
   const back = () => setStep((s) => Math.max(s - 1, 0))
 
-  const submit = () => {
-    const e = validate(4, form)
+  const submit = async () => {
+    const e = validate(2, form)
     setErrors(e)
     if (Object.keys(e).length > 0) return
-    setSubmitted(true)
+
+    setSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      const typeStr = form.type || 'Federal University'
+      let instType = 'UNIVERSITY'
+      let regulator = 'NUC'
+      if (typeStr.includes('Polytechnic')) {
+        instType = 'POLYTECHNIC'
+        regulator = 'NBTE'
+      } else if (typeStr.includes('College of Education')) {
+        instType = 'COLLEGE_OF_EDUCATION'
+        regulator = 'NCCE'
+      } else if (typeStr.includes('Monotechnic')) {
+        instType = 'MONOTECHNIC'
+        regulator = 'NBTE'
+      }
+
+      const payload = {
+        legal_name: form.legalName.trim(),
+        short_name: form.shortName.trim(),
+        institution_type: instType,
+        ownership: form.publiclyFunded ? 'FEDERAL' : typeStr.includes('State') ? 'STATE' : 'PRIVATE',
+        regulator: regulator,
+        state: form.state || 'Niger',
+        city: form.city || '',
+        address: form.city ? `${form.city}, ${form.state}` : '',
+        website: form.website || '',
+        contact_name: form.contactName.trim(),
+        contact_email: form.contactEmail.trim().toLowerCase(),
+        contact_phone: form.mobile.trim(),
+        designation: form.role.trim() || 'Director of Career Services',
+        password: form.password,
+        dpo_name: form.dpoName || '',
+        dpo_email: form.dpoEmail || '',
+      }
+
+      const response = await institutionApi.registerInstitution(payload)
+      localStorage.setItem('auth_token', response.token)
+      localStorage.setItem('institution_user', JSON.stringify(response.user))
+      setRegistrationData(response)
+      setSubmitted(true)
+    } catch (err) {
+      setSubmitError(err.message || 'Registration failed. Please verify your details.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -389,31 +321,68 @@ function InstitutionRegister() {
             Institutional Onboarding
           </p>
           <h1 className="mt-3 text-3xl leading-tight text-charcoal md:text-4xl">
-            Bring your institution onto Edusal Consult
+            Bring your institution onto Nexus Edutech Consult Ltd
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-charcoal-soft">
-            Tell us about your campus, pick your plan, and sign off on NDPR —
-            we'll provision a tenant and schedule the kickoff call within one
-            business day.
+            Register your campus tenant to provision your institution and generate your official pro-forma invoice.
           </p>
         </div>
 
+        {submitError && (
+          <div className="mx-auto mt-6 max-w-2xl">
+            <Alert severity="error" sx={{ borderRadius: 2 }}>
+              {submitError}
+            </Alert>
+          </div>
+        )}
+
         {submitted ? (
-          <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-line bg-white p-10 text-center shadow-card-md">
-            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-soft">
-              <CheckCircleIcon sx={{ fontSize: 36, color: 'primary.main' }} />
+          <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-line bg-white p-8 sm:p-10 text-center shadow-card-md">
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+              <CheckCircleIcon sx={{ fontSize: 40 }} />
             </span>
-            <h2 className="mt-6 text-2xl text-charcoal">
-              Onboarding request received
+            <h2 className="mt-6 text-2xl text-charcoal font-bold">
+              Campus Tenant Provisioned & Invoice Generated!
             </h2>
-            <p className="mx-auto mt-3 max-w-md text-charcoal-soft">
-              Thank you. <strong>{form.legalName}</strong> is queued on the{' '}
-              <strong>{form.tier}</strong> tier. Our onboarding team will
-              contact {form.contactName} at {form.contactEmail} within one
-              business day to schedule your kickoff call.
+            <p className="mx-auto mt-3 max-w-lg text-charcoal-soft leading-relaxed">
+              <strong>{registrationData?.institution?.name || form.legalName}</strong> has been successfully registered. An official pro-forma invoice with 7.5% VAT has been generated for your account.
             </p>
+
+            {registrationData?.invoice && (
+              <div className="mt-6 rounded-xl border border-primary/20 bg-primary-faint/60 p-4 text-left">
+                <div className="flex items-center justify-between border-b border-primary/10 pb-2.5">
+                  <span className="text-xs font-bold uppercase tracking-wider text-primary">
+                    Invoice Reference
+                  </span>
+                  <span className="font-mono text-sm font-extrabold text-charcoal">
+                    {registrationData.invoice.invoice_number}
+                  </span>
+                </div>
+                <div className="mt-2.5 flex items-center justify-between text-xs text-charcoal-soft">
+                  <span>Subtotal + Setup (Taxable):</span>
+                  <span className="font-semibold text-charcoal">
+                    ₦{(Number(registrationData.invoice.subtotal_amount) + Number(registrationData.invoice.setup_fee)).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs text-charcoal-soft">
+                  <span>VAT (7.5% Exclusive):</span>
+                  <span className="font-semibold text-charcoal">
+                    ₦{Number(registrationData.invoice.vat_amount || 123750).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="mt-2.5 border-t border-primary/10 pt-2 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-primary">
+                    Total Amount Due:
+                  </span>
+                  <span className="font-bold text-base text-primary">
+                    ₦{Number(registrationData.invoice.total_amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-              {[form.legalName, form.tier, form.state].filter(Boolean).map((t) => (
+              {[form.legalName, form.state].filter(Boolean).map((t) => (
                 <span
                   key={t}
                   className="rounded-full bg-primary-soft px-3 py-1 text-xs font-bold text-primary"
@@ -422,22 +391,25 @@ function InstitutionRegister() {
                 </span>
               ))}
             </div>
+
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Button
                 variant="contained"
                 color="primary"
+                size="large"
                 component={Link}
-                to="/portal/login"
+                to="/portal/institution"
                 endIcon={<ArrowForwardIcon />}
+                sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, px: 4 }}
               >
-                Go to Sign In
+                Proceed to Invoice & Bank Transfer Payment →
               </Button>
               <Button
                 variant="outlined"
                 color="inherit"
                 component={Link}
                 to="/"
-                sx={{ color: 'text.primary', borderColor: 'border.strong' }}
+                sx={{ color: 'text.primary', borderColor: 'border.strong', borderRadius: '10px' }}
               >
                 Back to Home
               </Button>
@@ -453,80 +425,85 @@ function InstitutionRegister() {
             <div className="rounded-2xl border border-line bg-white p-6 shadow-card md:p-8">
               {step === 0 && (
                 <>
-                  <p className="text-sm text-charcoal-faint">
-                    We use this to provision your tenant and configure regional
-                    defaults. We support NUC universities (federal, state,
-                    private), NBTE polytechnics, NCCE colleges of education, and
-                    other tertiary institutions.
+                  <h2 className="text-xl text-charcoal">Institution profile</h2>
+                  <p className="mt-1 text-sm text-charcoal-faint">
+                    Provide the official legal name and location of your campus.
                   </p>
-
                   <div className="mt-6 grid gap-4 sm:grid-cols-2">
                     <div className="sm:col-span-2">
                       <TextField
-                        label="Legal name *"
+                        label="Institution legal name *"
                         size="medium"
                         fullWidth
                         value={form.legalName}
                         onChange={update('legalName')}
-                        placeholder="e.g. University of Ilorin"
-                        sx={fieldSx({ mt: 0 })}
+                        placeholder="Federal University of Technology, Minna"
+                        sx={fieldSx()}
                         error={!!errors.legalName}
                       />
                       <FieldError
                         error={errors.legalName}
-                        message="Enter the institution's legal name"
+                        message="Legal name is required"
                       />
                     </div>
-                    <TextField
-                      label="Short name *"
-                      size="medium"
-                      fullWidth
-                      value={form.shortName}
-                      onChange={update('shortName')}
-                      placeholder="UNILORIN"
-                      sx={fieldSx()}
-                      error={!!errors.shortName}
-                    />
-                    <FormControl fullWidth>
-                      <InputLabel id="itype">Institution type *</InputLabel>
-                      <Select
-                        labelId="itype"
-                        label="Institution type *"
+                    <div>
+                      <TextField
+                        label="Short name / Acronym *"
                         size="medium"
-                        value={form.type}
-                        onChange={update('type')}
-                        sx={{
-                          borderRadius: '10px',
-                          '& .MuiSelect-select': { py: 1.45 },
-                        }}
-                      >
-                        {InstitutionTypes.map((o) => (
-                          <MenuItem key={o} value={o}>
-                            {o}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    <FormControl fullWidth>
-                      <InputLabel id="istate">State *</InputLabel>
-                      <Select
-                        labelId="istate"
-                        label="State *"
-                        size="medium"
-                        value={form.state}
-                        onChange={update('state')}
-                        sx={{
-                          borderRadius: '10px',
-                          '& .MuiSelect-select': { py: 1.45 },
-                        }}
-                      >
-                        {NigerianStates.map((o) => (
-                          <MenuItem key={o} value={o}>
-                            {o}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                        fullWidth
+                        value={form.shortName}
+                        onChange={update('shortName')}
+                        placeholder="FUTMinna"
+                        sx={fieldSx()}
+                        error={!!errors.shortName}
+                      />
+                      <FieldError
+                        error={errors.shortName}
+                        message="Short name is required"
+                      />
+                    </div>
+                    <div>
+                      <FormControl fullWidth size="medium" sx={fieldSx()} error={!!errors.type}>
+                        <InputLabel>Institution type *</InputLabel>
+                        <Select
+                          value={form.type}
+                          label="Institution type *"
+                          onChange={update('type')}
+                          sx={{ borderRadius: '10px' }}
+                        >
+                          {InstitutionTypes.map((t) => (
+                            <MenuItem key={t} value={t}>
+                              {t}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FieldError
+                        error={errors.type}
+                        message="Institution type is required"
+                      />
+                    </div>
+                    <div>
+                      <FormControl fullWidth size="medium" sx={fieldSx()} error={!!errors.state}>
+                        <InputLabel>State (Location) *</InputLabel>
+                        <Select
+                          value={form.state}
+                          label="State (Location) *"
+                          onChange={update('state')}
+                          sx={{ borderRadius: '10px' }}
+                        >
+                          {NigerianStates.map((o) => (
+                            <MenuItem key={o} value={o}>
+                              {o}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FieldError
+                        error={errors.state}
+                        message="State is required"
+                      />
+                    </div>
                     <div>
                       <TextField
                         label="City / Town *"
@@ -534,7 +511,7 @@ function InstitutionRegister() {
                         fullWidth
                         value={form.city}
                         onChange={update('city')}
-                        placeholder="Ilorin"
+                        placeholder="Minna"
                         sx={fieldSx()}
                         error={!!errors.city}
                       />
@@ -545,49 +522,25 @@ function InstitutionRegister() {
                     </div>
                     <div>
                       <TextField
-                        label="Institution website *"
+                        label="Institution website"
                         size="medium"
                         fullWidth
                         type="url"
                         value={form.website}
                         onChange={update('website')}
-                        placeholder="https://unilorin.edu.ng"
+                        placeholder="https://futminna.edu.ng"
                         sx={fieldSx()}
-                        error={!!errors.website}
-                      />
-                      <FieldError
-                        error={errors.website}
-                        message="Enter a valid URL (e.g. https://unilorin.edu.ng)"
                       />
                     </div>
                     <div>
                       <TextField
-                        label="Year founded *"
+                        label="Year founded (optional)"
                         size="medium"
                         fullWidth
                         value={form.yearFounded}
                         onChange={update('yearFounded')}
-                        placeholder="1975"
+                        placeholder="1983"
                         sx={fieldSx()}
-                        error={!!errors.yearFounded}
-                      />
-                      <FieldError
-                        error={errors.yearFounded}
-                        message="Year is required"
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        label="Current student population *"
-                        size="medium"
-                        fullWidth
-                        type="number"
-                        value={form.population}
-                        onChange={update('population')}
-                        placeholder="5000"
-                        sx={fieldSx()}
-                        error={!!errors.population}
-                        helperText="Total enrolled across all levels"
                       />
                     </div>
                   </div>
@@ -609,9 +562,7 @@ function InstitutionRegister() {
                             This institution is publicly funded
                           </strong>{' '}
                           <span className="text-charcoal-faint">
-                            (optional) — only applicable to government-owned
-                            institutions. It unlocks regulator-aligned reporting
-                            templates but is not required.
+                            (Government / Federal / State funded)
                           </span>
                         </span>
                       }
@@ -623,48 +574,59 @@ function InstitutionRegister() {
               {step === 1 && (
                 <>
                   <h2 className="text-xl text-charcoal">
-                    Primary contacts
+                    Institutional Administrator & Contacts
                   </h2>
                   <p className="mt-1 text-sm text-charcoal-faint">
-                    Who should our onboarding team coordinate with during
-                    kickoff and rollout?
+                    Set up your primary administrator credentials for accessing the governance workspace.
                   </p>
                   <div className="mt-6 grid gap-4 sm:grid-cols-2">
                     <div>
                       <TextField
-                        label="Primary contact name *"
+                        label="Primary contact / Admin name *"
                         size="medium"
                         fullWidth
                         value={form.contactName}
                         onChange={update('contactName')}
-                        placeholder="Prof. Tunde Akande"
+                        placeholder="Prof. Mohammed Bashir"
                         sx={fieldSx()}
                         error={!!errors.contactName}
+                      />
+                      <FieldError
+                        error={errors.contactName}
+                        message="Contact name is required"
                       />
                     </div>
                     <div>
                       <TextField
-                        label="Role / Title *"
+                        label="Designation / Official Title *"
                         size="medium"
                         fullWidth
                         value={form.role}
                         onChange={update('role')}
-                        placeholder="Director, Career Services"
+                        placeholder="Vice Chancellor / Director Career Services"
                         sx={fieldSx()}
                         error={!!errors.role}
+                      />
+                      <FieldError
+                        error={errors.role}
+                        message="Title is required"
                       />
                     </div>
                     <div>
                       <TextField
-                        label="Work email *"
+                        label="Official Work Email *"
                         size="medium"
                         fullWidth
                         type="email"
                         value={form.contactEmail}
                         onChange={update('contactEmail')}
-                        placeholder="careers@unilorin.edu.ng"
+                        placeholder="admin@futminna.edu.ng"
                         sx={fieldSx()}
                         error={!!errors.contactEmail}
+                      />
+                      <FieldError
+                        error={errors.contactEmail}
+                        message="Valid work email is required"
                       />
                     </div>
                     <div>
@@ -680,195 +642,37 @@ function InstitutionRegister() {
                         helperText="Nigerian format, e.g. +234 803 123 4567"
                       />
                     </div>
+                    <div className="sm:col-span-2">
+                      <TextField
+                        label="Admin Account Password *"
+                        type="password"
+                        size="medium"
+                        fullWidth
+                        value={form.password}
+                        onChange={update('password')}
+                        placeholder="Create a secure password (min. 6 characters)"
+                        sx={fieldSx()}
+                        error={!!errors.password}
+                        helperText={errors.password ? "Password must be at least 6 characters" : "This password will be used to log into your institutional governance portal"}
+                      />
+                    </div>
                   </div>
                 </>
               )}
 
               {step === 2 && (
                 <>
-                  <h2 className="text-xl text-charcoal">Deployment scope</h2>
-                  <p className="mt-1 text-sm text-charcoal-faint">
-                    Shape the rollout — faculties in scope, seat counts, and
-                    which modules go live on day one.
-                  </p>
-
-                  <div className="mt-6">
-                    <ChipSelect
-                      label="Faculties in scope"
-                      items={Faculties}
-                      selected={form.faculties}
-                      onToggle={toggleItem('faculties')}
-                    />
-                    <p className="mt-1.5 text-xs text-charcoal-faint">
-                      Pick every faculty that will use Edusal Consult at launch.
-                      You can add more after go-live.
-                    </p>
-                  </div>
-
-                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <TextField
-                        label="Counsellor seats *"
-                        size="medium"
-                        fullWidth
-                        type="number"
-                        value={form.counsellorSeats}
-                        onChange={update('counsellorSeats')}
-                        placeholder="10"
-                        sx={fieldSx()}
-                        error={!!errors.counsellorSeats}
-                        helperText="1 – 200 seats"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <ContactMailIcon
-                                sx={{ fontSize: 18, color: 'charcoal.faint' }}
-                              />
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        label="Student seats *"
-                        size="medium"
-                        fullWidth
-                        type="number"
-                        value={form.studentSeats}
-                        onChange={update('studentSeats')}
-                        placeholder="5000"
-                        sx={fieldSx()}
-                        error={!!errors.studentSeats}
-                        helperText="100 – 100,000 seats"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <SchoolIcon
-                                sx={{ fontSize: 18, color: 'charcoal.faint' }}
-                              />
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <ChipSelect
-                      label="Enabled modules"
-                      items={Modules}
-                      selected={form.modules}
-                      onToggle={toggleItem('modules')}
-                    />
-                    <p className="mt-1.5 text-xs text-charcoal-faint">
-                      All modules are recommended for first-year rollouts.
-                      Disable any you want to stage for phase two.
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {step === 3 && (
-                <>
-                  <h2 className="text-xl text-charcoal">Choose a tier</h2>
-                  <p className="mt-1 text-sm text-charcoal-faint">
-                    Pick the tier that best reflects your institution size —
-                    we'll tailor modules and counsellor seats during kickoff.
-                  </p>
-
-                  <div className="mt-4 rounded-2xl bg-primary-faint px-5 py-4">
-                    <p className="flex items-center gap-2 text-sm font-bold text-primary">
-                      <VerifiedIcon sx={{ fontSize: 18 }} />
-                      Sponsored onboarding
-                    </p>
-                    <p className="mt-1 text-sm text-charcoal-soft">
-                      Onboarding is sponsored for eligible institutions — there
-                      is no per-institution charge to your institution.
-                    </p>
-                  </div>
-
-                  <div className="mt-6 grid gap-4 md:grid-cols-3">
-                    {Tiers.map((t) => {
-                      const on = form.tier === t.key
-                      return (
-                        <button
-                          key={t.key}
-                          type="button"
-                          onClick={() => setForm({ ...form, tier: t.key })}
-                          className={`relative flex flex-col rounded-2xl border-2 p-5 text-left transition-colors ${
-                            on
-                              ? 'border-primary bg-primary-faint'
-                              : 'border-line bg-white hover:border-primary/40'
-                          }`}
-                        >
-                          {t.badge && (
-                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-0.5 text-[11px] font-bold text-white">
-                              {t.badge}
-                            </span>
-                          )}
-                          <span className="flex items-center gap-2">
-                            <span
-                              className={`h-4 w-4 rounded-full border-2 ${
-                                on
-                                  ? 'border-primary bg-primary'
-                                  : 'border-line-strong'
-                              }`}
-                            />
-                            <span className="text-lg font-bold text-charcoal">
-                              {t.name}
-                            </span>
-                          </span>
-                          <span className="mt-1.5 text-sm text-charcoal-faint">
-                            {t.desc}
-                          </span>
-                          <ul className="mt-4 space-y-2">
-                            {t.features.map((f) => (
-                              <li
-                                key={f}
-                                className="flex items-center gap-2 text-sm text-charcoal-soft"
-                              >
-                                <CheckCircleOutlineIcon
-                                  sx={{ fontSize: 16, color: 'primary.main' }}
-                                />
-                                {f}
-                              </li>
-                            ))}
-                          </ul>
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  <div className="mt-7">
-                    <ChipSelect
-                      label="Add-ons (optional)"
-                      items={Addons}
-                      selected={form.addons}
-                      onToggle={toggleItem('addons')}
-                    />
-                    <p className="mt-1.5 text-xs text-charcoal-faint">
-                      Optional modules that can be enabled now or during the
-                      pilot review.
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {step === 4 && (
-                <>
                   <h2 className="text-xl text-charcoal">
-                    Compliance & data protection
+                    Compliance & Statutory Sign-off
                   </h2>
                   <p className="mt-1 text-sm text-charcoal-faint">
-                    Confirm your Data Protection Officer and accept the policies
-                    that govern tenant data.
+                    Confirm your Data Protection Officer and accept the policies governing institutional tenant data.
                   </p>
 
                   <div className="mt-5 rounded-2xl border border-line bg-bgsoft p-5">
                     <p className="flex items-center gap-2 text-sm font-bold text-charcoal">
                       <InfoIcon sx={{ fontSize: 18, color: 'primary.main' }} />
-                      How Edusal Consult handles institution data
+                      How Nexus Edutech Consult Ltd handles institution data
                     </p>
                     <p className="mt-2 text-sm leading-relaxed text-charcoal-soft">
                       We operate as a processor under the Nigeria Data Protection
@@ -877,12 +681,6 @@ function InstitutionRegister() {
                       infrastructure with AES-256 at rest and TLS 1.3 in transit.
                       Access is role-based and every read/write is logged to an
                       immutable audit trail.
-                    </p>
-                    <p className="mt-2 text-sm leading-relaxed text-charcoal-soft">
-                      Your institution retains ownership of all data. On request,
-                      we return a structured export and perform a certified wipe
-                      within 30 days. Our DPIA, SOC 2 attestation, and
-                      sub-processor list are shared during onboarding review.
                     </p>
                   </div>
 
@@ -908,7 +706,7 @@ function InstitutionRegister() {
                         type="email"
                         value={form.dpoEmail}
                         onChange={update('dpoEmail')}
-                        placeholder="dpo@unilorin.edu.ng"
+                        placeholder="dpo@futminna.edu.ng"
                         sx={fieldSx()}
                         error={!!errors.dpoEmail}
                         helperText="Enter a valid DPO email"
@@ -942,7 +740,7 @@ function InstitutionRegister() {
                             </strong>{' '}
                             and the{' '}
                             <strong className="text-charcoal">
-                              Edusal Consult institutional terms
+                              Nexus Edutech Consult Ltd institutional terms
                             </strong>
                             .
                           </span>
@@ -982,7 +780,7 @@ function InstitutionRegister() {
                 </>
               )}
 
-              {step === 4 && (errors.acceptMsa || errors.acceptNdpr) && (
+              {step === 2 && (errors.acceptMsa || errors.acceptNdpr) && (
                 <Alert severity="error" sx={{ mt: 3, borderRadius: 2 }}>
                   Please accept both agreements to continue.
                 </Alert>
@@ -1007,6 +805,7 @@ function InstitutionRegister() {
                   size="large"
                   onClick={next}
                   endIcon={<ArrowForwardIcon />}
+                  sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, px: 3.5 }}
                 >
                   Next: {Steps[step + 1].label}
                 </Button>
@@ -1016,9 +815,11 @@ function InstitutionRegister() {
                   color="primary"
                   size="large"
                   onClick={submit}
-                  endIcon={<VerifiedIcon />}
+                  disabled={submitting}
+                  endIcon={submitting ? <CircularProgress size={18} color="inherit" /> : <VerifiedIcon />}
+                  sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, px: 3.5 }}
                 >
-                  Submit Onboarding Request
+                  {submitting ? 'Provisioning Tenant…' : 'Submit Registration & Generate Invoice'}
                 </Button>
               )}
             </div>
@@ -1028,7 +829,7 @@ function InstitutionRegister() {
 
       <footer className="border-t border-line bg-white py-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-2 px-5 text-sm text-charcoal-faint sm:flex-row sm:px-8">
-          <p>© 2026 Edusal Consult. All rights reserved.</p>
+          <p>© 2026 Nexus Edutech Consult Ltd. All rights reserved.</p>
           <p className="flex items-center gap-1.5">
             <LockIcon sx={{ fontSize: 14, color: 'primary.main' }} />
             NDPR-aligned · Nigerian-region data handling

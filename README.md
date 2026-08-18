@@ -1,17 +1,17 @@
-# Edusal — Fullstack Starter Kit
+# Nexus — Fullstack Starter Kit
 
-A production-ready foundation for the **Edusal** platform featuring **Django REST Framework**, **PostgreSQL with pgvector**, **Celery + Redis**, and a **React (TypeScript + Vite)** frontend.
+A production-ready foundation for the **Nexus** platform featuring **Django REST Framework**, **PostgreSQL with pgvector**, **Celery + Redis**, and a **React (TypeScript + Vite)** frontend.
 
 ---
 
 ## 🏗️ Architecture Overview
 
 ```
-edusal/
+nexus/
 ├── backend/                  # Django 6.0 + DRF + Celery + PostgreSQL (Dockerized)
 │   ├── compose/              # Local & production Docker configurations
 │   ├── config/               # Settings (base, local, production), URLs, routers
-│   ├── edusal/
+│   ├── nexus/
 │   │   ├── core/             # Core app (pgvector migration & /api/health/)
 │   │   └── users/            # Custom user model & authentication
 │   ├── docker-compose.local.yml
@@ -71,7 +71,7 @@ Visit **`http://localhost:5173`** to see the live starter dashboard with real-ti
 ## 🔑 Default Superuser Account
 
 An initial superuser account is pre-configured for local development:
-- **Email:** `admin@edusal.com`
+- **Email:** `admin@nexus.com`
 - **Password:** `admin123456`
 
 To create additional superusers manually:
@@ -84,7 +84,7 @@ docker compose -f docker-compose.local.yml exec django python manage.py createsu
 
 ## 🗄️ Working with pgvector in Django
 
-The PostgreSQL container runs `pgvector/pgvector:pg16` and the `vector` extension is activated via migration `edusal/core/migrations/0001_enable_pgvector.py`.
+The PostgreSQL container runs `pgvector/pgvector:pg16` and the `vector` extension is activated via migration `nexus/core/migrations/0001_enable_pgvector.py`.
 
 To define vector fields in your Django models:
 

@@ -396,7 +396,7 @@ function AuditPackModal({ open, onClose }) {
         <div className="mt-4 flex flex-wrap items-center gap-2 rounded-[15px] border border-line bg-white px-4 py-2.5">
           <KeyIcon sx={{ fontSize: 16, color: 'primary.main' }} />
           <span className="text-xs font-bold text-charcoal-soft">
-            Edusal Tamper-Evident Digest
+            Nexus Tamper-Evident Digest
           </span>
           <span className="font-mono text-xs text-primary">sha256:8f4c...3e1a</span>
         </div>

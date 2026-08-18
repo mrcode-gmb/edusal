@@ -1,7 +1,7 @@
 # RAG Document Ingestion, Vector DB Filtering & Groq LLM Integration Plan
 
 ## Executive Overview
-This document outlines the comprehensive engineering plan for upgrading the **Edusal Institutional Knowledge Base & RAG (Retrieval-Augmented Generation) System**. 
+This document outlines the comprehensive engineering plan for upgrading the **Nexus Institutional Knowledge Base & RAG (Retrieval-Augmented Generation) System**. 
 
 The upgraded system will provide an enterprise-grade, zero-hallucination regulatory grounding engine for Nigerian tertiary institutions (Universities, Polytechnics, and Colleges of Education). It will ingest official handbooks, SIWES calendars, departmental rubrics, and NUC/NBTE/NCCE guidelines, index them in **PostgreSQL `pgvector`** with fine-grained hierarchical scoping, and generate authoritative institutional advice powered by **Groq Cloud API** (`llama-3.3-70b-versatile` / `llama-3.1-8b-instant`).
 
@@ -128,7 +128,7 @@ The upgraded system will provide an enterprise-grade, zero-hallucination regulat
   - `pypdf>=5.1.0` (PDF text and page extraction)
   - `python-docx>=1.1.2` (Word document parsing)
   - `fastembed>=0.5.0` (Lightweight CPU embeddings with ONNX runtime)
-- [ ] Update `backend/edusal/institutions/models.py`:
+- [ ] Update `backend/nexus/institutions/models.py`:
   - Update `InstitutionalDocument.file_path` to `models.FileField(upload_to="institutional_documents/%Y/%m/")`.
   - Add `session` Foreign Key on `InstitutionalDocument` for academic year tagging.
   - Update `InstitutionalDocumentChunk.embedding` dimensions to `384` (matching `BAAI/bge-small-en-v1.5` / `all-MiniLM-L6-v2`).
@@ -136,18 +136,18 @@ The upgraded system will provide an enterprise-grade, zero-hallucination regulat
 - [ ] Add `GROQ_API_KEY` to `.env` and `config/settings/base.py`.
 
 ### Phase 2: Document Ingestion, Parsing & Chunking Engine
-- [ ] Create `backend/edusal/institutions/services/document_parser.py`:
+- [ ] Create `backend/nexus/institutions/services/document_parser.py`:
   - `parse_pdf(file_obj)`: Extract text with page index and section headers.
   - `parse_docx(file_obj)`: Extract text from Word documents.
   - `parse_txt(file_obj)`: Direct text reader.
   - `chunk_document_text(raw_text, pages_data=None)`: Recursive token-aware chunker producing 500–800 token slices with 150 token overlap and section headers.
-- [ ] Create `backend/edusal/institutions/services/embedding_service.py`:
+- [ ] Create `backend/nexus/institutions/services/embedding_service.py`:
   - Singleton `EmbeddingService` wrapping `FastEmbed` / `TextEmbedding(model_name="BAAI/bge-small-en-v1.5")`.
   - Method `generate_embeddings(text_list: list[str]) -> list[list[float]]`.
   - Method `generate_query_embedding(query: str) -> list[float]`.
 
 ### Phase 3: Vector Search & Hybrid Hierarchical Filtering
-- [ ] Create `backend/edusal/institutions/services/vector_search_service.py`:
+- [ ] Create `backend/nexus/institutions/services/vector_search_service.py`:
   - `hybrid_search_chunks(query, institution_id, division_id=None, department_id=None, session_id=None, doc_type=None, top_k=5)`:
     - Compute query embedding.
     - Query `InstitutionalDocumentChunk` using PostgreSQL `pgvector` Cosine Distance (`<->` / `<=>`).
@@ -155,18 +155,18 @@ The upgraded system will provide an enterprise-grade, zero-hallucination regulat
     - Return sorted chunk records with cosine similarity score and formatted citation metadata.
 
 ### Phase 4: Groq LLM Client & Strict Citation Service
-- [ ] Create `backend/edusal/institutions/services/groq_advisor_service.py`:
+- [ ] Create `backend/nexus/institutions/services/groq_advisor_service.py`:
   - Initialize Groq client with `settings.GROQ_API_KEY`.
   - Assemble institutional context prompt (system prompt with regulatory guardrails, verified chunks, institution profile, user question).
   - Call `groq.chat.completions.create(model="llama-3.3-70b-versatile", messages=..., temperature=0.2)`.
   - Parse response, extract citations, compute latency and tokens consumed.
 
 ### Phase 5: REST API Endpoints & Serializers
-- [ ] Update `backend/edusal/institutions/api/serializers.py`:
+- [ ] Update `backend/nexus/institutions/api/serializers.py`:
   - Add `DocumentUploadSerializer` (handles `multipart/form-data` file uploads).
   - Add `AIAdvisorQuerySerializer` (`query`, `department`, `division`, `session`, `doc_type`, `top_k`).
   - Add `AIAdvisorResponseSerializer` (`answer`, `citations`, `telemetry`, `scope`).
-- [ ] Update `backend/edusal/institutions/api/views.py`:
+- [ ] Update `backend/nexus/institutions/api/views.py`:
   - Add `POST /api/documents/upload/` (handles file upload, parses, chunks, generates embeddings, and saves in pgvector).
   - Add `POST /api/institutions/{id}/ask-advisor/` (executes scoped RAG + Groq LLM response).
   - Update `POST /api/institutions/{id}/search-documents/` (uses upgraded vector search service).
@@ -188,7 +188,7 @@ The upgraded system will provide an enterprise-grade, zero-hallucination regulat
   - Wire upload modal and instant index refresh.
 
 ### Phase 7: Pytest Test Suite & Validation
-- [ ] Write `backend/edusal/institutions/tests/test_rag_pipeline.py`:
+- [ ] Write `backend/nexus/institutions/tests/test_rag_pipeline.py`:
   - Test multi-format parsing (PDF, DOCX, TXT).
   - Test chunking overlap and section extraction.
   - Test vector embedding generation and cosine distance search in pgvector.

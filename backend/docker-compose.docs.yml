@@ -1,7 +1,7 @@
 services:
   docs:
-    image: edusal_local_docs
-    container_name: edusal_local_docs
+    image: nexus_local_docs
+    container_name: nexus_local_docs
     build:
       context: .
       dockerfile: ./compose/local/docs/Dockerfile
@@ -11,7 +11,7 @@ services:
       - /app/.venv
       - ./docs:/docs:z
       - ./config:/app/config:z
-      - ./edusal:/app/edusal:z
+      - ./nexus:/app/nexus:z
     ports:
       - '9000:9000'
     command: /start-docs

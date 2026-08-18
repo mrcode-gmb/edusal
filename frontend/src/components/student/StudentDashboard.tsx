@@ -119,7 +119,7 @@ export const StudentDashboard: FC<StudentDashboardProps> = ({
   const SidebarContent = (
     <div className="flex h-full flex-col bg-charcoal">
       <div className="flex h-16 items-center px-6">
-        <img src="/logo-white.png" alt="Edusal Consult" className="h-9 w-auto" />
+        <img src="/logo-white.png" alt="Nexus Edutech Consult Ltd" className="h-9 w-auto" />
       </div>
 
       <div className="mx-4 mt-2 rounded-[15px] bg-white/[0.06] p-4">

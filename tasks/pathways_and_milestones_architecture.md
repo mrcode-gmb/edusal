@@ -45,7 +45,7 @@ graph TD
 
 ---
 
-## 3. Data Models Specification (`backend/edusal/institutions/models.py`)
+## 3. Data Models Specification (`backend/nexus/institutions/models.py`)
 
 ### 3.1 `Pathway` Model
 Represents a specific career roadmap for an `AcademicProgram`.
@@ -257,7 +257,7 @@ class PathwayMilestone(models.Model):
 
 ---
 
-## 4. Deep Clone & Template Blueprint Engine (`backend/edusal/institutions/services/pathway_template_service.py`)
+## 4. Deep Clone & Template Blueprint Engine (`backend/nexus/institutions/services/pathway_template_service.py`)
 
 A specialized service responsible for:
 1. **Deep Cloning**: Duplicating a master template pathway along with all its milestones into a target institution and program.
@@ -380,7 +380,7 @@ During initial database seeding, pre-load industry-standard blueprints for immed
 ## 7. Frontend UI & Interaction Architecture
 
 ### 7.1 Institution Dashboard Navigation
-Add **Tab 6: "Career Pathways & Milestones"** (`activeTab === 'pathways'`) to [`InstitutionDashboard.tsx`](file:///home/cainoa/dev/projects/edusal/frontend/src/components/institution/InstitutionDashboard.tsx).
+Add **Tab 6: "Career Pathways & Milestones"** (`activeTab === 'pathways'`) to [`InstitutionDashboard.tsx`](file:///home/cainoa/dev/projects/nexus/frontend/src/components/institution/InstitutionDashboard.tsx).
 
 ### 7.2 Component Breakdown
 
@@ -412,20 +412,20 @@ graph TD
 ## 8. Step-by-Step Implementation Roadmap
 
 ### Phase 1: Models, Migrations & Signals
-- Create `Pathway` and `PathwayMilestone` models in `backend/edusal/institutions/models.py`.
+- Create `Pathway` and `PathwayMilestone` models in `backend/nexus/institutions/models.py`.
 - Add `TemplateVisibility`, `MilestoneType`, `VerificationMethod`, `RequiredEvidenceType` enums.
 - Run `makemigrations` and `migrate`.
 
 ### Phase 2: Template Cloning Service
-- Create `backend/edusal/institutions/services/pathway_template_service.py` with `clone_template_to_program()` and `publish_as_template()`.
+- Create `backend/nexus/institutions/services/pathway_template_service.py` with `clone_template_to_program()` and `publish_as_template()`.
 
 ### Phase 3: REST API Serializers & ViewSets
-- Create `PathwayMilestoneSerializer`, `PathwayListSerializer`, `PathwayDetailSerializer`, `PathwayClonePayloadSerializer` in `backend/edusal/institutions/api/serializers.py`.
-- Create `PathwayViewSet` and `PathwayMilestoneViewSet` in `backend/edusal/institutions/api/views.py`.
-- Register routes in `backend/edusal/institutions/api/urls.py`.
+- Create `PathwayMilestoneSerializer`, `PathwayListSerializer`, `PathwayDetailSerializer`, `PathwayClonePayloadSerializer` in `backend/nexus/institutions/api/serializers.py`.
+- Create `PathwayViewSet` and `PathwayMilestoneViewSet` in `backend/nexus/institutions/api/views.py`.
+- Register routes in `backend/nexus/institutions/api/urls.py`.
 
 ### Phase 4: Master Seed Blueprints
-- Update `backend/edusal/institutions/management/commands/seed_institutions.py` to seed master blueprint templates for FUTMinna, YabaTech, and FCE Zaria.
+- Update `backend/nexus/institutions/management/commands/seed_institutions.py` to seed master blueprint templates for FUTMinna, YabaTech, and FCE Zaria.
 
 ### Phase 5: Frontend TypeScript Types & API Client
 - Add `Pathway`, `PathwayMilestone`, `MilestoneType`, `VerificationMethod`, `RequiredEvidenceType` types in `frontend/src/types/institution.ts`.

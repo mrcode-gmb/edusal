@@ -254,7 +254,7 @@ export const AICareerCoachChat: FC<AICareerCoachChatProps> = ({
                       }`}
                     >
                       <span className="text-charcoal">
-                        {isUser ? 'You (Student)' : 'EduSal Institutional AI Coach'}
+                        {isUser ? 'You (Student)' : 'Nexus Edutech Institutional AI Coach'}
                       </span>
                       <span>
                         {new Date(msg.created_at).toLocaleTimeString([], {

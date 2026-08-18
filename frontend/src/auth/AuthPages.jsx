@@ -34,7 +34,7 @@ function Logo({ light = false }) {
     <Link to="/" className="flex items-center">
       <img
         src={light ? '/logo-white.png' : '/logo.png'}
-        alt="Edusal Consult"
+        alt="Nexus Edutech Consult Ltd"
         className="h-9 w-auto"
       />
     </Link>
@@ -105,7 +105,7 @@ function AuthLayout({ children }) {
         </div>
 
         <p className="relative text-sm text-white/60">
-          © 2026 Edusal Consult. Career Service Centre Management Platform for
+          © 2026 Nexus Edutech Consult Ltd. Career Service Centre Management Platform for
           Nigerian tertiary institutions.
         </p>
       </aside>
@@ -239,7 +239,7 @@ function LoginPage() {
         </form>
 
         <Divider sx={{ my: 4, color: 'charcoal.faint', fontSize: 13 }}>
-          New to Edusal Consult?
+          New to Nexus Edutech Consult Ltd?
         </Divider>
 
         <Button
@@ -312,7 +312,7 @@ function RegisterPage() {
       <PageHeading
         eyebrow="Institutional Portal"
         title="Create your account"
-        subtitle="Join the Edusal ecosystem with a role-specific workspace."
+        subtitle="Join the Nexus ecosystem with a role-specific workspace."
       />
 
       <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-card md:p-8">
@@ -610,7 +610,7 @@ function ResetPasswordPage() {
       <PageHeading
         eyebrow="Institutional Portal"
         title="Set a new password"
-        subtitle="Choose a strong password for your Edusal workspace."
+        subtitle="Choose a strong password for your Nexus workspace."
       />
 
       <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-card md:p-8">

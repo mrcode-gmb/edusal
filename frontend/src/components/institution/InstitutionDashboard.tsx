@@ -18,6 +18,7 @@ import { StaffDirectory } from './StaffDirectory';
 import { StudentRoster } from './StudentRoster';
 import { PathwaysManager } from './PathwaysManager';
 import { StudentDashboard } from '../student/StudentDashboard';
+import { InstitutionalPaymentHub } from './InstitutionalPaymentHub';
 import { AddDivisionModal } from './AddDivisionModal';
 import { AddDepartmentModal } from './AddDepartmentModal';
 import { AddProgramModal } from './AddProgramModal';
@@ -98,10 +99,10 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
 }) => {
   // Authentication State
   const [authToken, setAuthToken] = useState<string | null>(() => {
-    return localStorage.getItem('edusal_auth_token') || null;
+    return localStorage.getItem('nexus_auth_token') || null;
   });
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
-    const saved = localStorage.getItem('edusal_auth_user');
+    const saved = localStorage.getItem('nexus_auth_user');
     return saved ? JSON.parse(saved) : null;
   });
 
@@ -141,8 +142,8 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
   const handleLoginSuccess = (authData: LoginResponse) => {
     setAuthToken(authData.token);
     setCurrentUser(authData.user);
-    localStorage.setItem('edusal_auth_token', authData.token);
-    localStorage.setItem('edusal_auth_user', JSON.stringify(authData.user));
+    localStorage.setItem('nexus_auth_token', authData.token);
+    localStorage.setItem('nexus_auth_user', JSON.stringify(authData.user));
   };
 
   // Handle Logout
@@ -157,8 +158,8 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
     setSummary(null);
     setDocuments([]);
     setSessions([]);
-    localStorage.removeItem('edusal_auth_token');
-    localStorage.removeItem('edusal_auth_user');
+    localStorage.removeItem('nexus_auth_token');
+    localStorage.removeItem('nexus_auth_user');
   };
 
   // Load single institution data strictly matching current logged-in user
@@ -211,6 +212,34 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
         currentUser={currentUser}
         authToken={authToken}
         onLogout={handleLogout}
+      />
+    );
+  }
+
+  // If institution is PENDING_PAYMENT or PAYMENT_SUBMITTED or status !== 'ACTIVE', render InstitutionalPaymentHub
+  const institutionStatus = institution?.status || currentUser.staff_profile?.institution_status || 'PENDING_PAYMENT';
+  if (institutionStatus !== 'ACTIVE') {
+    return (
+      <InstitutionalPaymentHub
+        currentUser={currentUser}
+        token={authToken}
+        onLogout={handleLogout}
+        onActivated={async () => {
+          if (selectedInstId) {
+            await loadInstitutionData(selectedInstId);
+          }
+          if (authToken) {
+            try {
+              const me = await institutionApi.getMe(authToken);
+              if (me) {
+                setCurrentUser(me);
+                localStorage.setItem('nexus_auth_user', JSON.stringify(me));
+              }
+            } catch (e) {
+              console.error('Failed to refresh user profile:', e);
+            }
+          }
+        }}
       />
     );
   }
@@ -287,7 +316,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
   const SidebarContent = (
     <div className="flex h-full flex-col bg-charcoal">
       <div className="flex h-16 items-center px-6">
-        <img src="/logo-white.png" alt="Edusal Consult" className="h-9 w-auto" />
+        <img src="/logo-white.png" alt="Nexus Edutech Consult Ltd" className="h-9 w-auto" />
       </div>
 
       <div className="mx-4 mt-2 rounded-[15px] bg-white/[0.06] p-4">

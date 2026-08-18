@@ -1,7 +1,7 @@
 # Comprehensive Architecture Plan: Student Dashboard, Credential Dispatch & Employability Scoring Engine
 
 **Document Version:** 1.0.0  
-**Target Repository:** `webalb/edusal` (`main` branch)  
+**Target Repository:** `webalb/nexus` (`main` branch)  
 **Status:** PROPOSED & READY FOR IMPLEMENTATION  
 **Relevant Tech Stack:** Django 6.0 + DRF + Celery + Mailpit (SMTP Port 1025, Web Port 8025) + React 18 + TypeScript + Vite  
 
@@ -72,7 +72,7 @@ sequenceDiagram
 ## 3. Data Models & Database Design
 
 ### 3.1. `StudentProfile` Model Enhancements
-In [`backend/edusal/institutions/models.py`](file:///home/cainoa/dev/projects/edusal/backend/edusal/institutions/models.py):
+In [`backend/nexus/institutions/models.py`](file:///home/cainoa/dev/projects/nexus/backend/nexus/institutions/models.py):
 - Add `active_pathway = ForeignKey(Pathway, null=True, blank=True, on_delete=models.SET_NULL, related_name="enrolled_students")`.
 - Add cached score fields:
   - `employability_score = DecimalField(max_digits=5, decimal_places=2, default=0.00)`
@@ -153,15 +153,15 @@ class StudentMilestoneSubmission(models.Model):
 ## 4. Credential Dispatch & Email Service
 
 ### 4.1. `StudentCredentialService`
-In `backend/edusal/institutions/services/student_credential_service.py`:
+In `backend/nexus/institutions/services/student_credential_service.py`:
 - `generate_and_dispatch_credentials(student_profile_id: str, custom_password: Optional[str] = None, sent_by_user = None) -> dict`:
   1. Retrieves `StudentProfile` and associated `User`.
-  2. Generates a readable, secure password (e.g. `EduSal-2026!k9X`) if `custom_password` is not supplied.
+  2. Generates a readable, secure password (e.g. `Nexus-2026!k9X`) if `custom_password` is not supplied.
   3. Updates password via `user.set_password(plain_password)` and saves in a database transaction.
   4. Renders both HTML and plain text email templates using Django's template engine:
      - Recipient: `student.user.email`
      - Subject: `Your Student Portal Login Credentials — {institution.name}`
-     - From: `no-reply@{institution.slug}.edusal.ng`
+     - From: `no-reply@{institution.slug}.nexus.ng`
      - Template variables: Student Name, Matriculation Number, Degree Programme, Institution, Temporary Password, Portal Login URL (`http://localhost:5173`).
   5. Sends email via `django.core.mail.EmailMultiAlternatives` through Mailpit SMTP (port 1025).
   6. Returns structured response with `email`, `matric_number`, `plain_password`, and `dispatch_status`.
@@ -229,7 +229,7 @@ frontend/src/components/
 
 ### Phase 2: Credential Generation & Mailpit Email Service
 - Build `StudentCredentialService` with email template generation and Mailpit SMTP dispatch.
-- Create HTML and text email templates in `backend/edusal/institutions/templates/emails/`.
+- Create HTML and text email templates in `backend/nexus/institutions/templates/emails/`.
 
 ### Phase 3: Employability Scoring & Calculation Engine
 - Implement real-time points aggregation and 70/30 weighting logic in `StudentProfile.recalculate_employability()`.
@@ -249,7 +249,7 @@ frontend/src/components/
 - Add complete CSS styling in `App.css`.
 
 ### Phase 7: Pytest Test Suite & Build Verification
-- Write `backend/edusal/institutions/tests/test_student_dashboard_and_credentials.py` covering:
+- Write `backend/nexus/institutions/tests/test_student_dashboard_and_credentials.py` covering:
   - Credential generation and `mail.outbox` verification.
   - Pathway enrollment.
   - Student evidence submission.

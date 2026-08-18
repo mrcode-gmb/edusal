@@ -237,7 +237,7 @@ function Navbar() {
     >
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center px-5 sm:px-8 md:h-[72px] lg:px-10">
         <Link to="/" className="flex shrink-0 items-center">
-          <img src="/logo.png" alt="Edusal Consult" className="h-9 w-auto" />
+          <img src="/logo.png" alt="Nexus Edutech Consult Ltd" className="h-9 w-auto" />
         </Link>
 
         <nav className="mx-auto hidden items-center gap-9 xl:flex">
@@ -285,7 +285,7 @@ function Navbar() {
       <Drawer anchor="right" open={open} onClose={() => setOpen(false)}>
         <Box sx={{ width: 300, p: 2 }}>
           <div className="mb-2 flex items-center justify-between">
-            <img src="/logo.png" alt="Edusal Consult" className="h-8 w-auto" />
+            <img src="/logo.png" alt="Nexus Edutech Consult Ltd" className="h-8 w-auto" />
             <IconButton aria-label="Close menu" onClick={() => setOpen(false)}>
               <CloseIcon />
             </IconButton>
@@ -495,7 +495,7 @@ function Hero({ onShowScore }) {
           <div className="inline-flex items-center gap-2 rounded-full border border-line-strong bg-white px-4 py-1.5 shadow-card">
             <SchoolIcon sx={{ fontSize: 16, color: 'primary.main' }} />
             <span className="text-[13px] font-bold text-charcoal">
-              Edusal Consult
+              Nexus Edutech Consult Ltd
             </span>
             <span className="text-[13px] font-medium text-charcoal-faint">
               · For Nigerian Universities, Polytechnics &amp; Colleges
@@ -510,7 +510,7 @@ function Hero({ onShowScore }) {
           </p>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-charcoal-soft">
-            Edusal Consult gives Nigerian universities, polytechnics, and
+            Nexus Edutech Consult Ltd gives Nigerian universities, polytechnics, and
             colleges of education a career services operating system where
             employability is built, measured, and backed by evidence — not a
             resume line, not a guess.
@@ -611,11 +611,11 @@ function Evidence({ onShowScore }) {
 
   return (
     <section id="evidence" className="bg-white py-20 md:py-28">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <SectionHead
           eyebrow="Verified Evidence"
           title="Evidence, not claims."
-          copy="Every employability signal on Edusal is traceable to a milestone, a named evaluator and an evidence artifact — so an institution can explain any score to a board, regulator or employer."
+          copy="Every employability signal on Nexus Edutech Consult Ltd is traceable to a milestone, a named evaluator and an evidence artifact — so an institution can explain any score to a board, regulator or employer."
           align="center"
           wide
         />
@@ -755,7 +755,7 @@ function Evidence({ onShowScore }) {
 function FoundingPartners({ onOpen }) {
   return (
     <section id="partners" className="bg-primary py-20 md:py-24">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/70">
             2026 Founding Partner Program
@@ -807,7 +807,7 @@ const Institutions = [
 function Ecosystem() {
   return (
     <section className="bg-white py-20 md:py-28">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <SectionHead
           eyebrow="Built for the Ecosystem"
           title="Designed specifically for the Nigerian tertiary ecosystem"
@@ -845,7 +845,7 @@ function Ecosystem() {
         <div className="mt-12 flex flex-col items-center justify-between gap-6 rounded-3xl bg-primary-faint px-6 py-8 text-center md:flex-row md:px-10 md:text-left">
           <div>
             <h3 className="text-xl text-charcoal md:text-2xl">
-              Bring your institution onto Edusal Consult
+              Bring your institution onto Nexus Edutech Consult Ltd
             </h3>
             <p className="mt-2 max-w-xl text-charcoal-soft">
               Provision a tenant for your campus — pick your plan, scope
@@ -898,11 +898,11 @@ const Governance = [
 function GovernanceSection() {
   return (
     <section id="governance" className="bg-bgsoft py-20 md:py-28">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <SectionHead
           eyebrow="Institutional Governance & Integrity"
           title="Built to report outcomes your board can actually verify"
-          copy="No synthetic metrics or unprovable percentages. Every data point on Edusal is backed by an auditable chain of evidence."
+          copy="No synthetic metrics or unprovable percentages. Every data point on Nexus Edutech Consult Ltd is backed by an auditable chain of evidence."
           align="center"
           wide
         />
@@ -952,7 +952,7 @@ const ProofRows = [
 function ProofArchitecture() {
   return (
     <section id="capabilities" className="bg-white py-20 md:py-28">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <SectionHead
           eyebrow="Proof Architecture"
           title="A placement your board can open and audit"
@@ -1037,7 +1037,7 @@ const Engines = [
 function EnginesSection() {
   return (
     <section className="bg-bgsoft py-20 md:py-28">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <SectionHead
           eyebrow="Integrated Operating System"
           title="One student record. Three teams working from it."
@@ -1104,7 +1104,7 @@ const PathwayMilestones = [
 function Pathways() {
   return (
     <section className="bg-white py-20 md:py-28">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <SectionHead
           eyebrow="Pathways"
           title="Pathways, mapped to what your graduates actually do"
@@ -1286,7 +1286,7 @@ function Workspaces() {
 
   return (
     <section id="workspaces" className="bg-bgsoft py-20 md:py-28">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <SectionHead
           eyebrow="Universal Ecosystem Integration"
           title="The same verified record. A different view for every job."
@@ -1332,7 +1332,7 @@ function Workspaces() {
 function Assistant() {
   return (
     <section id="assistant" className="bg-white py-20 md:py-28">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <SectionHead
           eyebrow="Zero-Hallucination Career Intelligence"
           title="An assistant that shows its work"
@@ -1349,7 +1349,7 @@ function Assistant() {
               </span>
               <div>
                 <p className="text-sm font-bold text-charcoal">
-                  Edusal Assistant
+                  Nexus Edutech Assistant
                 </p>
                 <p className="text-xs text-charcoal-faint">
                   Chidinma Okafor · 300L Software Engineering · FUTMinna
@@ -1473,7 +1473,7 @@ const Leadership = [
 function LeadershipSection() {
   return (
     <section className="bg-bgsoft py-20 md:py-28">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <SectionHead
           eyebrow="Institutional Leadership & Governance"
           title="Intelligence your leadership can compare across faculties, honestly"
@@ -1518,7 +1518,7 @@ const Regulators = [
 function Regulatory() {
   return (
     <section className="border-y border-line bg-white py-14">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <p className="mb-8 text-center text-xs font-bold uppercase tracking-[0.14em] text-charcoal-faint">
           Aligned to the Nigerian regulatory landscape
         </p>
@@ -1547,7 +1547,7 @@ function Regulatory() {
 function Advisory({ onJoin }) {
   return (
     <section className="bg-white py-20 md:py-28">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <SectionHead
           eyebrow="Collaborative Co-Design"
           title="What early partners are telling us"
@@ -1618,11 +1618,11 @@ const Ecosystems = [
 function EcosystemAlignment() {
   return (
     <section className="bg-bgsoft py-20 md:py-28">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <SectionHead
           eyebrow="Professional Ecosystem Alignment"
           title="Standards you can trust"
-          copy="Edusal Consult's pathway and skill-validation framework is being developed in consultation with Nigerian professional and chartered bodies. Formal partnership charters will be published as agreements are finalized."
+          copy="Nexus Edutech Consult Ltd's pathway and skill-validation framework is being developed in consultation with Nigerian professional and chartered bodies. Formal partnership charters will be published as agreements are finalized."
           align="center"
           wide
         />
@@ -1673,10 +1673,10 @@ const OnboardingSteps = [
 function Onboarding() {
   return (
     <section className="bg-white py-20 md:py-28">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <SectionHead
           eyebrow="Institutional Onboarding"
-          title="Bring your institution onto Edusal Consult"
+          title="Bring your institution onto Nexus Edutech Consult Ltd"
           copy="Book a scoped walkthrough. We will map your faculties, counsellor roster and reporting needs before you sign anything."
           align="center"
           wide
@@ -1741,7 +1741,7 @@ const Trust = [
 function TrustStrip() {
   return (
     <section className="border-y border-line bg-white py-14">
-      <div className="container-edusal grid gap-8 md:grid-cols-3">
+      <div className="container-nexus grid gap-8 md:grid-cols-3">
         {Trust.map((t) => {
           const Icon = t.icon
           return (
@@ -1811,14 +1811,14 @@ function Walkthrough() {
 
   return (
     <section id="walkthrough" className="bg-bgsoft py-20 md:py-28">
-      <div className="container-edusal grid gap-12 lg:grid-cols-[0.85fr_1.15fr]">
+      <div className="container-nexus grid gap-12 lg:grid-cols-[0.85fr_1.15fr]">
         <div>
           <Eyebrow>Scoped Walkthrough</Eyebrow>
           <h2 className="mt-3 text-3xl leading-tight md:text-[2.4rem]">
             Request a Scoped Walkthrough
           </h2>
           <p className="mt-4 text-lg text-charcoal-soft">
-            No commitments. See how Edusal fits your institution's specific
+            No commitments. See how Nexus Edutech Consult Ltd fits your institution's specific
             workflow.
           </p>
 
@@ -2027,11 +2027,11 @@ const FooterCols = [
 function Footer() {
   return (
     <footer className="bg-charcoal pt-16 pb-10 text-white">
-      <div className="container-edusal">
+      <div className="container-nexus">
         <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
           <div className="max-w-sm">
             <Link to="/" className="flex items-center">
-              <img src="/logo-white.png" alt="Edusal Consult" className="h-10 w-auto" />
+              <img src="/logo-white.png" alt="Nexus Edutech Consult Ltd" className="h-10 w-auto" />
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-white/60">
               Career Service Centre Management Platform for Nigerian tertiary
@@ -2062,7 +2062,7 @@ function Footer() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-8 md:flex-row">
           <p className="text-sm text-white/50">
-            © 2026 Edusal Consult. All rights reserved.
+            © 2026 Nexus Edutech Consult Ltd. All rights reserved.
           </p>
           <p className="flex items-center gap-1.5 text-sm text-white/50">
             <VerifiedIcon sx={{ fontSize: 15, color: 'primary.main' }} />

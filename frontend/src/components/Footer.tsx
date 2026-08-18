@@ -43,7 +43,7 @@ export const Footer: FC<FooterProps> = ({
                 </svg>
               </div>
               <div className="brand-text">
-                <span className="brand-name">EDUSAL</span>
+                <span className="brand-name">NEXUS</span>
                 <span className="brand-sub">CONSULT</span>
               </div>
             </div>
@@ -97,7 +97,7 @@ export const Footer: FC<FooterProps> = ({
         {/* Footer Bottom Bar */}
         <div className="footer-bottom-bar">
           <p className="copyright-text">
-            © {new Date().getFullYear()} Edusal Consult. All rights reserved.
+            © {new Date().getFullYear()} Nexus Edutech Consult Ltd. All rights reserved.
           </p>
           <div className="footer-legal-links">
             <span>NDPR Data Privacy</span>

@@ -33,7 +33,7 @@ export const Hero: FC<HeroProps> = ({
           {/* Left Column: Copy & CTAs */}
           <div className="hero-content">
             <div className="hero-badge-row">
-              <span className="eyebrow-pill">Edusal Consult</span>
+              <span className="eyebrow-pill">Nexus Edutech Consult Ltd</span>
               <span className="badge-sub">For Nigerian Universities, Polytechnics & Colleges</span>
             </div>
 
@@ -43,7 +43,7 @@ export const Hero: FC<HeroProps> = ({
             </h1>
 
             <p className="hero-subheadline">
-              Edusal Consult gives Nigerian universities, polytechnics, and colleges of education a career services operating system where every employability claim is backed by evidence — not a resume line, not a guess.
+              Nexus Edutech Consult Ltd gives Nigerian universities, polytechnics, and colleges of education a career services operating system where every employability claim is backed by evidence — not a resume line, not a guess.
             </p>
 
             <div className="hero-cta-group">

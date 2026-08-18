@@ -1,4 +1,4 @@
-# Deploy manifest for the edusal-backend Heroku app.
+# Deploy manifest for the nexus-backend Heroku app.
 #
 # This monorepo manifest targets ONLY the Django backend under backend/.
 # The frontend and every other directory are intentionally not part of this app.

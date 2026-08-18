@@ -5,7 +5,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: FC<ProtectedRouteProps> = ({ children }) => {
-  const token = localStorage.getItem('edusal_access_token');
+  const token = localStorage.getItem('nexus_access_token');
 
   if (!token) {
     return null;

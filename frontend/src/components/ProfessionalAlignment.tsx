@@ -32,7 +32,7 @@ export const ProfessionalAlignment: FC = () => {
             <span className="standards-eyebrow">Professional Ecosystem Alignment</span>
             <h2 className="standards-title">Standards you can trust</h2>
             <p className="standards-lead">
-              Edusal Consult's pathway and skill-validation framework is being developed in consultation with Nigerian professional and chartered bodies. Formal partnership charters will be published as agreements are finalized.
+              Nexus Edutech Consult Ltd's pathway and skill-validation framework is being developed in consultation with Nigerian professional and chartered bodies. Formal partnership charters will be published as agreements are finalized.
             </p>
           </div>
 

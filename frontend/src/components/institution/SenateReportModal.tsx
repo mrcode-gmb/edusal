@@ -96,7 +96,7 @@ export const SenateReportModal: FC<SenateReportModalProps> = ({
             </div>
             <div className="rounded-[15px] bg-white px-3 py-2 text-xs">
               <span className="flex items-center gap-1 font-bold text-charcoal">
-                <ShieldIcon sx={{ fontSize: 13, color: 'primary.main' }} /> Edusal
+                <ShieldIcon sx={{ fontSize: 13, color: 'primary.main' }} /> Nexus
                 Tamper-Evident Digest
               </span>
               <code className="mt-0.5 block font-mono text-[11px] text-charcoal-faint">

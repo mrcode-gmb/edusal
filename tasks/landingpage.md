@@ -1,4 +1,4 @@
-# Edusal Consult — Landing Page Content
+# Nexus Edutech Consult Ltd — Landing Page Content
 
 *Career Service Centre Management Platform for Nigerian Tertiary Institutions*
 
@@ -10,14 +10,14 @@ Notes on differentiation from the reference site are marked in `> [design note]`
 
 ## 1. Hero
 
-**Eyebrow:** Edusal Consult
+**Eyebrow:** Nexus Edutech Consult Ltd
 
 **Headline:**
 Every graduate should be able to explain why they're job-ready.
 Not just claim it.
 
 **Subheadline:**
-Edusal Consult gives Nigerian universities, polytechnics, and colleges of education a career services operating system where every employability claim is backed by evidence — not a resume line, not a guess.
+Nexus Edutech Consult Ltd gives Nigerian universities, polytechnics, and colleges of education a career services operating system where every employability claim is backed by evidence — not a resume line, not a guess.
 
 **Primary CTA:** Book a scoped walkthrough
 **Secondary CTA:** See how the Employability Score works
@@ -102,7 +102,7 @@ Every profile shows what was validated, by whom, and when — not a self-written
 
 > [design note] Wrote a new, original conversation — different student, department, city, and employer names — to avoid any resemblance to the reference site's example. Kept the *pattern* that made theirs effective (grounded citation + handoff), since that pattern is the actual product idea, not IP.
 
-**Edusal Assistant**
+**Nexus Edutech Assistant**
 *Chidinma Okafor · 300L Software Engineering · FUTMinna*
 `Institution-grounded`
 
@@ -148,13 +148,13 @@ Same taxonomy across every institution and department, so a placement rate means
 
 **Section heading:** Standards you can trust
 
-Edusal Consult's pathway and skill-validation framework is being developed in consultation with Nigerian professional and chartered bodies. Partnership details will be published as they're formalized.
+Nexus Edutech Consult Ltd's pathway and skill-validation framework is being developed in consultation with Nigerian professional and chartered bodies. Partnership details will be published as they're formalized.
 
 ---
 
 ## 10. Closing CTA
 
-**Section heading:** Bring your institution onto Edusal Consult
+**Section heading:** Bring your institution onto Nexus Edutech Consult Ltd
 
 Book a scoped walkthrough. We'll map your faculties, counsellor roster, and reporting needs before you sign anything.
 
@@ -171,14 +171,14 @@ Book a scoped walkthrough. We'll map your faculties, counsellor roster, and repo
 
 ## 11. Footer
 
-**Edusal Consult**
+**Nexus Edutech Consult Ltd**
 Career Service Centre Management Platform for Nigerian tertiary institutions. Built for NUC universities, NBTE polytechnics, NCCE colleges of education, and private institutions.
 
 **Platform:** Overview · AI Assistant · Assessments · Employer Pipeline
 **Audiences:** Institutions · Students · Counsellors · Employers
 **Company:** About · Research · Contact · Careers
 
-© 2026 Edusal Consult.
+© 2026 Nexus Edutech Consult Ltd.
 Privacy · Security · Compliance
 
 ---
@@ -191,7 +191,7 @@ Privacy · Security · Compliance
 | Named institution logos | Removed, replaced with CTA | No real partners to display yet |
 | Named individual testimonials | Placeholder, marked do-not-publish | Can't attribute quotes to real people without consent |
 | Named chartered-body partnerships | "In consultation with" framing | Can't claim a partnership that isn't signed |
-| Generic capability bullets | Rewritten around evidence/explainability | Gives Edusal Consult an actual differentiated wedge, not a copy |
+| Generic capability bullets | Rewritten around evidence/explainability | Gives Nexus Edutech Consult Ltd an actual differentiated wedge, not a copy |
 | AI demo transcript | Fully original conversation | Avoids reproducing the reference site's specific content |
 | Benchmark data table | Removed until real data exists | Fabricated regulator-facing numbers are high-risk to publish |
 

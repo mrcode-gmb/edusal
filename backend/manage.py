@@ -20,9 +20,9 @@ def main():
         ) from exc
 
     # This allows easy placement of apps within the interior
-    # edusal directory.
+    # nexus directory.
     current_path = Path(__file__).parent.resolve()
-    sys.path.append(str(current_path / "edusal"))
+    sys.path.append(str(current_path / "nexus"))
 
     execute_from_command_line(sys.argv)
 

@@ -848,7 +848,73 @@ export const institutionApi = {
     if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch student dossier`);
     return res.json();
   },
+
+  // Institutional Onboarding, Invoices & Banking
+  async registerInstitution(
+    payload: import('../types/institution').InstitutionRegistrationPayload
+  ): Promise<import('../types/institution').InstitutionRegistrationResponse> {
+    const res = await fetch(`${API_BASE}/api/institutions/register/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.detail || `HTTP ${res.status}: Registration failed`);
+    }
+    return res.json();
+  },
+
+  async getActiveBankDetails(): Promise<import('../types/institution').CompanyBankDetail> {
+    const res = await fetch(`${API_BASE}/api/company-bank-details/active/`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch bank details`);
+    return res.json();
+  },
+
+  async getPricingPlans(): Promise<import('../types/institution').PricingPlan[]> {
+    const res = await fetch(`${API_BASE}/api/pricing-plans/`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch pricing plans`);
+    return res.json();
+  },
+
+  async getInvoices(institutionId?: string, token?: string): Promise<import('../types/institution').InstitutionInvoice[]> {
+    const query = new URLSearchParams();
+    if (institutionId) query.append('institution_id', institutionId);
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/invoices/?${query.toString()}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch invoices`);
+    return res.json();
+  },
+
+  async getInvoice(id: string, token?: string): Promise<import('../types/institution').InstitutionInvoice> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/invoices/${id}/`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch invoice`);
+    return res.json();
+  },
+
+  async submitInvoicePayment(
+    invoiceId: string,
+    formData: FormData,
+    token?: string
+  ): Promise<import('../types/institution').InstitutionInvoice> {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/invoices/${invoiceId}/submit-payment/`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.detail || `HTTP ${res.status}: Failed to submit payment`);
+    }
+    return res.json();
+  },
 };
+
 
 
 

@@ -269,7 +269,7 @@ tags
 dump.rdb
 
 ### Project template
-edusal/media/
+nexus/media/
 
 .pytest_cache/
 .ipython/

@@ -159,7 +159,7 @@ export const WorkspacesSection: FC = () => {
                     <span className="s-dot"></span>
                     <span className="s-dot"></span>
                   </div>
-                  <span className="sim-address">edusal.consult/{current.id}/workspace</span>
+                  <span className="sim-address">nexus.consult/{current.id}/workspace</span>
                   <span className="sim-live-badge">Verified Session</span>
                 </div>
 

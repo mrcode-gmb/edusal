@@ -55,7 +55,7 @@ export const Navbar: FC<NavbarProps> = ({
             </svg>
           </div>
           <div className="brand-text">
-            <span className="brand-name">EDUSAL</span>
+            <span className="brand-name">NEXUS</span>
             <span className="brand-sub">CONSULT</span>
           </div>
         </a>

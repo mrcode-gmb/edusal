@@ -1,4 +1,4 @@
-# Edusal Consult — Institutional Architecture & Implementation Plan
+# Nexus Edutech Consult Ltd — Institutional Architecture & Implementation Plan
 
 > **Scope:** Multi-Tenant Institutional Hierarchy, Governance Engine, Academic Directory, Document Grounding (RAG), and Executive Dashboard for Nigerian Tertiary Institutions (NUC Universities, NBTE Polytechnics, NCCE Colleges of Education).
 >
@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary & Regulatory Foundation
 
-In **Edusal Consult**, the **Institution** is the primary organizational tenant, regulatory boundary, and trust root. Every student, counsellor, faculty evaluator, and institutional document belongs to an institution. 
+In **Nexus Edutech Consult Ltd**, the **Institution** is the primary organizational tenant, regulatory boundary, and trust root. Every student, counsellor, faculty evaluator, and institutional document belongs to an institution. 
 
 The institutional layer must accommodate the structural realities and statutory terminologies of Nigeria’s three principal higher education regulatory bodies:
 
@@ -20,7 +20,7 @@ The institutional layer must accommodate the structural realities and statutory 
 
 ## 2. Universal 4-Tier Academic Hierarchy
 
-To maintain a clean, standardized database schema while honoring each institution type’s native nomenclature, Edusal uses a **Polymorphic 4-Tier Hierarchy**:
+To maintain a clean, standardized database schema while honoring each institution type’s native nomenclature, Nexus uses a **Polymorphic 4-Tier Hierarchy**:
 
 ```mermaid
 graph TD
@@ -57,7 +57,7 @@ graph TD
 
 ## 3. Data Models Schema (Django & PostgreSQL)
 
-The institutional subsystem will be housed under `backend/edusal/institutions/`.
+The institutional subsystem will be housed under `backend/nexus/institutions/`.
 
 ```mermaid
 erDiagram
@@ -239,7 +239,7 @@ gantt
 ```
 
 ### Phase 1 — Core Domain Models & Hierarchy Scaffolding
-* Create `backend/edusal/institutions/` Django app.
+* Create `backend/nexus/institutions/` Django app.
 * Implement models: `Institution`, `AcademicDivision`, `Department`, `AcademicProgram`, `AcademicSession`, `InstitutionalDocument`.
 * Apply database migrations with pgvector support.
 * Add sample seed fixtures for:

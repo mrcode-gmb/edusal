@@ -1,14 +1,14 @@
-# Edusal Consult — Agent & Engineering Architecture Charter
+# Nexus Edutech Consult Ltd — Agent & Engineering Architecture Charter
 
 > **STATUS**: MANDATORY CONSTITUTION  
-> **APPLIES TO**: All AI Agents, Autonomous Subagents, and Human Developers working on the **Edusal** codebase.  
+> **APPLIES TO**: All AI Agents, Autonomous Subagents, and Human Developers working on the **Nexus** codebase.  
 > **PRIMARY GOAL**: Prevent architectural degradation, enforce multi-tenant isolation, maintain the "Zero Unbacked Claims" data model, and preserve design excellence.
 
 ---
 
 ## 1. Executive Mission & System Philosophy
 
-**Edusal Consult** is the Career Services and Employability Operating System engineered specifically for Nigerian tertiary institutions:
+**Nexus Edutech Consult Ltd** is the Career Services and Employability Operating System engineered specifically for Nigerian tertiary institutions:
 - **Universities** (Regulated by NUC)
 - **Polytechnics & Monotechnics** (Regulated by NBTE)
 - **Colleges of Education** (Regulated by NCCE)
@@ -28,7 +28,7 @@ Every skill, outcome metric, student score, document answer, and placement recom
 | :--- | :--- | :--- | :--- | :--- |
 | **Backend API** | Django 6.0 + DRF | `8000` | **`8001`** | `http://localhost:8001/api/` |
 | **Frontend Web** | React 19 + TypeScript + Vite | `5173` | **`5173`** | `http://localhost:5173/` |
-| **Database** | PostgreSQL 16 + `pgvector` v0.8.6 | `5432` | `5432` | `postgres:5432/edusal` |
+| **Database** | PostgreSQL 16 + `pgvector` v0.8.6 | `5432` | `5432` | `postgres:5432/nexus` |
 | **Task Queue** | Celery + Redis | `6379` | `6379` | `redis:6379/0` |
 | **Celery Monitor**| Flower | `5555` | `5555` | `http://localhost:5555/` |
 | **Mail Server** | Mailpit (SMTP/Web) | `1025 / 8025` | `8025` | `http://localhost:8025/` |
@@ -43,7 +43,7 @@ Every skill, outcome metric, student score, document answer, and placement recom
 
 ### Rule 1: Zero Emojis Anywhere
 - **STRICTLY PROHIBITED**: Unicode emoji symbols (e.g., 🏛️, 🔒, ⏳, 📜, 🤝, 🇳🇬, 🎯, 🏢, etc.) must NEVER be placed in UI components, headings, buttons, pills, tables, or modals.
-- **MANDATORY ALTERNATIVE**: Import clean, modern, open-source SVG icons from [`frontend/src/components/icons/index.tsx`](file:///home/cainoa/dev/projects/edusal/frontend/src/components/icons/index.tsx) (e.g. `<BuildingIcon />`, `<FolderTreeIcon />`, `<LockIcon />`, `<ShieldCheckIcon />`, `<UsersIcon />`, `<FileTextIcon />`, `<CheckCircleIcon />`, etc.).
+- **MANDATORY ALTERNATIVE**: Import clean, modern, open-source SVG icons from [`frontend/src/components/icons/index.tsx`](file:///home/cainoa/dev/projects/nexus/frontend/src/components/icons/index.tsx) (e.g. `<BuildingIcon />`, `<FolderTreeIcon />`, `<LockIcon />`, `<ShieldCheckIcon />`, `<UsersIcon />`, `<FileTextIcon />`, `<CheckCircleIcon />`, etc.).
 
 ### Rule 2: Opaque, High-Contrast Forms & Modals
 - **NEVER use transparent backgrounds for modals or forms**: All modal wrappers (`.modal-content`, `.modal-container`, `.modal-form`) must have solid `#ffffff` background with explicit borders (`#cbd5e1`) and elevation shadows.
@@ -86,9 +86,11 @@ graph TD
 
 ---
 
-## 5. Seeded Test Accounts & RBAC
+## 5. Seed Accounts & RBAC
 
-All test accounts across seeded archetypes use the standard password: **`1234!@#$`**
+> **NOTE**: The `seed_institutions` management command and all seeded institution demo data have been removed. The archetype table below is retained as the canonical RBAC layout for future re-seeding; these accounts do **not** exist in a fresh database.
+
+The archetype accounts used the standard password: **`1234!@#$`**
 
 | Email | Institution | Regulator | Archetype | Role | Assigned Profile |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -106,7 +108,7 @@ All test accounts across seeded archetypes use the standard password: **`1234!@#
 ## 6. Data Modeling & Database Conventions
 
 ### 1. Custom User Model
-- Defined in [`backend/edusal/users/models.py`](file:///home/cainoa/dev/projects/edusal/backend/edusal/users/models.py).
+- Defined in [`backend/nexus/users/models.py`](file:///home/cainoa/dev/projects/nexus/backend/nexus/users/models.py).
 - `USERNAME_FIELD = "email"` (There is **no** username field). All queries must filter by `email`.
 
 ### 2. UUID Primary Keys

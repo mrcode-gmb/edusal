@@ -1,4 +1,4 @@
-# Edusal Consult — Staff & Student Identity Implementation Plan
+# Nexus Edutech Consult Ltd — Staff & Student Identity Implementation Plan
 ## Dynamic Departmental Scoping & Program-Driven Dynamic Student Identity
 
 > **DOCUMENT ID**: `TASKS-ID-STUDENT-001-REV2`  
@@ -277,7 +277,7 @@ All accounts use the standard test password: **`1234!@#$`**
 ## 7. Phased Implementation Steps
 
 ### Phase 1: Backend Data Models & Migrations
-- Implement `StaffAssignment` and `StudentProfile` in `backend/edusal/institutions/models.py`.
+- Implement `StaffAssignment` and `StudentProfile` in `backend/nexus/institutions/models.py`.
 - Add dynamic level calculation methods (`get_level_code()`, `get_level_display()`, `is_final_year`).
 - Run Django migrations.
 
@@ -288,7 +288,7 @@ All accounts use the standard test password: **`1234!@#$`**
 
 ### Phase 3: Seeder Expansion & Pytest Test Suite
 - Expand `seed_institutions.py` to seed scoped staff and diverse multi-year duration students.
-- Write tests in `backend/edusal/institutions/tests/test_student_identity.py` covering:
+- Write tests in `backend/nexus/institutions/tests/test_student_identity.py` covering:
   - Dynamic level resolution (4-yr vs 5-yr vs 2-yr ND vs 3-yr NCE).
   - Departmental scoping security (SEET staff cannot query Agric or Arts students).
   - Matric number uniqueness per institution.

@@ -1,6 +1,6 @@
-# Edusal
+# Nexus
 
-Edusal - Educational Platform
+Nexus - Educational Platform
 
 [![Built with Cookiecutter Django](https://img.shields.io/badge/built%20with-Cookiecutter%20Django-ff69b4.svg?logo=cookiecutter)](https://github.com/cookiecutter/cookiecutter-django/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
@@ -25,7 +25,7 @@ For convenience, you can keep your normal user logged in on Chrome and your supe
 
 Running type checks with mypy:
 
-    uv run mypy edusal
+    uv run mypy nexus
 
 ### Test coverage
 
@@ -50,7 +50,7 @@ This app comes with Celery.
 To run a celery worker:
 
 ```bash
-cd edusal
+cd nexus
 uv run celery -A config.celery_app worker -l info
 ```
 
@@ -59,14 +59,14 @@ Please note: For Celery's import magic to work, it is important _where_ the cele
 To run [periodic tasks](https://docs.celeryq.dev/en/stable/userguide/periodic-tasks.html), you'll need to start the celery beat scheduler service. You can start it as a standalone process:
 
 ```bash
-cd edusal
+cd nexus
 uv run celery -A config.celery_app beat
 ```
 
 or you can embed the beat service inside a worker with the `-B` option (not recommended for production use):
 
 ```bash
-cd edusal
+cd nexus
 uv run celery -A config.celery_app worker -B -l info
 ```
 

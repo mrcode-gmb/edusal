@@ -94,7 +94,7 @@
 }
 
 @layer utilities {
-  .container-edusal {
+  .container-nexus {
     width: 100%;
     max-width: var(--maxw, 1200px);
     margin-inline: auto;
@@ -102,7 +102,7 @@
   }
 
   @media (min-width: 768px) {
-    .container-edusal {
+    .container-nexus {
       padding-inline: 40px;
     }
   }

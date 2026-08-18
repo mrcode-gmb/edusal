@@ -4,7 +4,7 @@
 
 ## 1. Executive Summary & Architectural Vision
 
-This specification defines the architecture, database schema, mathematical scoring algorithms, RAG pipeline extensions, and frontend component ecosystem for three core pillars of the **EduSal Student Career Platform**:
+This specification defines the architecture, database schema, mathematical scoring algorithms, RAG pipeline extensions, and frontend component ecosystem for three core pillars of the **Nexus Edutech Consult Ltd Student Career Platform**:
 
 1. **Psychometric & Diagnostic Assessments Engine**: Built-in, scientifically validated assessment tools:
    - **Big Five Personality Test** (Mini-IPIP $5$-Factor OCEAN model: Openness, Conscientiousness, Extraversion, Agreeableness, Emotional Stability).
@@ -83,7 +83,7 @@ graph TD
 
 ## 3. Data Models & Database Architecture (Django ORM)
 
-All models reside in `backend/edusal/institutions/models.py` with multi-tenant isolation, UUID primary keys, and index optimizations.
+All models reside in `backend/nexus/institutions/models.py` with multi-tenant isolation, UUID primary keys, and index optimizations.
 
 ```mermaid
 erDiagram
@@ -365,15 +365,15 @@ In `StudentRoster.tsx` and `StaffDirectory.tsx`:
 ## 8. Phased Implementation Roadmap
 
 ### Phase 1: Database Models & Migrations
-- Define `DiagnosticAssessment`, `DiagnosticQuestion`, `StudentAssessmentSession`, `AICoachConversation`, `AICoachMessage`, `CounsellingSession`, `CounsellingCaseNote` in `backend/edusal/institutions/models.py`.
+- Define `DiagnosticAssessment`, `DiagnosticQuestion`, `StudentAssessmentSession`, `AICoachConversation`, `AICoachMessage`, `CounsellingSession`, `CounsellingCaseNote` in `backend/nexus/institutions/models.py`.
 - Create and apply Django migration `0008_diagnostic_assessments_ai_coach_and_counselling.py`.
 
 ### Phase 2: Psychometric Engine & Standard Item Banks
-- Build `backend/edusal/institutions/services/psychometric_service.py` with scoring algorithms for Big Five (Mini-IPIP), Holland RIASEC, and Numerical diagnostics.
+- Build `backend/nexus/institutions/services/psychometric_service.py` with scoring algorithms for Big Five (Mini-IPIP), Holland RIASEC, and Numerical diagnostics.
 - Seed standard public-domain question banks for Big Five (20 items), Holland RIASEC (30 items), and Technical diagnostics in `seed_institutions.py`.
 
 ### Phase 3: Student AI Career Coach Service
-- Build `backend/edusal/institutions/services/student_ai_coach_service.py` with contextual dossier injection, pgvector chunk grounding, Groq LLM integration, and automatic case note summarization.
+- Build `backend/nexus/institutions/services/student_ai_coach_service.py` with contextual dossier injection, pgvector chunk grounding, Groq LLM integration, and automatic case note summarization.
 
 ### Phase 4: Serializers, ViewSets & API Router
 - Add serializers in `serializers.py` for diagnostic assessments, AI Coach messages, counselling sessions, case notes, and student dossiers.

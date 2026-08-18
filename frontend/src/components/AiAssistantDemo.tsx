@@ -31,7 +31,7 @@ export const AiAssistantDemo: FC = () => {
                 <div className="ai-avatar">ES</div>
                 <div>
                   <div className="ai-name-row">
-                    <span className="ai-title">Edusal Assistant</span>
+                    <span className="ai-title">Nexus Edutech Assistant</span>
                     <span className="ai-grounded-pill">Institution-grounded</span>
                   </div>
                   <span className="ai-student-sub">

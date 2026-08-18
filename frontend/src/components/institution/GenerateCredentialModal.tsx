@@ -184,7 +184,7 @@ export const GenerateCredentialModal: FC<GenerateCredentialModalProps> = ({
               fullWidth
               size="medium"
               label="Custom Temporary Password (Optional)"
-              placeholder="Leave blank to auto-generate secure password (e.g. EduSal-2026!7xK)"
+              placeholder="Leave blank to auto-generate secure password (e.g. Nexus-2026!7xK)"
               value={customPassword}
               onChange={(e) => setCustomPassword(e.target.value)}
             />

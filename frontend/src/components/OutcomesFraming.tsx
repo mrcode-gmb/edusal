@@ -76,7 +76,7 @@ export const OutcomesFraming: FC = () => {
             Built to report outcomes your board can actually verify
           </h2>
           <p className="section-lead">
-            No synthetic metrics or unprovable percentages. Every data point on Edusal is backed by an auditable chain of evidence.
+            No synthetic metrics or unprovable percentages. Every data point on Nexus is backed by an auditable chain of evidence.
           </p>
         </div>
 

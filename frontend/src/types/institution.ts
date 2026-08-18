@@ -261,6 +261,7 @@ export interface InstitutionStaff {
   institution: string;
   institution_name: string;
   institution_short_name: string;
+  institution_status?: InstitutionStatus;
   division?: string;
   division_name?: string;
   department?: string;
@@ -293,6 +294,7 @@ export interface StaffAssignment {
   institution: string;
   institution_name: string;
   institution_short_name: string;
+  institution_status?: InstitutionStatus;
   division?: string;
   division_name?: string;
   department?: string;
@@ -757,6 +759,138 @@ export interface StudentDossier {
   ai_coach_summary: string;
   employability_summary: EmployabilitySummary;
 }
+
+export type InstitutionStatus =
+  | 'ACTIVE'
+  | 'PENDING_PAYMENT'
+  | 'PAYMENT_SUBMITTED'
+  | 'PROVISIONING'
+  | 'SUSPENDED'
+  | 'REJECTED';
+
+export type InvoiceStatus =
+  | 'UNPAID'
+  | 'PAYMENT_SUBMITTED'
+  | 'PAID'
+  | 'VOID'
+  | 'REJECTED';
+
+export interface CompanyBankDetail {
+  id: string;
+  account_name: string;
+  bank_name: string;
+  account_number: string;
+  sort_code_or_swift?: string;
+  currency: string;
+  payment_instructions: string;
+  support_email: string;
+  support_phone?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PricingPlan {
+  id: string;
+  code: string;
+  name: string;
+  target_institution_type?: string;
+  description?: string;
+  base_fee: string | number;
+  setup_onboarding_fee: string | number;
+  per_student_fee?: string | number;
+  max_students: number;
+  features: string[];
+  currency: string;
+  billing_cycle: string;
+  is_active: boolean;
+}
+
+export interface InvoiceLineItem {
+  description: string;
+  quantity?: number;
+  unit_price?: number;
+  amount: number;
+}
+
+export interface InstitutionInvoice {
+  id: string;
+  invoice_number: string;
+  institution: string;
+  institution_name: string;
+  institution_short_name: string;
+  institution_status: InstitutionStatus;
+  plan?: string | null;
+  plan_name: string;
+  issued_to_name: string;
+  issued_to_email: string;
+  subtotal_amount: string;
+  setup_fee: string;
+  vat_rate?: string | number;
+  vat_amount?: string | number;
+  discount_amount: string;
+  total_amount: string;
+  currency: string;
+  status: InvoiceStatus;
+  status_display: string;
+  bank_details_snapshot: {
+    account_name: string;
+    bank_name: string;
+    account_number: string;
+    sort_code_or_swift?: string;
+    currency: string;
+    payment_instructions?: string;
+    support_email?: string;
+    support_phone?: string;
+  };
+  items_breakdown: InvoiceLineItem[];
+  due_date: string;
+  payment_reference?: string;
+  payment_receipt_url?: string | null;
+  payer_bank_name?: string;
+  payer_account_name?: string;
+  payment_date?: string | null;
+  payment_notes?: string;
+  payment_submitted_at?: string | null;
+  confirmed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InstitutionRegistrationPayload {
+  legal_name: string;
+  short_name: string;
+  institution_type: string;
+  ownership: string;
+  regulator: string;
+  state: string;
+  city?: string;
+  address?: string;
+  website?: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone?: string;
+  designation?: string;
+  password: string;
+  tier: string;
+  faculties?: string[];
+  counsellor_seats?: number;
+  modules?: string[];
+  add_ons?: string[];
+  dpo_name?: string;
+  dpo_email?: string;
+}
+
+export type User = AuthUser;
+
+export interface InstitutionRegistrationResponse {
+  token: string;
+  user: AuthUser;
+  institution: InstitutionSummary;
+  invoice: InstitutionInvoice;
+  message: string;
+}
+
 
 
 

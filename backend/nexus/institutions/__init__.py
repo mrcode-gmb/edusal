@@ -1,0 +1,1 @@
+"""Institutions application for Nexus."""

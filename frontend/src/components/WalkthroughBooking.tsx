@@ -50,7 +50,7 @@ export const WalkthroughBooking: FC = () => {
           {/* Left Column: Scope & Value Proposition */}
           <div className="booking-info-col">
             <span className="booking-eyebrow">Institutional Onboarding</span>
-            <h2 className="booking-title">Bring your institution onto Edusal Consult</h2>
+            <h2 className="booking-title">Bring your institution onto Nexus Edutech Consult Ltd</h2>
             <p className="booking-lead">
               Book a scoped walkthrough. We will map your faculties, counsellor roster, and reporting needs before you sign anything.
             </p>
@@ -153,7 +153,7 @@ export const WalkthroughBooking: FC = () => {
                 <form onSubmit={handleSubmit} className="walkthrough-form">
                   <div className="form-header">
                     <h3>Request a Scoped Walkthrough</h3>
-                    <p>No commitments. See how Edusal fits your institution's specific workflow.</p>
+                    <p>No commitments. See how Nexus fits your institution's specific workflow.</p>
                   </div>
 
                   <div className="form-group">

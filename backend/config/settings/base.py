@@ -7,8 +7,8 @@ from pathlib import Path
 import environ
 
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
-# edusal/
-APPS_DIR = BASE_DIR / "edusal"
+# nexus/
+APPS_DIR = BASE_DIR / "nexus"
 env = environ.Env()
 
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
@@ -101,9 +101,9 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    "edusal.users",
-    "edusal.core",
-    "edusal.institutions",
+    "nexus.users",
+    "nexus.core",
+    "nexus.institutions",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -111,7 +111,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # MIGRATIONS
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#migration-modules
-MIGRATION_MODULES = {"sites": "edusal.contrib.sites.migrations"}
+MIGRATION_MODULES = {"sites": "nexus.contrib.sites.migrations"}
 
 # AUTHENTICATION
 # ------------------------------------------------------------------------------
@@ -207,7 +207,7 @@ TEMPLATES = [
                 "django.template.context_processors.static",
                 "django.template.context_processors.tz",
                 "django.contrib.messages.context_processors.messages",
-                "edusal.users.context_processors.allauth_settings",
+                "nexus.users.context_processors.allauth_settings",
             ],
         },
     },
@@ -249,7 +249,7 @@ EMAIL_TIMEOUT = 5
 # Django Admin URL.
 ADMIN_URL = "admin/"
 # https://docs.djangoproject.com/en/dev/ref/settings/#admins
-ADMINS = ['"Edusal Team" <team@edusal.com>']
+ADMINS = ['"Nexus Team" <team@nexus.com>']
 # https://docs.djangoproject.com/en/dev/ref/settings/#managers
 MANAGERS = ADMINS
 # https://cookiecutter-django.readthedocs.io/en/latest/settings.html#other-environment-settings
@@ -334,13 +334,13 @@ ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 # https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 # https://docs.allauth.org/en/latest/account/configuration.html
-ACCOUNT_ADAPTER = "edusal.users.adapters.AccountAdapter"
+ACCOUNT_ADAPTER = "nexus.users.adapters.AccountAdapter"
 # https://docs.allauth.org/en/latest/account/forms.html
-ACCOUNT_FORMS = {"signup": "edusal.users.forms.UserSignupForm"}
+ACCOUNT_FORMS = {"signup": "nexus.users.forms.UserSignupForm"}
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
-SOCIALACCOUNT_ADAPTER = "edusal.users.adapters.SocialAccountAdapter"
+SOCIALACCOUNT_ADAPTER = "nexus.users.adapters.SocialAccountAdapter"
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
-SOCIALACCOUNT_FORMS = {"signup": "edusal.users.forms.UserSocialSignupForm"}
+SOCIALACCOUNT_FORMS = {"signup": "nexus.users.forms.UserSocialSignupForm"}
 
 # django-rest-framework
 # -------------------------------------------------------------------------------
@@ -367,8 +367,8 @@ CORS_ALLOW_CREDENTIALS = True
 # By Default swagger ui is available only to admin user(s). You can change permission classes to change that
 # See more configuration options at https://drf-spectacular.readthedocs.io/en/latest/settings.html#settings
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Edusal API",
-    "DESCRIPTION": "Documentation of API endpoints of Edusal",
+    "TITLE": "Nexus API",
+    "DESCRIPTION": "Documentation of API endpoints of Nexus",
     "VERSION": "1.0.0",
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
     "SCHEMA_PATH_PREFIX": "/api/",

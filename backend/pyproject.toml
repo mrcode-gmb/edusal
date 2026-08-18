@@ -1,11 +1,11 @@
 [project]
-name = "edusal"
+name = "nexus"
 version = "0.1.0"
-description = "Edusal - Educational Platform"
+description = "Nexus - Educational Platform"
 readme = "README.md"
 license = { text = "Not open source" }
 authors = [
-  { name = "Edusal Team", email = "team@edusal.com" },
+  { name = "Nexus Team", email = "team@nexus.com" },
 ]
 requires-python = "==3.14.*"
 classifiers = [
@@ -169,7 +169,7 @@ python_files = [
 
 # ==== Coverage ====
 [tool.coverage.run]
-include = [ "edusal/**" ]
+include = [ "nexus/**" ]
 omit = [ "*/migrations/*", "*/tests/*" ]
 plugins = [ "django_coverage_plugin" ]
 

@@ -1,6 +1,6 @@
-# Translations for the Edusal project
-# Copyright (C) 2026 Edusal Team
-# Edusal Team <team@edusal.com>, 2026.
+# Translations for the Nexus project
+# Copyright (C) 2026 Nexus Team
+# Nexus Team <team@nexus.com>, 2026.
 #
 #, fuzzy
 msgid ""

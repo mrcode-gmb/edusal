@@ -2,8 +2,8 @@ from django.conf import settings
 from rest_framework.routers import DefaultRouter
 from rest_framework.routers import SimpleRouter
 
-from edusal.users.api.views import UserViewSet
-from edusal.institutions.api.views import (
+from nexus.users.api.views import UserViewSet
+from nexus.institutions.api.views import (
     InstitutionViewSet,
     AcademicDivisionViewSet,
     DepartmentViewSet,
@@ -21,6 +21,9 @@ from edusal.institutions.api.views import (
     AICoachViewSet,
     CounsellingSessionViewSet,
     CounsellingCaseNoteViewSet,
+    CompanyBankDetailViewSet,
+    PricingPlanViewSet,
+    InstitutionInvoiceViewSet,
 )
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
@@ -43,6 +46,9 @@ router.register("student-assessments", StudentAssessmentSessionViewSet, basename
 router.register("ai-coach", AICoachViewSet, basename="ai-coach")
 router.register("counselling-sessions", CounsellingSessionViewSet, basename="counselling-session")
 router.register("counselling-case-notes", CounsellingCaseNoteViewSet, basename="counselling-case-note")
+router.register("company-bank-details", CompanyBankDetailViewSet, basename="company-bank-detail")
+router.register("pricing-plans", PricingPlanViewSet, basename="pricing-plan")
+router.register("invoices", InstitutionInvoiceViewSet, basename="invoice")
 
 
 app_name = "api"

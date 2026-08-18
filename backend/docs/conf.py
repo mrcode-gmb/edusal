@@ -28,9 +28,9 @@ django.setup()
 
 # -- Project information -----------------------------------------------------
 
-project = "Edusal"
-copyright = """2026, Edusal Team"""  # noqa: A001
-author = "Edusal Team"
+project = "Nexus"
+copyright = """2026, Nexus Team"""  # noqa: A001
+author = "Nexus Team"
 
 
 # -- General configuration ---------------------------------------------------
