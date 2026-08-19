@@ -4,6 +4,12 @@ import {
   Button,
   Chip,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
+  Tooltip,
 } from '@mui/material';
 import {
   AccountTree as AccountTreeIcon,
@@ -16,6 +22,8 @@ import {
   Add as AddIcon,
   PlaylistAdd as PlaylistAddIcon,
   LibraryAdd as LibraryAddIcon,
+  DeleteOutlined as DeleteOutlineIcon,
+  WarningAmber as WarningAmberIcon,
 } from '@mui/icons-material';
 import { Panel, PageHead, StatCard, LoadingBlock } from './Shared';
 
@@ -26,6 +34,9 @@ interface AcademicHierarchyTreeProps {
   onAddDepartment: (divisionId: string) => void;
   onAddProgram: (departmentId: string) => void;
   onOpenBulkImport?: () => void;
+  onDeleteDivision?: (divisionId: string, divisionName: string) => Promise<void>;
+  onDeleteDepartment?: (departmentId: string, departmentName: string) => Promise<void>;
+  onDeleteProgram?: (programId: string, programName: string) => Promise<void>;
 }
 
 type TreeNode = {
@@ -92,6 +103,7 @@ function TierNode({
   onToggle,
   onAddDepartment,
   onAddProgram,
+  onRequestDelete,
 }: {
   node: TreeNode;
   depth?: number;
@@ -101,17 +113,19 @@ function TierNode({
   onToggle: (id: string) => void;
   onAddDepartment: (divisionId: string) => void;
   onAddProgram: (departmentId: string) => void;
+  onRequestDelete: (id: string, name: string, type: 'division' | 'department' | 'program') => void;
 }) {
   const hasChildren = node.children && node.children.length > 0;
   const isOpen = expanded[node.id];
   const isSel = selected.id === node.id;
   const isTier2 = node.tier.includes('Tier 2');
   const isTier3 = node.tier.includes('Tier 3');
+  const isTier4 = node.tier.includes('Tier 4');
 
   return (
     <div>
       <div
-        className={`flex w-full items-center gap-2 rounded-[15px] border px-3 py-2.5 text-left transition-colors ${
+        className={`group flex w-full items-center gap-2 rounded-[15px] border px-3 py-2.5 text-left transition-colors ${
           isSel
             ? 'border-primary bg-primary-soft'
             : 'border-transparent hover:border-line hover:bg-bgsoft'
@@ -134,29 +148,76 @@ function TierNode({
         >
           <span className="truncate text-sm font-semibold text-charcoal">{node.name}</span>
         </button>
+
         {isTier2 && (
-          <IconButton
-            size="small"
-            title="Add Department"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddDepartment(node.id);
-            }}
-          >
-            <PlaylistAddIcon fontSize="small" sx={{ color: 'primary.main' }} />
-          </IconButton>
+          <>
+            <Tooltip title="Add Department">
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddDepartment(node.id);
+                }}
+              >
+                <PlaylistAddIcon fontSize="small" sx={{ color: 'primary.main' }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete Faculty / School">
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRequestDelete(node.id, node.name, 'division');
+                }}
+                sx={{ color: 'charcoal.faint', '&:hover': { color: 'error.main' } }}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </>
         )}
+
         {isTier3 && (
-          <IconButton
-            size="small"
-            title="Add Program"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddProgram(node.id);
-            }}
-          >
-            <LibraryAddIcon fontSize="small" sx={{ color: 'primary.main' }} />
-          </IconButton>
+          <>
+            <Tooltip title="Add Program">
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddProgram(node.id);
+                }}
+              >
+                <LibraryAddIcon fontSize="small" sx={{ color: 'primary.main' }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete Department">
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRequestDelete(node.id, node.name, 'department');
+                }}
+                sx={{ color: 'charcoal.faint', '&:hover': { color: 'error.main' } }}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
+
+        {isTier4 && (
+          <Tooltip title="Delete Program">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRequestDelete(node.id, node.name, 'program');
+              }}
+              sx={{ color: 'charcoal.faint', '&:hover': { color: 'error.main' } }}
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         )}
       </div>
       {isOpen &&
@@ -171,6 +232,7 @@ function TierNode({
             onToggle={onToggle}
             onAddDepartment={onAddDepartment}
             onAddProgram={onAddProgram}
+            onRequestDelete={onRequestDelete}
           />
         ))}
     </div>
@@ -181,10 +243,12 @@ function DetailPanel({
   node,
   onAddDepartment,
   onAddProgram,
+  onRequestDelete,
 }: {
   node: TreeNode;
   onAddDepartment: (divisionId: string) => void;
   onAddProgram: (departmentId: string) => void;
+  onRequestDelete: (id: string, name: string, type: 'division' | 'department' | 'program') => void;
 }) {
   const icon = node.tier.includes('Tier 1')
     ? SchoolIcon
@@ -196,6 +260,9 @@ function DetailPanel({
   const Icon = icon;
   const m = node.meta;
   const siwes = Boolean(m.siwes);
+  const isTier2 = node.tier.includes('Tier 2');
+  const isTier3 = node.tier.includes('Tier 3');
+  const isTier4 = node.tier.includes('Tier 4');
 
   return (
     <Panel>
@@ -256,29 +323,67 @@ function DetailPanel({
         ))}
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        {node.tier.includes('Tier 2') && (
-          <Button
-            variant="outlined"
-            color="inherit"
-            size="small"
-            startIcon={<PlaylistAddIcon />}
-            onClick={() => onAddDepartment(node.id)}
-            sx={{ color: 'primary.main', borderColor: 'primary.main' }}
-          >
-            Add Department
-          </Button>
+      <div className="mt-5 flex flex-col gap-2">
+        {isTier2 && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<PlaylistAddIcon />}
+              onClick={() => onAddDepartment(node.id)}
+              sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
+            >
+              Add Department
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              startIcon={<DeleteOutlineIcon />}
+              onClick={() => onRequestDelete(node.id, node.name, 'division')}
+              sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+            >
+              Delete Faculty
+            </Button>
+          </div>
         )}
-        {node.tier.includes('Tier 3') && (
+
+        {isTier3 && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<LibraryAddIcon />}
+              onClick={() => onAddProgram(node.id)}
+              sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
+            >
+              Add Program
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              startIcon={<DeleteOutlineIcon />}
+              onClick={() => onRequestDelete(node.id, node.name, 'department')}
+              sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+            >
+              Delete Department
+            </Button>
+          </div>
+        )}
+
+        {isTier4 && (
           <Button
             variant="outlined"
-            color="inherit"
+            color="error"
             size="small"
-            startIcon={<LibraryAddIcon />}
-            onClick={() => onAddProgram(node.id)}
-            sx={{ color: 'primary.main', borderColor: 'primary.main' }}
+            startIcon={<DeleteOutlineIcon />}
+            onClick={() => onRequestDelete(node.id, node.name, 'program')}
+            sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600, width: '100%' }}
           >
-            Add Program
+            Delete Degree Programme
           </Button>
         )}
       </div>
@@ -293,9 +398,46 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
   onAddDepartment,
   onAddProgram,
   onOpenBulkImport,
+  onDeleteDivision,
+  onDeleteDepartment,
+  onDeleteProgram,
 }) => {
   const [selected, setSelected] = useState<TreeNode | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  // Delete Confirmation State
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+    type: 'division' | 'department' | 'program';
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleRequestDelete = (id: string, name: string, type: 'division' | 'department' | 'program') => {
+    setDeleteTarget({ id, name, type });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      if (deleteTarget.type === 'division' && onDeleteDivision) {
+        await onDeleteDivision(deleteTarget.id, deleteTarget.name);
+      } else if (deleteTarget.type === 'department' && onDeleteDepartment) {
+        await onDeleteDepartment(deleteTarget.id, deleteTarget.name);
+      } else if (deleteTarget.type === 'program' && onDeleteProgram) {
+        await onDeleteProgram(deleteTarget.id, deleteTarget.name);
+      }
+      if (selected?.id === deleteTarget.id) {
+        setSelected(null);
+      }
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error('Delete failed:', err);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -390,7 +532,7 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <p className="mb-4 text-sm font-bold text-charcoal">
-            Hierarchy Tree — click to inspect any node
+            Hierarchy Tree — click to inspect or manage any node
           </p>
           <TierNode
             node={root}
@@ -401,12 +543,14 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
             onToggle={toggle}
             onAddDepartment={onAddDepartment}
             onAddProgram={onAddProgram}
+            onRequestDelete={handleRequestDelete}
           />
         </Panel>
         <DetailPanel
           node={active}
           onAddDepartment={onAddDepartment}
           onAddProgram={onAddProgram}
+          onRequestDelete={handleRequestDelete}
         />
       </div>
 
@@ -430,6 +574,67 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
           sub={`${siwesEligible} SIWES eligible · ${totalPrograms} programmes`}
         />
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: '20px',
+              p: 1,
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-error-light/20 text-error">
+            <WarningAmberIcon color="error" />
+          </span>
+          <span className="font-bold text-charcoal text-base">
+            Delete {deleteTarget?.type === 'division' ? 'School / Faculty' : deleteTarget?.type === 'department' ? 'Department' : 'Degree Programme'}
+          </span>
+        </DialogTitle>
+        <DialogContent sx={{ py: 1.5 }}>
+          <p className="text-sm text-charcoal">
+            Are you sure you want to permanently delete <strong>{deleteTarget?.name}</strong>?
+          </p>
+          {deleteTarget?.type === 'division' && (
+            <p className="mt-2 text-xs text-error font-medium bg-error-light/10 p-2.5 rounded-lg border border-error/20">
+              ⚠️ Warning: Deleting this faculty will cascade and permanently delete all departments, programmes, and course links under it.
+            </p>
+          )}
+          {deleteTarget?.type === 'department' && (
+            <p className="mt-2 text-xs text-error font-medium bg-error-light/10 p-2.5 rounded-lg border border-error/20">
+              ⚠️ Warning: Deleting this department will cascade and remove all degree programmes and SIWES mappings under it.
+            </p>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeleteTarget(null)}
+            variant="outlined"
+            color="inherit"
+            disabled={deleting}
+            sx={{ borderRadius: '8px', textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : <DeleteOutlineIcon />}
+            sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
+          >
+            {deleting ? 'Deleting…' : 'Confirm Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

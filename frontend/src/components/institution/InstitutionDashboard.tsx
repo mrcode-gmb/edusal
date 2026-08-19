@@ -317,6 +317,21 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
     await loadInstitutionData(selectedInstId);
   };
 
+  const handleDeleteDivision = async (divisionId: string) => {
+    await institutionApi.deleteDivision(divisionId, authToken || undefined);
+    await loadInstitutionData(selectedInstId);
+  };
+
+  const handleDeleteDepartment = async (departmentId: string) => {
+    await institutionApi.deleteDepartment(departmentId, authToken || undefined);
+    await loadInstitutionData(selectedInstId);
+  };
+
+  const handleDeleteProgram = async (programId: string) => {
+    await institutionApi.deleteProgram(programId, authToken || undefined);
+    await loadInstitutionData(selectedInstId);
+  };
+
   const handleCreateSession = async (data: {
     institution: string;
     session_label: string;
@@ -587,6 +602,9 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
                   setSelectedDeptForProg(deptId);
                   setShowProgramModal(true);
                 }}
+                onDeleteDivision={handleDeleteDivision}
+                onDeleteDepartment={handleDeleteDepartment}
+                onDeleteProgram={handleDeleteProgram}
               />
             )}
 

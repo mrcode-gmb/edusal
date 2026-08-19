@@ -94,6 +94,18 @@ export const institutionApi = {
     return res.json();
   },
 
+  async deleteDivision(divisionId: string, token?: string): Promise<void> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/divisions/${divisionId}/`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok && res.status !== 204) {
+      throw new Error(`HTTP ${res.status}: Failed to delete division`);
+    }
+  },
+
   // Departments CRUD
   async getDepartments(institutionId: string, divisionId?: string): Promise<Department[]> {
     let url = `${API_BASE}/api/departments/?institution=${institutionId}`;
@@ -119,6 +131,18 @@ export const institutionApi = {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to create department`);
     return res.json();
+  },
+
+  async deleteDepartment(departmentId: string, token?: string): Promise<void> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/departments/${departmentId}/`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok && res.status !== 204) {
+      throw new Error(`HTTP ${res.status}: Failed to delete department`);
+    }
   },
 
   // Programs CRUD
@@ -149,6 +173,18 @@ export const institutionApi = {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to create program`);
     return res.json();
+  },
+
+  async deleteProgram(programId: string, token?: string): Promise<void> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/programs/${programId}/`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok && res.status !== 204) {
+      throw new Error(`HTTP ${res.status}: Failed to delete program`);
+    }
   },
 
   // Master Blueprints & Bulk Importer
