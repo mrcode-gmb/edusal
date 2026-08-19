@@ -1,6 +1,7 @@
 import hashlib
 from decimal import Decimal
 from django.utils import timezone
+from django.utils.text import slugify
 from django.contrib.auth import authenticate, get_user_model
 from django.db import transaction
 from django.db.models import Count, Q
@@ -62,6 +63,12 @@ from ..services.nigerian_curriculum_blueprint import (
     import_blueprint_to_institution,
     generate_hierarchy_csv,
     generate_hierarchy_excel,
+)
+from ..services.student_roster_blueprint import (
+    generate_program_student_excel,
+    generate_program_student_csv,
+    parse_and_validate_student_roster,
+    commit_student_roster_bulk,
 )
 from ..services.document_parser import DocumentParserService
 from ..services.login_otp_service import (
@@ -542,6 +549,125 @@ class InstitutionViewSet(viewsets.ModelViewSet):
             "errors": errors,
         })
 
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="download-student-template",
+        renderer_classes=[BinaryFileRenderer, JSONRenderer],
+    )
+    def download_student_template(self, request, id=None):
+        """
+        Generates and downloads a program-specific Student Cohort Onboarding Spreadsheet (.xlsx / .csv).
+        """
+        institution = self.get_object()
+        prog_id = request.query_params.get("program_id") or request.query_params.get("program")
+        if not prog_id:
+            return Response(
+                {"detail": "Please specify a valid 'program_id' parameter."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            program = AcademicProgram.objects.select_related("department", "department__division").get(
+                id=prog_id, institution=institution
+            )
+        except AcademicProgram.DoesNotExist:
+            return Response(
+                {"detail": f"Academic Programme '{prog_id}' not found in this institution."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        fmt = (request.query_params.get("export_format") or request.query_params.get("format") or "excel").lower()
+        clean_prog_code = slugify(program.program_code or program.name).replace("-", "_")
+
+        if fmt in ["excel", "xlsx"]:
+            excel_bytes = generate_program_student_excel(program)
+            filename = f"nexus_student_template_{clean_prog_code}.xlsx"
+            response = HttpResponse(
+                excel_bytes,
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+        else:
+            csv_data = generate_program_student_csv(program)
+            filename = f"nexus_student_template_{clean_prog_code}.csv"
+            response = HttpResponse(csv_data, content_type="text/csv; charset=utf-8")
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+
+    @action(detail=True, methods=["post"], url_path="bulk-import-students")
+    def bulk_import_students(self, request, id=None):
+        """
+        Validates and/or bulk-ingests student cohort records for a specific Academic Programme.
+        Supports dry_run=true for pre-validation and preview before DB commit.
+        """
+        institution = self.get_object()
+        uploaded_file = request.FILES.get("file")
+        fallback_program_id = request.data.get("program_id") or request.data.get("program")
+        dry_run = str(request.data.get("dry_run", "")).lower() in ["true", "1", "yes"]
+        default_pwd_scheme = request.data.get("default_password_scheme", "matric")
+
+        if not uploaded_file and not request.data.get("rows"):
+            return Response(
+                {"detail": "Please provide an Excel/CSV file or a 'rows' array."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if uploaded_file:
+            parse_result = parse_and_validate_student_roster(
+                file_obj=uploaded_file,
+                filename=uploaded_file.name,
+                institution=institution,
+                fallback_program_id=fallback_program_id,
+            )
+        else:
+            rows = request.data.get("rows", [])
+            program = None
+            if fallback_program_id:
+                program = AcademicProgram.objects.filter(id=fallback_program_id, institution=institution).first()
+            if not program:
+                return Response({"detail": "Please specify a valid program_id."}, status=status.HTTP_400_BAD_REQUEST)
+            parse_result = {
+                "success": True,
+                "program": {
+                    "id": str(program.id),
+                    "name": program.name,
+                    "code": program.program_code,
+                    "award_level": program.award_level,
+                    "duration_years": program.duration_years,
+                    "department_name": program.department.name,
+                    "division_name": program.department.division.name,
+                },
+                "stats": {"total_rows": len(rows), "valid_count": len(rows), "error_count": 0},
+                "valid_rows": rows,
+                "errors": [],
+            }
+
+        if not parse_result.get("success") and not parse_result.get("valid_rows"):
+            return Response(parse_result, status=status.HTTP_400_BAD_REQUEST)
+
+        # If dry-run requested, return validation summary without touching DB
+        if dry_run:
+            return Response({
+                "dry_run": True,
+                "can_commit": len(parse_result["errors"]) == 0 and len(parse_result["valid_rows"]) > 0,
+                **parse_result,
+            })
+
+        # Commit to DB
+        commit_result = commit_student_roster_bulk(
+            institution=institution,
+            program_id=parse_result["program"]["id"],
+            valid_rows=parse_result["valid_rows"],
+            default_password_scheme=default_pwd_scheme,
+        )
+
+        return Response({
+            "dry_run": False,
+            "validation": parse_result,
+            **commit_result,
+        })
 
 
 class AcademicDivisionViewSet(viewsets.ModelViewSet):

@@ -227,7 +227,10 @@ export const StudentDashboard: FC<StudentDashboardProps> = ({
           anchor="left"
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
-          slotProps={{ paper: { sx: { width: 288 } } }}
+          sx={{
+            display: { xs: 'block', lg: 'none' },
+            '& .MuiDrawer-paper': { width: 288, boxSizing: 'border-box' },
+          }}
         >
           {SidebarContent}
         </Drawer>
@@ -236,7 +239,7 @@ export const StudentDashboard: FC<StudentDashboardProps> = ({
           <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-white/90 px-4 backdrop-blur-md sm:px-6">
             <div className="flex items-center gap-3">
               <IconButton
-                className="lg:hidden"
+                sx={{ display: { xs: 'inline-flex', lg: 'none' } }}
                 aria-label="Open menu"
                 onClick={() => setSidebarOpen(true)}
               >

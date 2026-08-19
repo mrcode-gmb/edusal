@@ -123,118 +123,144 @@ function TierNode({
   const isTier4 = node.tier.includes('Tier 4');
 
   return (
-    <div>
+    <div className="w-full">
       <div
-        className={`group flex w-full items-center gap-2 rounded-[15px] border px-3 py-2.5 text-left transition-colors ${
+        className={`group flex w-full items-center gap-1.5 rounded-[12px] border py-2 pr-2 text-left transition-all ${
           isSel
-            ? 'border-primary bg-primary-soft'
+            ? 'border-primary bg-primary-soft/80 shadow-xs'
             : 'border-transparent hover:border-line hover:bg-bgsoft'
         }`}
-        style={{ marginLeft: depth * 18 }}
+        style={{ paddingLeft: `${Math.max(8, depth * 22 + 8)}px` }}
       >
-        <IconButton
-          size="small"
-          onClick={() => {
-            if (hasChildren) onToggle(node.id);
-          }}
-          aria-label="Expand"
-        >
-          {isOpen ? <ExpandMoreIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
-        </IconButton>
+        {/* Chevron or Leaf Dot */}
+        {hasChildren ? (
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle(node.id);
+            }}
+            aria-label="Expand"
+            sx={{ p: 0.5, color: 'charcoal.soft' }}
+          >
+            {isOpen ? <ExpandMoreIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
+          </IconButton>
+        ) : (
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center text-charcoal-faint/40">
+            <span className="h-1.5 w-1.5 rounded-full bg-charcoal-faint/40" />
+          </span>
+        )}
+
+        {/* Node Name & Select Target */}
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden py-0.5 text-left cursor-pointer"
           onClick={() => onSelect(node)}
         >
-          <span className="truncate text-sm font-semibold text-charcoal">{node.name}</span>
+          <span className="truncate text-sm font-semibold text-charcoal leading-tight">
+            {node.name}
+          </span>
+          <span className="hidden shrink-0 rounded bg-charcoal/5 px-1.5 py-0.5 text-[10px] font-bold text-charcoal-faint sm:inline-block">
+            {node.tier.split('·')[1]?.trim() || node.tier}
+          </span>
         </button>
 
-        {isTier2 && (
-          <>
-            <Tooltip title="Add Department">
+        {/* Action Buttons: Always shrink-0 and clearly positioned */}
+        <div className="flex shrink-0 items-center gap-0.5 pl-1">
+          {isTier2 && (
+            <>
+              <Tooltip title="Add Department" arrow placement="top">
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddDepartment(node.id);
+                  }}
+                  sx={{ p: 0.5 }}
+                >
+                  <PlaylistAddIcon fontSize="small" sx={{ color: 'primary.main' }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete Faculty / School" arrow placement="top">
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRequestDelete(node.id, node.name, 'division');
+                  }}
+                  sx={{ p: 0.5, color: 'charcoal.faint', '&:hover': { color: 'error.main', bgcolor: 'error.light/10' } }}
+                >
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
+
+          {isTier3 && (
+            <>
+              <Tooltip title="Add Program" arrow placement="top">
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddProgram(node.id);
+                  }}
+                  sx={{ p: 0.5 }}
+                >
+                  <LibraryAddIcon fontSize="small" sx={{ color: 'primary.main' }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete Department" arrow placement="top">
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRequestDelete(node.id, node.name, 'department');
+                  }}
+                  sx={{ p: 0.5, color: 'charcoal.faint', '&:hover': { color: 'error.main', bgcolor: 'error.light/10' } }}
+                >
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
+
+          {isTier4 && (
+            <Tooltip title="Delete Degree Programme" arrow placement="top">
               <IconButton
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onAddDepartment(node.id);
+                  onRequestDelete(node.id, node.name, 'program');
                 }}
-              >
-                <PlaylistAddIcon fontSize="small" sx={{ color: 'primary.main' }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete Faculty / School">
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRequestDelete(node.id, node.name, 'division');
-                }}
-                sx={{ color: 'charcoal.faint', '&:hover': { color: 'error.main' } }}
+                sx={{ p: 0.5, color: 'charcoal.faint', '&:hover': { color: 'error.main', bgcolor: 'error.light/10' } }}
               >
                 <DeleteOutlineIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-          </>
-        )}
-
-        {isTier3 && (
-          <>
-            <Tooltip title="Add Program">
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddProgram(node.id);
-                }}
-              >
-                <LibraryAddIcon fontSize="small" sx={{ color: 'primary.main' }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete Department">
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRequestDelete(node.id, node.name, 'department');
-                }}
-                sx={{ color: 'charcoal.faint', '&:hover': { color: 'error.main' } }}
-              >
-                <DeleteOutlineIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </>
-        )}
-
-        {isTier4 && (
-          <Tooltip title="Delete Program">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRequestDelete(node.id, node.name, 'program');
-              }}
-              sx={{ color: 'charcoal.faint', '&:hover': { color: 'error.main' } }}
-            >
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        )}
+          )}
+        </div>
       </div>
-      {isOpen &&
-        node.children?.map((c) => (
-          <TierNode
-            key={c.id}
-            node={c}
-            depth={depth + 1}
-            selected={selected}
-            onSelect={onSelect}
-            expanded={expanded}
-            onToggle={onToggle}
-            onAddDepartment={onAddDepartment}
-            onAddProgram={onAddProgram}
-            onRequestDelete={onRequestDelete}
-          />
-        ))}
+
+      {/* Nested Children */}
+      {isOpen && node.children && node.children.length > 0 && (
+        <div className="w-full space-y-0.5">
+          {node.children.map((c) => (
+            <TierNode
+              key={c.id}
+              node={c}
+              depth={depth + 1}
+              selected={selected}
+              onSelect={onSelect}
+              expanded={expanded}
+              onToggle={onToggle}
+              onAddDepartment={onAddDepartment}
+              onAddProgram={onAddProgram}
+              onRequestDelete={onRequestDelete}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -265,7 +291,7 @@ function DetailPanel({
   const isTier4 = node.tier.includes('Tier 4');
 
   return (
-    <Panel>
+    <Panel className="flex flex-col max-h-[660px] overflow-y-auto">
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
         Node Detail
       </p>
@@ -273,8 +299,8 @@ function DetailPanel({
         <span className="flex h-14 w-14 items-center justify-center rounded-[15px] bg-primary-soft">
           <Icon sx={{ fontSize: 28, color: 'primary.main' }} />
         </span>
-        <div>
-          <h3 className="text-lg font-bold text-charcoal">{node.name}</h3>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-lg font-bold text-charcoal truncate">{node.name}</h3>
           <p className="text-sm text-charcoal-faint">{node.tier}</p>
         </div>
       </div>
@@ -530,28 +556,47 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <Panel className="lg:col-span-2">
-          <p className="mb-4 text-sm font-bold text-charcoal">
-            Hierarchy Tree — click to inspect or manage any node
-          </p>
-          <TierNode
-            node={root}
-            depth={0}
-            selected={active}
-            onSelect={setSelected}
-            expanded={expanded}
-            onToggle={toggle}
+        <Panel className="lg:col-span-2 flex flex-col min-w-0">
+          <div className="flex items-center justify-between pb-3 mb-2 border-b border-line">
+            <div>
+              <p className="text-sm font-bold text-charcoal">
+                Hierarchy Tree Explorer
+              </p>
+              <p className="text-xs text-charcoal-faint">
+                Click to inspect or manage any node. Use the action icons on each node to add or remove entities.
+              </p>
+            </div>
+            <span className="text-[11px] font-semibold text-charcoal-faint bg-bgsoft px-2.5 py-1 rounded-full border border-line hidden sm:inline-block">
+              Interactive Tree
+            </span>
+          </div>
+
+          {/* Fully Scrollable Tree Viewport (Horizontal & Vertical) */}
+          <div className="flex-1 overflow-x-auto overflow-y-auto max-h-[640px] pr-1 pb-1">
+            <div className="min-w-[440px] space-y-0.5">
+              <TierNode
+                node={root}
+                depth={0}
+                selected={active}
+                onSelect={setSelected}
+                expanded={expanded}
+                onToggle={toggle}
+                onAddDepartment={onAddDepartment}
+                onAddProgram={onAddProgram}
+                onRequestDelete={handleRequestDelete}
+              />
+            </div>
+          </div>
+        </Panel>
+
+        <div className="min-w-0">
+          <DetailPanel
+            node={active}
             onAddDepartment={onAddDepartment}
             onAddProgram={onAddProgram}
             onRequestDelete={handleRequestDelete}
           />
-        </Panel>
-        <DetailPanel
-          node={active}
-          onAddDepartment={onAddDepartment}
-          onAddProgram={onAddProgram}
-          onRequestDelete={handleRequestDelete}
-        />
+        </div>
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-3">

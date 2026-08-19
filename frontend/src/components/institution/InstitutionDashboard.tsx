@@ -38,6 +38,7 @@ import {
   MenuOpen as MenuOpenIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
+  Close as CloseIcon,
   Dashboard as DashboardIcon,
   AccountTree as AccountTreeIcon,
   MenuBook as MenuBookIcon,
@@ -77,25 +78,25 @@ const NavSections: {
 }[] = [
   {
     label: 'Overview',
-    items: [{ key: 'pulse', label: 'Governance Pulse', icon: DashboardIcon }],
+    items: [{ key: 'pulse', label: 'Dashboard Pulse', icon: DashboardIcon }],
   },
   {
-    label: 'Institution',
+    label: 'Academics',
     items: [
-      { key: 'tree', label: '4-Tier Hierarchy Explorer', icon: AccountTreeIcon },
-      { key: 'students', label: 'Student Roster & Cohorts', icon: GraduationCapIcon },
+      { key: 'tree', label: 'Academic Structure', icon: AccountTreeIcon },
+      { key: 'students', label: 'Student Roster', icon: GraduationCapIcon },
     ],
   },
   {
-    label: 'Knowledge',
+    label: 'Resources',
     items: [
-      { key: 'kb', label: 'Knowledge Base & Citation Tester', icon: MenuBookIcon },
-      { key: 'pathways', label: 'Career Pathways & Milestones', icon: CompassIcon },
+      { key: 'kb', label: 'Knowledge Base', icon: MenuBookIcon },
+      { key: 'pathways', label: 'Career Pathways', icon: CompassIcon },
     ],
   },
   {
-    label: 'People',
-    items: [{ key: 'staff', label: 'Staff & Evaluators', icon: GroupIcon }],
+    label: 'Administration',
+    items: [{ key: 'staff', label: 'Staff Directory', icon: GroupIcon }],
   },
 ];
 
@@ -417,11 +418,25 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
         ? 'College'
         : 'Faculty';
 
-  const renderSidebar = (collapsed: boolean) => (
+  const renderSidebar = (collapsed: boolean, isMobile = false) => (
     <div className="flex h-full flex-col bg-charcoal text-white select-none">
       {/* Header / Logo */}
-      <div className={`flex h-16 items-center border-b border-white/10 ${collapsed ? 'justify-center px-2' : 'justify-between px-6'}`}>
-        {collapsed ? (
+      <div className={`flex h-16 items-center border-b border-white/10 ${collapsed && !isMobile ? 'justify-center px-2' : 'justify-between px-6'}`}>
+        {isMobile ? (
+          <>
+            <Link to="/" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2">
+              <img src="/logo-white.png" alt="Nexus Edutech" className="h-8 w-auto object-contain" />
+            </Link>
+            <IconButton
+              onClick={() => setSidebarOpen(false)}
+              size="small"
+              sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}
+              aria-label="Close menu"
+            >
+              <CloseIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </>
+        ) : collapsed ? (
           <Tooltip title="Expand Sidebar" placement="right" arrow>
             <button
               type="button"
@@ -447,6 +462,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
                 }}
                 size="small"
                 sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}
+                aria-label="Collapse sidebar"
               >
                 <ChevronLeftIcon sx={{ fontSize: 20 }} />
               </IconButton>
@@ -456,8 +472,8 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
       </div>
 
       {/* User / Institution Info */}
-      <div className={`mx-3 mt-3 rounded-[15px] bg-white/[0.06] ${collapsed ? 'p-2 flex flex-col items-center' : 'p-3.5'}`}>
-        {collapsed ? (
+      <div className={`mx-3 mt-3 rounded-[15px] bg-white/[0.06] ${collapsed && !isMobile ? 'p-2 flex flex-col items-center' : 'p-3.5'}`}>
+        {collapsed && !isMobile ? (
           <Tooltip
             title={
               <div className="text-xs py-0.5">
@@ -519,7 +535,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
       <nav className="mt-4 flex-1 overflow-y-auto px-3 pb-6 space-y-4">
         {NavSections.map((s) => (
           <div key={s.label}>
-            {!collapsed ? (
+            {!collapsed || isMobile ? (
               <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
                 {s.label}
               </p>
@@ -539,7 +555,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
                       setSidebarOpen(false);
                     }}
                     className={`flex w-full items-center rounded-[12px] transition-all ${
-                      collapsed
+                      collapsed && !isMobile
                         ? 'h-11 w-11 justify-center mx-auto'
                         : 'gap-3 px-3 py-2.5 text-[13px] font-semibold'
                     } ${
@@ -549,11 +565,11 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
                     }`}
                   >
                     <Icon sx={{ fontSize: 20 }} />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
+                    {(!collapsed || isMobile) && <span className="truncate">{item.label}</span>}
                   </button>
                 );
 
-                return collapsed ? (
+                return collapsed && !isMobile ? (
                   <Tooltip key={item.key} title={item.label} placement="right" arrow>
                     <div>{buttonContent}</div>
                   </Tooltip>
@@ -568,7 +584,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
 
       {/* Bottom Footer Actions */}
       <div className="border-t border-white/10 p-3 space-y-1">
-        {collapsed ? (
+        {collapsed && !isMobile ? (
           <>
             <Tooltip title="Back to Landing" placement="right" arrow>
               <Link
@@ -624,16 +640,20 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
             isCollapsed ? 'w-20' : 'w-72'
           }`}
         >
-          {renderSidebar(isCollapsed)}
+          {renderSidebar(isCollapsed, false)}
         </aside>
 
+        {/* Mobile-only slideout drawer */}
         <Drawer
           anchor="left"
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
-          slotProps={{ paper: { sx: { width: 288 } } }}
+          sx={{
+            display: { xs: 'block', lg: 'none' },
+            '& .MuiDrawer-paper': { width: 288, boxSizing: 'border-box' },
+          }}
         >
-          {renderSidebar(false)}
+          {renderSidebar(false, true)}
         </Drawer>
 
         <div
@@ -643,28 +663,25 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
         >
           <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-white/90 px-4 backdrop-blur-md sm:px-6">
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Mobile Menu Button */}
-              <IconButton
-                className="lg:hidden"
-                aria-label="Open menu"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <MenuIcon />
-              </IconButton>
-
-              {/* Desktop Sidebar Collapse Toggle */}
+              {/* Responsive Sidebar Toggle */}
               <Tooltip title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
                 <IconButton
-                  className="hidden lg:inline-flex"
-                  aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                  aria-label="Toggle navigation menu"
                   onClick={() => {
-                    setIsCollapsed((prev) => {
-                      const next = !prev;
-                      try { localStorage.setItem('nexus_sidebar_collapsed', String(next)); } catch {}
-                      return next;
-                    });
+                    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                      setSidebarOpen((prev) => !prev);
+                    } else {
+                      setIsCollapsed((prev) => {
+                        const next = !prev;
+                        try { localStorage.setItem('nexus_sidebar_collapsed', String(next)); } catch {}
+                        return next;
+                      });
+                    }
                   }}
-                  sx={{ color: 'charcoal.soft', '&:hover': { color: 'primary.main', bgcolor: 'primary.soft' } }}
+                  sx={{
+                    color: 'charcoal.main',
+                    '&:hover': { color: 'primary.main', bgcolor: 'primary.soft' },
+                  }}
                 >
                   {isCollapsed ? <MenuIcon /> : <MenuOpenIcon />}
                 </IconButton>

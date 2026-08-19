@@ -4,6 +4,7 @@ import { institutionApi } from '../../services/institutionApi';
 import { AddStudentModal } from './AddStudentModal';
 import { GenerateCredentialModal } from './GenerateCredentialModal';
 import { CounsellorDossierModal } from './CounsellorDossierModal';
+import { StudentBulkImportModal } from './StudentBulkImportModal';
 import {
   Button,
   Chip,
@@ -22,6 +23,7 @@ import {
   Key as KeyIcon,
   Close as CloseIcon,
   Psychology as BrainIcon,
+  AutoAwesome as AutoAwesomeIcon,
 } from '@mui/icons-material';
 import { PageHead, StatCard, Panel, LoadingBlock } from './Shared';
 
@@ -46,9 +48,9 @@ export const StudentRoster: FC<StudentRosterProps> = ({
   const [selectedDeptId, setSelectedDeptId] = useState<string>('ALL');
   const [selectedYear, setSelectedYear] = useState<number | 'ALL'>('ALL');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [selectedStudentForCreds, setSelectedStudentForCreds] = useState<StudentProfile | null>(null);
   const [selectedStudentForDossier, setSelectedStudentForDossier] = useState<string | null>(null);
-
 
   const loadStudents = async () => {
     setLoading(true);
@@ -102,25 +104,35 @@ export const StudentRoster: FC<StudentRosterProps> = ({
         title="Student Directory & Academic Cohorts"
         sub={`All students are hierarchically enrolled in degree programmes at ${institutionName} with dynamic level progression.`}
         actions={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outlined"
               color="inherit"
               startIcon={<RefreshCwIcon />}
               onClick={loadStudents}
-              sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+              sx={{ color: 'charcoal.soft', borderColor: 'border.strong', borderRadius: '8px' }}
             >
               Refresh
             </Button>
             <Button
               variant="contained"
               color="primary"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={() => setShowBulkImportModal(true)}
+              sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
+            >
+              Bulk Import Cohort (Excel / CSV)
+            </Button>
+            <Button
+              variant="outlined"
+              color="inherit"
               startIcon={<AddIcon />}
               onClick={() => setShowAddModal(true)}
+              sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
             >
-              Register Student
+              Add Single Student
             </Button>
-          </>
+          </div>
         }
       />
 
@@ -384,6 +396,17 @@ export const StudentRoster: FC<StudentRosterProps> = ({
         sessions={sessions}
         authToken={authToken}
         onSubmit={handleStudentCreated}
+      />
+
+      <StudentBulkImportModal
+        isOpen={showBulkImportModal}
+        onClose={() => setShowBulkImportModal(false)}
+        institutionId={institutionId}
+        institutionName={institutionName}
+        tree={tree}
+        sessions={sessions}
+        authToken={authToken}
+        onSuccess={loadStudents}
       />
 
       {selectedStudentForCreds && (

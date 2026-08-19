@@ -716,6 +716,58 @@ export const institutionApi = {
     return res.json();
   },
 
+  getDownloadStudentTemplateUrl(institutionId: string, programId: string, format: 'excel' | 'csv' = 'excel'): string {
+    return `${API_BASE}/api/institutions/${institutionId}/download-student-template/?program_id=${programId}&export_format=${format}`;
+  },
+
+  async bulkImportStudents(
+    institutionId: string,
+    data: {
+      file?: File;
+      rows?: any[];
+      program_id?: string;
+      dry_run?: boolean;
+      default_password_scheme?: string;
+    },
+    token?: string
+  ): Promise<{
+    success: boolean;
+    dry_run: boolean;
+    can_commit?: boolean;
+    message?: string;
+    program?: { id: string; name: string; code?: string; duration_years?: number; department_name?: string; division_name?: string };
+    stats?: { total_rows: number; valid_count: number; error_count: number; created_users?: number; created_profiles?: number; updated_profiles?: number };
+    valid_rows?: any[];
+    errors?: Array<{ row_number: number; matric_number: string; name: string; email: string; reasons: string[] }>;
+  }> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Token ${token}`;
+
+    let body: BodyInit;
+    if (data.file) {
+      const formData = new FormData();
+      formData.append('file', data.file);
+      if (data.program_id) formData.append('program_id', data.program_id);
+      if (data.dry_run !== undefined) formData.append('dry_run', String(data.dry_run));
+      if (data.default_password_scheme) formData.append('default_password_scheme', data.default_password_scheme);
+      body = formData;
+    } else {
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify(data);
+    }
+
+    const res = await fetch(`${API_BASE}/api/institutions/${institutionId}/bulk-import-students/`, {
+      method: 'POST',
+      headers,
+      body,
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok && !result.errors) {
+      throw new Error(result.detail || result.error || `HTTP ${res.status}: Failed to process student bulk import`);
+    }
+    return result;
+  },
+
   // Pathways & Blueprint Templates
   async getPathways(
     params: {
