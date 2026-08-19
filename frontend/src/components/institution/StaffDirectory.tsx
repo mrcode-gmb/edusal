@@ -10,7 +10,6 @@ import {
   IconButton,
   MenuItem,
   TextField,
-  LinearProgress,
 } from '@mui/material';
 import {
   Group as GroupIcon,
@@ -21,7 +20,7 @@ import {
   Verified as VerifiedIcon,
   PersonAdd as PersonAddIcon,
 } from '@mui/icons-material';
-import { Panel, PageHead, StatCard } from './Shared';
+import { Panel, PageHead, StatCard, LoadingBlock } from './Shared';
 
 interface StaffDirectoryProps {
   institutionId: string;
@@ -186,7 +185,10 @@ export const StaffDirectory: FC<StaffDirectoryProps> = ({
         </div>
 
         {loading ? (
-          <LinearProgress sx={{ borderRadius: 99, height: 6 }} />
+          <LoadingBlock
+            label="Loading your staff accounts…"
+            sub="Please wait while we fetch your staff and evaluators."
+          />
         ) : staffList.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-10 text-center">
             <GroupIcon sx={{ fontSize: 40, color: 'charcoal.faint' }} />

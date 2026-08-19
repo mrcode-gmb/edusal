@@ -7,7 +7,7 @@ import { StudentRoadmapTimeline } from './StudentRoadmapTimeline';
 import { AssessmentCatalog } from './AssessmentCatalog';
 import { AICareerCoachChat } from './AICareerCoachChat';
 import { CounsellingSessionsTab } from './CounsellingSessionsTab';
-import { DashboardTheme, PageHead, Panel, StatCard, Badge } from '../institution/Shared';
+import { DashboardTheme, PageHead, Panel, StatCard, Badge, LoadingBlock } from '../institution/Shared';
 import { Chip, Drawer, IconButton, Tooltip } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -282,14 +282,10 @@ export const StudentDashboard: FC<StudentDashboardProps> = ({
 
           <main className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
             {loading && (
-              <div className="space-y-5">
-                <div className="h-28 animate-pulse rounded-[15px] bg-bgsoft" />
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {[0, 1, 2, 3].map((i) => (
-                    <div key={i} className="h-32 animate-pulse rounded-[15px] bg-bgsoft" />
-                  ))}
-                </div>
-              </div>
+              <LoadingBlock
+                label="Loading your dashboard…"
+                sub="Please wait while we fetch your latest information."
+              />
             )}
   
             {!loading && (error || !data) && (

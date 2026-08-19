@@ -20,7 +20,7 @@ import {
 } from '@mui/icons-material';
 import { Bar, Doughnut } from './charts';
 import { chartColors } from './charts';
-import { Panel, PanelHead, StatCard, PageHead, Ring } from './Shared';
+import { Panel, PanelHead, StatCard, PageHead, Ring, LoadingBlock } from './Shared';
 
 interface GovernancePulseProps {
   summary: GovernanceSummary | null;
@@ -39,14 +39,10 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
 }) => {
   if (loading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-28 animate-pulse rounded-[15px] bg-bgsoft"
-          />
-        ))}
-      </div>
+      <LoadingBlock
+        label="Loading your governance overview…"
+        sub="Crunching your institution's latest health and progress numbers."
+      />
     );
   }
 

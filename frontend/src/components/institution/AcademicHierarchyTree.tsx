@@ -17,7 +17,7 @@ import {
   PlaylistAdd as PlaylistAddIcon,
   LibraryAdd as LibraryAddIcon,
 } from '@mui/icons-material';
-import { Panel, PageHead, StatCard } from './Shared';
+import { Panel, PageHead, StatCard, LoadingBlock } from './Shared';
 
 interface AcademicHierarchyTreeProps {
   tree: InstitutionHierarchyTree | null;
@@ -292,14 +292,10 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
 
   if (loading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-24 animate-pulse rounded-[15px] bg-bgsoft"
-          />
-        ))}
-      </div>
+      <LoadingBlock
+        label="Loading your institution structure…"
+        sub="Mapping out your schools, departments and programmes."
+      />
     );
   }
 

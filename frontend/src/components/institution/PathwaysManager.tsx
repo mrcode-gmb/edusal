@@ -10,7 +10,6 @@ import {
   IconButton,
   MenuItem,
   TextField,
-  LinearProgress,
 } from '@mui/material';
 import {
   Explore as CompassIcon,
@@ -22,7 +21,7 @@ import {
   Description as FileTextIcon,
   Download as DownloadIcon,
 } from '@mui/icons-material';
-import { PageHead, Panel } from './Shared';
+import { PageHead, Panel, LoadingBlock } from './Shared';
 
 interface PathwaysManagerProps {
   institutionId: string;
@@ -238,7 +237,10 @@ export const PathwaysManager: FC<PathwaysManagerProps> = ({
 
           <div className="mt-4">
             {loading ? (
-              <LinearProgress sx={{ borderRadius: 99, height: 6 }} />
+              <LoadingBlock
+                label="Loading your career pathways…"
+                sub="Please wait while we prepare your pathways."
+              />
             ) : pathways.length === 0 ? (
               <Panel>
                 <div className="flex flex-col items-center gap-3 py-10 text-center">

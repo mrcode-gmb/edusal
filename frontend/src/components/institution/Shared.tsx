@@ -1,5 +1,5 @@
 import { type FC, type ReactNode, type CSSProperties } from 'react';
-import { Card, Chip, LinearProgress, Box } from '@mui/material';
+import { Card, Chip, LinearProgress, Box, CircularProgress } from '@mui/material';
 import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 
 export function Panel({
@@ -202,6 +202,28 @@ export function Ring({ value, label, size = 150 }: { value: number; label: strin
 }
 
 export const DialogPaperSx: CSSProperties = { borderRadius: '15px', overflow: 'hidden' };
+
+export function LoadingBlock({
+  label = 'Loading…',
+  sub,
+  className = '',
+}: {
+  label?: ReactNode;
+  sub?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex flex-col items-center justify-center gap-4 py-16 text-center ${className}`}
+    >
+      <CircularProgress size={42} thickness={4} sx={{ color: 'primary.main' }} />
+      <div>
+        <p className="text-base font-bold text-charcoal">{label}</p>
+        {sub && <p className="mx-auto mt-1 max-w-md text-sm text-charcoal-faint">{sub}</p>}
+      </div>
+    </div>
+  );
+}
 
 export function DashboardTheme({ children }: { children: ReactNode }) {
   const base = useTheme();

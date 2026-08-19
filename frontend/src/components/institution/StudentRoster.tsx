@@ -10,7 +10,6 @@ import {
   IconButton,
   MenuItem,
   TextField,
-  LinearProgress,
 } from '@mui/material';
 import {
   School as GraduationCapIcon,
@@ -24,7 +23,7 @@ import {
   Close as CloseIcon,
   Psychology as BrainIcon,
 } from '@mui/icons-material';
-import { PageHead, StatCard, Panel } from './Shared';
+import { PageHead, StatCard, Panel, LoadingBlock } from './Shared';
 
 interface StudentRosterProps {
   institutionId: string;
@@ -222,7 +221,10 @@ export const StudentRoster: FC<StudentRosterProps> = ({
         </div>
 
         {loading ? (
-          <LinearProgress sx={{ borderRadius: 99, height: 6 }} />
+          <LoadingBlock
+            label="Loading your students…"
+            sub="Please wait while we fetch your student records."
+          />
         ) : students.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-10 text-center">
             <GraduationCapIcon sx={{ fontSize: 40, color: 'charcoal.faint' }} />

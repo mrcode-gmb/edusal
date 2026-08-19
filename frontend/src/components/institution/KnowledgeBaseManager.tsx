@@ -26,7 +26,7 @@ import {
   UploadFile as UploadFileIcon,
   Psychology as PsychologyIcon,
 } from '@mui/icons-material';
-import { Panel, PanelHead, PageHead, StatCard } from './Shared';
+import { Panel, PanelHead, PageHead, StatCard, LoadingBlock } from './Shared';
 
 interface KnowledgeBaseManagerProps {
   institutionId: string;
@@ -182,7 +182,10 @@ export const KnowledgeBaseManager: FC<KnowledgeBaseManagerProps> = ({
                 }
               />
               {loading ? (
-                <LinearProgress sx={{ borderRadius: 99, height: 6 }} />
+                <LoadingBlock
+                  label="Loading your documents…"
+                  sub="Fetching your knowledge base files."
+                />
               ) : documents.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-8 text-center">
                   <MenuBookIcon sx={{ fontSize: 40, color: 'charcoal.faint' }} />

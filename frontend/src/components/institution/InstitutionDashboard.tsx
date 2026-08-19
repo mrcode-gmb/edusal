@@ -24,7 +24,7 @@ import { AddDivisionModal } from './AddDivisionModal';
 import { AddDepartmentModal } from './AddDepartmentModal';
 import { AddProgramModal } from './AddProgramModal';
 import { SenateReportModal } from './SenateReportModal';
-import { DashboardTheme } from './Shared';
+import { DashboardTheme, LoadingBlock } from './Shared';
 import {
   Chip,
   Drawer,
@@ -506,7 +506,14 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
           </header>
 
           <main className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
-            {activeTab === 'pulse' && (
+            {loading && !tree && !summary ? (
+              <LoadingBlock
+                label="Loading your institution workspace…"
+                sub="Please wait a moment while we fetch your latest information."
+              />
+            ) : (
+              <>
+                {activeTab === 'pulse' && (
               <GovernancePulse
                 summary={summary}
                 tree={tree}
@@ -572,6 +579,8 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
                 tree={tree}
                 authToken={authToken}
               />
+            )}
+              </>
             )}
           </main>
         </div>
