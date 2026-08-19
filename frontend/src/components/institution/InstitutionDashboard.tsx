@@ -321,6 +321,10 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
     current_semester: string;
     start_date?: string | null;
     end_date?: string | null;
+    first_semester_start_date?: string | null;
+    first_semester_end_date?: string | null;
+    second_semester_start_date?: string | null;
+    second_semester_end_date?: string | null;
     is_current?: boolean;
   }) => {
     await institutionApi.createSession(data, authToken || undefined);

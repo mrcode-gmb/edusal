@@ -164,6 +164,10 @@ export const institutionApi = {
       current_semester: string;
       start_date?: string | null;
       end_date?: string | null;
+      first_semester_start_date?: string | null;
+      first_semester_end_date?: string | null;
+      second_semester_start_date?: string | null;
+      second_semester_end_date?: string | null;
       is_current?: boolean;
     },
     token?: string

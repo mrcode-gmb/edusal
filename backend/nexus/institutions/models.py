@@ -259,8 +259,12 @@ class AcademicSession(models.Model):
         related_name="sessions",
     )
     session_label = models.CharField(max_length=20, help_text="e.g. 2025/2026")
-    start_date = models.DateField(null=True, blank=True)
-    end_date = models.DateField(null=True, blank=True)
+    start_date = models.DateField(null=True, blank=True, help_text="Overall session start date")
+    end_date = models.DateField(null=True, blank=True, help_text="Overall session end date")
+    first_semester_start_date = models.DateField(null=True, blank=True, help_text="First semester start date")
+    first_semester_end_date = models.DateField(null=True, blank=True, help_text="First semester end date")
+    second_semester_start_date = models.DateField(null=True, blank=True, help_text="Second semester start date")
+    second_semester_end_date = models.DateField(null=True, blank=True, help_text="Second semester end date")
     current_semester = models.CharField(
         max_length=30,
         choices=SemesterChoice.choices,

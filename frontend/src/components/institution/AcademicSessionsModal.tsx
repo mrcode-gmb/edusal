@@ -29,8 +29,8 @@ import {
   CalendarMonth as CalendarMonthIcon,
   KeyboardArrowDown as ExpandMoreIcon,
   KeyboardArrowUp as ExpandLessIcon,
-  School as SchoolIcon,
-  AccessTime as AccessTimeIcon,
+  DateRange as DateRangeIcon,
+  Tune as TuneIcon,
 } from '@mui/icons-material';
 
 interface AcademicSessionsModalProps {
@@ -46,6 +46,10 @@ interface AcademicSessionsModalProps {
     current_semester: string;
     start_date?: string | null;
     end_date?: string | null;
+    first_semester_start_date?: string | null;
+    first_semester_end_date?: string | null;
+    second_semester_start_date?: string | null;
+    second_semester_end_date?: string | null;
     is_current?: boolean;
   }) => Promise<void>;
   onSetCurrentSession: (
@@ -72,6 +76,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
 }) => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [configuringSemesterKey, setConfiguringSemesterKey] = useState<string | null>(null); // e.g. "sessionId-FIRST_SEMESTER"
 
   // Track expanded session IDs in accordion
   const [expandedSessionIds, setExpandedSessionIds] = useState<Record<string, boolean>>({});
@@ -85,7 +90,6 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
           initial[s.id] = true;
         }
       });
-      // If no session is current, expand the first one
       if (Object.keys(initial).length === 0 && sessions[0]) {
         initial[sessions[0].id] = true;
       }
@@ -102,16 +106,24 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
 
   // Create Form State
   const [sessionLabel, setSessionLabel] = useState('');
-  const [semester, setSemester] = useState<'FIRST_SEMESTER' | 'SECOND_SEMESTER'>('FIRST_SEMESTER');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [initialSemester, setInitialSemester] = useState<'FIRST_SEMESTER' | 'SECOND_SEMESTER'>('FIRST_SEMESTER');
+  const [createFirstSemStart, setCreateFirstSemStart] = useState('');
+  const [createFirstSemEnd, setCreateFirstSemEnd] = useState('');
+  const [createSecondSemStart, setCreateSecondSemStart] = useState('');
+  const [createSecondSemEnd, setCreateSecondSemEnd] = useState('');
   const [isCurrent, setIsCurrent] = useState(false);
 
-  // Edit Form State
+  // Consolidated Session Edit State
   const [editLabel, setEditLabel] = useState('');
   const [editSemester, setEditSemester] = useState<'FIRST_SEMESTER' | 'SECOND_SEMESTER'>('FIRST_SEMESTER');
-  const [editStartDate, setEditStartDate] = useState('');
-  const [editEndDate, setEditEndDate] = useState('');
+  const [editFirstSemStart, setEditFirstSemStart] = useState('');
+  const [editFirstSemEnd, setEditFirstSemEnd] = useState('');
+  const [editSecondSemStart, setEditSecondSemStart] = useState('');
+  const [editSecondSemEnd, setEditSecondSemEnd] = useState('');
+
+  // Inline Single-Semester Configure State
+  const [semStartDate, setSemStartDate] = useState('');
+  const [semEndDate, setSemEndDate] = useState('');
 
   // Status & Feedback
   const [submitting, setSubmitting] = useState(false);
@@ -119,25 +131,82 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const resetForm = () => {
+  const resetCreateForm = () => {
     setSessionLabel('');
-    setSemester('FIRST_SEMESTER');
-    setStartDate('');
-    setEndDate('');
+    setInitialSemester('FIRST_SEMESTER');
+    setCreateFirstSemStart('');
+    setCreateFirstSemEnd('');
+    setCreateSecondSemStart('');
+    setCreateSecondSemEnd('');
     setIsCurrent(false);
     setShowCreateForm(false);
-    setEditingSessionId(null);
     setError(null);
   };
 
-  const handleStartEdit = (session: AcademicSession) => {
+  const handleStartEditSession = (session: AcademicSession) => {
     setEditingSessionId(session.id);
     setEditLabel(session.session_label);
     setEditSemester(session.current_semester || 'FIRST_SEMESTER');
-    setEditStartDate(session.start_date || '');
-    setEditEndDate(session.end_date || '');
+    setEditFirstSemStart(session.first_semester_start_date || '');
+    setEditFirstSemEnd(session.first_semester_end_date || '');
+    setEditSecondSemStart(session.second_semester_start_date || '');
+    setEditSecondSemEnd(session.second_semester_end_date || '');
+    setShowCreateForm(false);
+    setConfiguringSemesterKey(null);
+    setError(null);
+  };
+
+  const handleStartConfiguringSemester = (
+    session: AcademicSession,
+    targetSemester: 'FIRST_SEMESTER' | 'SECOND_SEMESTER'
+  ) => {
+    const key = `${session.id}-${targetSemester}`;
+    setConfiguringSemesterKey(key);
+    if (targetSemester === 'FIRST_SEMESTER') {
+      setSemStartDate(session.first_semester_start_date || '');
+      setSemEndDate(session.first_semester_end_date || '');
+    } else {
+      setSemStartDate(session.second_semester_start_date || '');
+      setSemEndDate(session.second_semester_end_date || '');
+    }
+    setEditingSessionId(null);
     setShowCreateForm(false);
     setError(null);
+  };
+
+  const handleSaveSingleSemesterDates = async (
+    session: AcademicSession,
+    targetSemester: 'FIRST_SEMESTER' | 'SECOND_SEMESTER'
+  ) => {
+    setSubmitting(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    const updatePayload: Partial<AcademicSession> = {};
+    if (targetSemester === 'FIRST_SEMESTER') {
+      updatePayload.first_semester_start_date = semStartDate || undefined;
+      updatePayload.first_semester_end_date = semEndDate || undefined;
+      if (semStartDate && !session.start_date) {
+        updatePayload.start_date = semStartDate;
+      }
+    } else {
+      updatePayload.second_semester_start_date = semStartDate || undefined;
+      updatePayload.second_semester_end_date = semEndDate || undefined;
+      if (semEndDate && !session.end_date) {
+        updatePayload.end_date = semEndDate;
+      }
+    }
+
+    try {
+      await onUpdateSession(session.id, updatePayload);
+      const semTitle = targetSemester === 'FIRST_SEMESTER' ? 'First Semester' : 'Second Semester';
+      setSuccessMessage(`${semTitle} dates for ${session.session_label} updated successfully.`);
+      setConfiguringSemesterKey(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update semester dates');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleCreateSubmit = async (e: FormEvent) => {
@@ -151,17 +220,24 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
     setError(null);
     setSuccessMessage(null);
 
+    const overallStart = createFirstSemStart || null;
+    const overallEnd = createSecondSemEnd || createFirstSemEnd || null;
+
     try {
       await onCreateSession({
         institution: institutionId,
         session_label: sessionLabel.trim(),
-        current_semester: semester,
-        start_date: startDate || null,
-        end_date: endDate || null,
+        current_semester: initialSemester,
+        start_date: overallStart,
+        end_date: overallEnd,
+        first_semester_start_date: createFirstSemStart || null,
+        first_semester_end_date: createFirstSemEnd || null,
+        second_semester_start_date: createSecondSemStart || null,
+        second_semester_end_date: createSecondSemEnd || null,
         is_current: isCurrent || sessions.length === 0,
       });
-      setSuccessMessage(`Academic session ${sessionLabel.trim()} created successfully!`);
-      resetForm();
+      setSuccessMessage(`Academic session ${sessionLabel.trim()} with grouped semesters configured successfully!`);
+      resetCreateForm();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create academic session');
     } finally {
@@ -179,14 +255,21 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
     setError(null);
     setSuccessMessage(null);
 
+    const overallStart = editFirstSemStart || undefined;
+    const overallEnd = editSecondSemEnd || editFirstSemEnd || undefined;
+
     try {
       await onUpdateSession(sessionId, {
         session_label: editLabel.trim(),
         current_semester: editSemester,
-        start_date: editStartDate || undefined,
-        end_date: editEndDate || undefined,
+        start_date: overallStart,
+        end_date: overallEnd,
+        first_semester_start_date: editFirstSemStart || undefined,
+        first_semester_end_date: editFirstSemEnd || undefined,
+        second_semester_start_date: editSecondSemStart || undefined,
+        second_semester_end_date: editSecondSemEnd || undefined,
       });
-      setSuccessMessage('Session details updated successfully!');
+      setSuccessMessage('Session and semester details updated successfully!');
       setEditingSessionId(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to update session');
@@ -209,7 +292,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
 
     try {
       await onSetCurrentSession(sessionId, targetSemester);
-      setSuccessMessage(`${label} · ${semName} is now active.`);
+      setSuccessMessage(`${label} · ${semName} is now active across campus.`);
       setExpandedSessionIds((prev) => ({ ...prev, [sessionId]: true }));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to switch active semester');
@@ -239,8 +322,11 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
 
   const currentSession = sessions.find((s) => s.is_current);
 
-  const getCleanSemesterDisplay = (sem: string) => {
-    return sem === 'SECOND_SEMESTER' ? 'Second Semester' : 'First Semester';
+  const formatSemesterDates = (start?: string, end?: string) => {
+    if (!start && !end) return 'Dates not configured';
+    const sStr = start ? new Date(start).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'TBD';
+    const eStr = end ? new Date(end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'TBD';
+    return `${sStr} – ${eStr}`;
   };
 
   return (
@@ -266,10 +352,10 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
           </span>
           <div>
             <h2 className="text-lg font-bold text-charcoal">
-              Academic Sessions & Semesters
+              Academic Sessions & Semester Manager
             </h2>
             <p className="text-xs text-charcoal-faint">
-              {institutionName} · Expand sessions to manage and switch active semesters
+              {institutionName} · Grouped First Semester & Second Semester calendars
             </p>
           </div>
         </div>
@@ -309,7 +395,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                       Currently Active Campus Baseline
                     </span>
                     <Chip
-                      label="Live"
+                      label="Live Active"
                       size="small"
                       sx={{
                         bgcolor: 'primary.main',
@@ -321,15 +407,13 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                     />
                   </div>
                   <h3 className="text-xl font-extrabold text-charcoal mt-1">
-                    {currentSession.session_label} · {getCleanSemesterDisplay(currentSession.current_semester)}
+                    {currentSession.session_label} · {currentSession.current_semester === 'SECOND_SEMESTER' ? 'Second Semester' : 'First Semester'}
                   </h3>
                   <p className="text-xs font-semibold text-charcoal-soft mt-0.5">
-                    Operational term for student cohorts, milestone submissions, and SIWES approvals.
-                    {currentSession.start_date && currentSession.end_date && (
-                      <span className="text-charcoal-faint font-normal ml-2">
-                        · {new Date(currentSession.start_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} to {new Date(currentSession.end_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
-                      </span>
-                    )}
+                    {currentSession.current_semester === 'FIRST_SEMESTER'
+                      ? `First Semester: ${formatSemesterDates(currentSession.first_semester_start_date, currentSession.first_semester_end_date)}`
+                      : `Second Semester: ${formatSemesterDates(currentSession.second_semester_start_date, currentSession.second_semester_end_date)}`
+                    }
                   </p>
                 </div>
               </div>
@@ -338,10 +422,10 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                 color="primary"
                 size="small"
                 startIcon={<EditIcon sx={{ fontSize: 16 }} />}
-                onClick={() => handleStartEdit(currentSession)}
+                onClick={() => handleStartEditSession(currentSession)}
                 sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600, shrink: 0 }}
               >
-                Edit Dates
+                Edit All Dates
               </Button>
             </div>
           </div>
@@ -357,10 +441,10 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-charcoal-faint">
-              Configured Academic Sessions ({sessions.length})
+              Configured Sessions ({sessions.length})
             </h3>
             <span className="text-xs text-charcoal-faint">
-              (Click any session to expand/collapse semesters)
+              (Expand a session to view, configure, or activate its semesters)
             </span>
           </div>
           {!showCreateForm && (
@@ -372,6 +456,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
               onClick={() => {
                 setShowCreateForm(true);
                 setEditingSessionId(null);
+                setConfiguringSemesterKey(null);
                 setError(null);
               }}
               sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
@@ -385,13 +470,18 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
         {showCreateForm && (
           <div className="mb-6 rounded-2xl border border-line bg-white p-5 shadow-card">
             <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
-              <h4 className="text-sm font-bold text-charcoal">
-                Create New Academic Session
-              </h4>
+              <div>
+                <h4 className="text-sm font-bold text-charcoal">
+                  Setup New Academic Session & Semesters
+                </h4>
+                <p className="text-xs text-charcoal-faint">
+                  Define the academic year and setup dates for both First and Second semesters
+                </p>
+              </div>
               <Button
                 size="small"
                 color="inherit"
-                onClick={() => setShowCreateForm(false)}
+                onClick={resetCreateForm}
                 sx={{ textTransform: 'none', fontSize: 12 }}
               >
                 Cancel
@@ -408,7 +498,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                     value={sessionLabel}
                     onChange={(e) => setSessionLabel(e.target.value)}
                     placeholder="e.g. 2026/2027"
-                    helperText="Standard format (YYYY/YYYY)"
+                    helperText="Standard academic year (YYYY/YYYY)"
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
                   />
                 </div>
@@ -416,9 +506,9 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                   <FormControl fullWidth size="small">
                     <InputLabel>Initial Active Semester *</InputLabel>
                     <Select
-                      value={semester}
+                      value={initialSemester}
                       label="Initial Active Semester *"
-                      onChange={(e) => setSemester(e.target.value as 'FIRST_SEMESTER' | 'SECOND_SEMESTER')}
+                      onChange={(e) => setInitialSemester(e.target.value as 'FIRST_SEMESTER' | 'SECOND_SEMESTER')}
                       sx={{ borderRadius: '10px' }}
                     >
                       <MenuItem value="FIRST_SEMESTER">First Semester</MenuItem>
@@ -426,28 +516,68 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                     </Select>
                   </FormControl>
                 </div>
-                <div>
+              </div>
+
+              {/* Grouped Semester 1 Setup */}
+              <div className="rounded-xl border border-primary/20 bg-primary-faint/20 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-white text-xs font-bold">1</span>
+                  <h5 className="text-xs font-bold uppercase tracking-wider text-primary">
+                    First Semester Timeline (Optional)
+                  </h5>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
                   <TextField
-                    label="Session Start Date (optional)"
+                    label="First Semester Start Date"
                     type="date"
                     fullWidth
                     size="small"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    value={createFirstSemStart}
+                    onChange={(e) => setCreateFirstSemStart(e.target.value)}
                     slotProps={{ inputLabel: { shrink: true } }}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', bgcolor: 'white' } }}
+                  />
+                  <TextField
+                    label="First Semester End Date"
+                    type="date"
+                    fullWidth
+                    size="small"
+                    value={createFirstSemEnd}
+                    onChange={(e) => setCreateFirstSemEnd(e.target.value)}
+                    slotProps={{ inputLabel: { shrink: true } }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', bgcolor: 'white' } }}
                   />
                 </div>
-                <div>
+              </div>
+
+              {/* Grouped Semester 2 Setup */}
+              <div className="rounded-xl border border-line bg-bgsoft/50 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-charcoal text-white text-xs font-bold">2</span>
+                  <h5 className="text-xs font-bold uppercase tracking-wider text-charcoal">
+                    Second Semester Timeline (Optional)
+                  </h5>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
                   <TextField
-                    label="Session End Date (optional)"
+                    label="Second Semester Start Date"
                     type="date"
                     fullWidth
                     size="small"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    value={createSecondSemStart}
+                    onChange={(e) => setCreateSecondSemStart(e.target.value)}
                     slotProps={{ inputLabel: { shrink: true } }}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', bgcolor: 'white' } }}
+                  />
+                  <TextField
+                    label="Second Semester End Date"
+                    type="date"
+                    fullWidth
+                    size="small"
+                    value={createSecondSemEnd}
+                    onChange={(e) => setCreateSecondSemEnd(e.target.value)}
+                    slotProps={{ inputLabel: { shrink: true } }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', bgcolor: 'white' } }}
                   />
                 </div>
               </div>
@@ -473,7 +603,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                 <Button
                   variant="outlined"
                   color="inherit"
-                  onClick={() => setShowCreateForm(false)}
+                  onClick={resetCreateForm}
                   sx={{ borderRadius: '8px', textTransform: 'none' }}
                 >
                   Cancel
@@ -486,7 +616,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                   startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
                   sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
                 >
-                  {submitting ? 'Creating…' : 'Create Session'}
+                  {submitting ? 'Configuring…' : 'Create Session & Semesters'}
                 </Button>
               </div>
             </form>
@@ -500,22 +630,25 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
               <EventNoteIcon sx={{ fontSize: 40, color: 'charcoal.faint', mb: 1 }} />
               <p className="text-sm font-bold text-charcoal">No Academic Sessions Configured</p>
               <p className="mt-1 text-xs text-charcoal-faint">
-                Click "Add New Session" to configure your first academic calendar session.
+                Click "Add New Session" to setup your first academic session and semester timeline.
               </p>
             </div>
           ) : (
             sessions.map((sess) => {
-              const isEditing = editingSessionId === sess.id;
+              const isEditingSession = editingSessionId === sess.id;
               const isExpanded = !!expandedSessionIds[sess.id];
               const isFirstSemesterActive = sess.is_current && sess.current_semester === 'FIRST_SEMESTER';
               const isSecondSemesterActive = sess.is_current && sess.current_semester === 'SECOND_SEMESTER';
 
-              if (isEditing) {
+              const configuringFirstSem = configuringSemesterKey === `${sess.id}-FIRST_SEMESTER`;
+              const configuringSecondSem = configuringSemesterKey === `${sess.id}-SECOND_SEMESTER`;
+
+              if (isEditingSession) {
                 return (
                   <div key={sess.id} className="rounded-2xl border-2 border-primary bg-white p-5 shadow-sm">
                     <div className="flex items-center justify-between border-b border-line pb-2 mb-4">
                       <span className="text-xs font-bold text-primary">
-                        Editing Academic Session: {sess.session_label}
+                        Editing Session & Semester Dates: {sess.session_label}
                       </span>
                       <Button
                         size="small"
@@ -526,45 +659,81 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                         Cancel
                       </Button>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <TextField
-                        label="Session Label"
-                        size="small"
-                        value={editLabel}
-                        onChange={(e) => setEditLabel(e.target.value)}
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                      />
-                      <FormControl fullWidth size="small">
-                        <InputLabel>Active Semester</InputLabel>
-                        <Select
-                          value={editSemester}
-                          label="Active Semester"
-                          onChange={(e) => setEditSemester(e.target.value as 'FIRST_SEMESTER' | 'SECOND_SEMESTER')}
-                          sx={{ borderRadius: '8px' }}
-                        >
-                          <MenuItem value="FIRST_SEMESTER">First Semester</MenuItem>
-                          <MenuItem value="SECOND_SEMESTER">Second Semester</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <TextField
-                        label="Start Date"
-                        type="date"
-                        size="small"
-                        value={editStartDate}
-                        onChange={(e) => setEditStartDate(e.target.value)}
-                        slotProps={{ inputLabel: { shrink: true } }}
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                      />
-                      <TextField
-                        label="End Date"
-                        type="date"
-                        size="small"
-                        value={editEndDate}
-                        onChange={(e) => setEditEndDate(e.target.value)}
-                        slotProps={{ inputLabel: { shrink: true } }}
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                      />
+
+                    <div className="space-y-4">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <TextField
+                          label="Session Label"
+                          size="small"
+                          value={editLabel}
+                          onChange={(e) => setEditLabel(e.target.value)}
+                          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                        />
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Active Semester</InputLabel>
+                          <Select
+                            value={editSemester}
+                            label="Active Semester"
+                            onChange={(e) => setEditSemester(e.target.value as 'FIRST_SEMESTER' | 'SECOND_SEMESTER')}
+                            sx={{ borderRadius: '8px' }}
+                          >
+                            <MenuItem value="FIRST_SEMESTER">First Semester</MenuItem>
+                            <MenuItem value="SECOND_SEMESTER">Second Semester</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </div>
+
+                      {/* First Semester Dates */}
+                      <div className="rounded-xl border border-line bg-bgsoft/40 p-3">
+                        <p className="text-xs font-bold text-charcoal mb-2">First Semester Dates</p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <TextField
+                            label="Start Date"
+                            type="date"
+                            size="small"
+                            value={editFirstSemStart}
+                            onChange={(e) => setEditFirstSemStart(e.target.value)}
+                            slotProps={{ inputLabel: { shrink: true } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', bgcolor: 'white' } }}
+                          />
+                          <TextField
+                            label="End Date"
+                            type="date"
+                            size="small"
+                            value={editFirstSemEnd}
+                            onChange={(e) => setEditFirstSemEnd(e.target.value)}
+                            slotProps={{ inputLabel: { shrink: true } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', bgcolor: 'white' } }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Second Semester Dates */}
+                      <div className="rounded-xl border border-line bg-bgsoft/40 p-3">
+                        <p className="text-xs font-bold text-charcoal mb-2">Second Semester Dates</p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <TextField
+                            label="Start Date"
+                            type="date"
+                            size="small"
+                            value={editSecondSemStart}
+                            onChange={(e) => setEditSecondSemStart(e.target.value)}
+                            slotProps={{ inputLabel: { shrink: true } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', bgcolor: 'white' } }}
+                          />
+                          <TextField
+                            label="End Date"
+                            type="date"
+                            size="small"
+                            value={editSecondSemEnd}
+                            onChange={(e) => setEditSecondSemEnd(e.target.value)}
+                            slotProps={{ inputLabel: { shrink: true } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', bgcolor: 'white' } }}
+                          />
+                        </div>
+                      </div>
                     </div>
+
                     <div className="mt-4 flex justify-end gap-2">
                       <Button
                         size="small"
@@ -637,7 +806,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                           </span>
                           {sess.is_current ? (
                             <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-[10px] font-bold text-primary uppercase tracking-wide">
-                              Active Current
+                              Active Session
                             </span>
                           ) : (
                             <span className="rounded-full bg-bgsoft px-2 py-0.5 text-[10px] font-semibold text-charcoal-faint">
@@ -645,7 +814,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                             </span>
                           )}
                           <Chip
-                            label={`Active: ${getCleanSemesterDisplay(sess.current_semester)}`}
+                            label={`Active: ${sess.current_semester === 'SECOND_SEMESTER' ? 'Second Semester' : 'First Semester'}`}
                             size="small"
                             variant="outlined"
                             sx={{
@@ -658,11 +827,9 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                           />
                         </div>
 
-                        {sess.start_date && sess.end_date && (
-                          <p className="text-xs text-charcoal-faint mt-0.5">
-                            Calendar: {sess.start_date} to {sess.end_date}
-                          </p>
-                        )}
+                        <p className="text-xs text-charcoal-faint mt-0.5">
+                          {isExpanded ? 'Click header to collapse' : 'Click header to expand 2 semesters'}
+                        </p>
                       </div>
                     </div>
 
@@ -673,9 +840,9 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                     >
                       <IconButton
                         size="small"
-                        onClick={() => handleStartEdit(sess)}
+                        onClick={() => handleStartEditSession(sess)}
                         sx={{ color: 'charcoal.faint', '&:hover': { color: 'charcoal' } }}
-                        title="Edit session dates/label"
+                        title="Edit all session & semester dates"
                       >
                         <EditIcon sx={{ fontSize: 17 }} />
                       </IconButton>
@@ -695,9 +862,14 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                   {/* Grouped Semesters (Collapsible Body) */}
                   <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                     <div className="border-t border-line bg-bgsoft/40 p-4 sm:p-5">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-charcoal-faint mb-3">
-                        Semesters in {sess.session_label} Academic Year
-                      </p>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-charcoal-faint">
+                          Semesters in {sess.session_label} Academic Session
+                        </p>
+                        <span className="text-[11px] text-charcoal-faint">
+                          Configure dates & activate term
+                        </span>
+                      </div>
 
                       <div className="grid gap-3 sm:grid-cols-2">
                         {/* First Semester Card */}
@@ -723,6 +895,9 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                                 <h5 className="text-sm font-bold text-charcoal">
                                   First Semester
                                 </h5>
+                                <p className="text-[11px] text-charcoal-soft font-medium">
+                                  {formatSemesterDates(sess.first_semester_start_date, sess.first_semester_end_date)}
+                                </p>
                               </div>
                             </div>
 
@@ -737,39 +912,92 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                             )}
                           </div>
 
-                          <div className="mt-3 flex items-center justify-between border-t border-line/60 pt-3">
-                            <div className="flex items-center gap-1 text-[11px] text-charcoal-faint">
-                              <AccessTimeIcon sx={{ fontSize: 13 }} />
-                              <span>{isFirstSemesterActive ? 'Campus in session' : 'Term archived / queued'}</span>
+                          {/* Inline Configure First Semester Dates Form */}
+                          {configuringFirstSem ? (
+                            <div className="mt-3 border-t border-line pt-3 space-y-3">
+                              <p className="text-[11px] font-bold text-primary">Setup First Semester Dates:</p>
+                              <div className="grid gap-2">
+                                <TextField
+                                  label="Start Date"
+                                  type="date"
+                                  size="small"
+                                  value={semStartDate}
+                                  onChange={(e) => setSemStartDate(e.target.value)}
+                                  slotProps={{ inputLabel: { shrink: true } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }}
+                                />
+                                <TextField
+                                  label="End Date"
+                                  type="date"
+                                  size="small"
+                                  value={semEndDate}
+                                  onChange={(e) => setSemEndDate(e.target.value)}
+                                  slotProps={{ inputLabel: { shrink: true } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }}
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="small"
+                                  color="inherit"
+                                  onClick={() => setConfiguringSemesterKey(null)}
+                                  sx={{ fontSize: 11, textTransform: 'none' }}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="primary"
+                                  disabled={submitting}
+                                  onClick={() => handleSaveSingleSemesterDates(sess, 'FIRST_SEMESTER')}
+                                  sx={{ fontSize: 11, fontWeight: 700, textTransform: 'none', borderRadius: '6px' }}
+                                >
+                                  {submitting ? 'Saving…' : 'Save Dates'}
+                                </Button>
+                              </div>
                             </div>
-
-                            {!isFirstSemesterActive && (
+                          ) : (
+                            <div className="mt-3 flex items-center justify-between border-t border-line/60 pt-3">
                               <Button
                                 size="small"
-                                variant="contained"
-                                color="primary"
-                                disabled={actionLoadingKey === `${sess.id}-FIRST_SEMESTER`}
-                                onClick={() => handleActivateSemester(sess.id, 'FIRST_SEMESTER', sess.session_label)}
-                                startIcon={
-                                  actionLoadingKey === `${sess.id}-FIRST_SEMESTER` ? (
-                                    <CircularProgress size={12} color="inherit" />
-                                  ) : (
-                                    <PlayArrowIcon sx={{ fontSize: 14 }} />
-                                  )
-                                }
-                                sx={{
-                                  borderRadius: '6px',
-                                  textTransform: 'none',
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  py: 0.5,
-                                  px: 1.5,
-                                }}
+                                variant="text"
+                                color="inherit"
+                                onClick={() => handleStartConfiguringSemester(sess, 'FIRST_SEMESTER')}
+                                startIcon={<DateRangeIcon sx={{ fontSize: 13 }} />}
+                                sx={{ fontSize: 11, textTransform: 'none', color: 'charcoal.soft', px: 1 }}
                               >
-                                Set as Active
+                                {sess.first_semester_start_date ? 'Edit Dates' : 'Setup Dates'}
                               </Button>
-                            )}
-                          </div>
+
+                              {!isFirstSemesterActive && (
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="primary"
+                                  disabled={actionLoadingKey === `${sess.id}-FIRST_SEMESTER`}
+                                  onClick={() => handleActivateSemester(sess.id, 'FIRST_SEMESTER', sess.session_label)}
+                                  startIcon={
+                                    actionLoadingKey === `${sess.id}-FIRST_SEMESTER` ? (
+                                      <CircularProgress size={12} color="inherit" />
+                                    ) : (
+                                      <PlayArrowIcon sx={{ fontSize: 14 }} />
+                                    )
+                                  }
+                                  sx={{
+                                    borderRadius: '6px',
+                                    textTransform: 'none',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    py: 0.5,
+                                    px: 1.5,
+                                  }}
+                                >
+                                  Set as Active
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Second Semester Card */}
@@ -795,6 +1023,9 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                                 <h5 className="text-sm font-bold text-charcoal">
                                   Second Semester
                                 </h5>
+                                <p className="text-[11px] text-charcoal-soft font-medium">
+                                  {formatSemesterDates(sess.second_semester_start_date, sess.second_semester_end_date)}
+                                </p>
                               </div>
                             </div>
 
@@ -809,39 +1040,92 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                             )}
                           </div>
 
-                          <div className="mt-3 flex items-center justify-between border-t border-line/60 pt-3">
-                            <div className="flex items-center gap-1 text-[11px] text-charcoal-faint">
-                              <AccessTimeIcon sx={{ fontSize: 13 }} />
-                              <span>{isSecondSemesterActive ? 'Campus in session' : 'Term archived / queued'}</span>
+                          {/* Inline Configure Second Semester Dates Form */}
+                          {configuringSecondSem ? (
+                            <div className="mt-3 border-t border-line pt-3 space-y-3">
+                              <p className="text-[11px] font-bold text-primary">Setup Second Semester Dates:</p>
+                              <div className="grid gap-2">
+                                <TextField
+                                  label="Start Date"
+                                  type="date"
+                                  size="small"
+                                  value={semStartDate}
+                                  onChange={(e) => setSemStartDate(e.target.value)}
+                                  slotProps={{ inputLabel: { shrink: true } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }}
+                                />
+                                <TextField
+                                  label="End Date"
+                                  type="date"
+                                  size="small"
+                                  value={semEndDate}
+                                  onChange={(e) => setSemEndDate(e.target.value)}
+                                  slotProps={{ inputLabel: { shrink: true } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }}
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="small"
+                                  color="inherit"
+                                  onClick={() => setConfiguringSemesterKey(null)}
+                                  sx={{ fontSize: 11, textTransform: 'none' }}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="primary"
+                                  disabled={submitting}
+                                  onClick={() => handleSaveSingleSemesterDates(sess, 'SECOND_SEMESTER')}
+                                  sx={{ fontSize: 11, fontWeight: 700, textTransform: 'none', borderRadius: '6px' }}
+                                >
+                                  {submitting ? 'Saving…' : 'Save Dates'}
+                                </Button>
+                              </div>
                             </div>
-
-                            {!isSecondSemesterActive && (
+                          ) : (
+                            <div className="mt-3 flex items-center justify-between border-t border-line/60 pt-3">
                               <Button
                                 size="small"
-                                variant="contained"
-                                color="primary"
-                                disabled={actionLoadingKey === `${sess.id}-SECOND_SEMESTER`}
-                                onClick={() => handleActivateSemester(sess.id, 'SECOND_SEMESTER', sess.session_label)}
-                                startIcon={
-                                  actionLoadingKey === `${sess.id}-SECOND_SEMESTER` ? (
-                                    <CircularProgress size={12} color="inherit" />
-                                  ) : (
-                                    <PlayArrowIcon sx={{ fontSize: 14 }} />
-                                  )
-                                }
-                                sx={{
-                                  borderRadius: '6px',
-                                  textTransform: 'none',
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  py: 0.5,
-                                  px: 1.5,
-                                }}
+                                variant="text"
+                                color="inherit"
+                                onClick={() => handleStartConfiguringSemester(sess, 'SECOND_SEMESTER')}
+                                startIcon={<DateRangeIcon sx={{ fontSize: 13 }} />}
+                                sx={{ fontSize: 11, textTransform: 'none', color: 'charcoal.soft', px: 1 }}
                               >
-                                Set as Active
+                                {sess.second_semester_start_date ? 'Edit Dates' : 'Setup Dates'}
                               </Button>
-                            )}
-                          </div>
+
+                              {!isSecondSemesterActive && (
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="primary"
+                                  disabled={actionLoadingKey === `${sess.id}-SECOND_SEMESTER`}
+                                  onClick={() => handleActivateSemester(sess.id, 'SECOND_SEMESTER', sess.session_label)}
+                                  startIcon={
+                                    actionLoadingKey === `${sess.id}-SECOND_SEMESTER` ? (
+                                      <CircularProgress size={12} color="inherit" />
+                                    ) : (
+                                      <PlayArrowIcon sx={{ fontSize: 14 }} />
+                                    )
+                                  }
+                                  sx={{
+                                    borderRadius: '6px',
+                                    textTransform: 'none',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    py: 0.5,
+                                    px: 1.5,
+                                  }}
+                                >
+                                  Set as Active
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

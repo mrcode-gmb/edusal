@@ -61,6 +61,10 @@ export interface AcademicSession {
   session_label: string;
   start_date?: string;
   end_date?: string;
+  first_semester_start_date?: string;
+  first_semester_end_date?: string;
+  second_semester_start_date?: string;
+  second_semester_end_date?: string;
   current_semester: 'FIRST_SEMESTER' | 'SECOND_SEMESTER';
   current_semester_display?: string;
   is_current: boolean;
