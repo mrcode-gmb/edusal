@@ -400,11 +400,16 @@ class AcademicSessionViewSet(viewsets.ModelViewSet):
     def set_current(self, request, id=None):
         """Sets this session as the active/current session for its institution."""
         session = self.get_object()
+        semester = request.data.get("current_semester")
         with transaction.atomic():
             AcademicSession.objects.filter(institution=session.institution).update(is_current=False)
             session.is_current = True
-            session.save(update_fields=["is_current"])
-        return Response({"status": "ok", "message": f"{session.session_label} is now current."})
+            update_fields = ["is_current"]
+            if semester in [SemesterChoice.FIRST_SEMESTER, SemesterChoice.SECOND_SEMESTER]:
+                session.current_semester = semester
+                update_fields.append("current_semester")
+            session.save(update_fields=update_fields)
+        return Response({"status": "ok", "message": f"{session.session_label} ({session.get_current_semester_display()}) is now current."})
 
 
 class InstitutionalDocumentViewSet(viewsets.ModelViewSet):

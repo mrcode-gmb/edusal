@@ -1,4 +1,4 @@
-import { useState, type FC, type FormEvent } from 'react';
+import { useState, useEffect, type FC, type FormEvent } from 'react';
 import type { AcademicSession } from '../../types/institution';
 import {
   Dialog,
@@ -16,6 +16,7 @@ import {
   CircularProgress,
   IconButton,
   Chip,
+  Collapse,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -26,6 +27,10 @@ import {
   DeleteOutlined as DeleteOutlineIcon,
   PlayArrow as PlayArrowIcon,
   CalendarMonth as CalendarMonthIcon,
+  KeyboardArrowDown as ExpandMoreIcon,
+  KeyboardArrowUp as ExpandLessIcon,
+  School as SchoolIcon,
+  AccessTime as AccessTimeIcon,
 } from '@mui/icons-material';
 
 interface AcademicSessionsModalProps {
@@ -43,7 +48,10 @@ interface AcademicSessionsModalProps {
     end_date?: string | null;
     is_current?: boolean;
   }) => Promise<void>;
-  onSetCurrentSession: (sessionId: string) => Promise<void>;
+  onSetCurrentSession: (
+    sessionId: string,
+    currentSemester?: 'FIRST_SEMESTER' | 'SECOND_SEMESTER'
+  ) => Promise<void>;
   onUpdateSession: (
     sessionId: string,
     data: Partial<AcademicSession>
@@ -65,6 +73,33 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
 
+  // Track expanded session IDs in accordion
+  const [expandedSessionIds, setExpandedSessionIds] = useState<Record<string, boolean>>({});
+
+  // Auto-expand current active session when opened or sessions change
+  useEffect(() => {
+    if (sessions.length > 0) {
+      const initial: Record<string, boolean> = {};
+      sessions.forEach((s) => {
+        if (s.is_current) {
+          initial[s.id] = true;
+        }
+      });
+      // If no session is current, expand the first one
+      if (Object.keys(initial).length === 0 && sessions[0]) {
+        initial[sessions[0].id] = true;
+      }
+      setExpandedSessionIds((prev) => ({ ...initial, ...prev }));
+    }
+  }, [sessions, open]);
+
+  const toggleExpand = (sessionId: string) => {
+    setExpandedSessionIds((prev) => ({
+      ...prev,
+      [sessionId]: !prev[sessionId],
+    }));
+  };
+
   // Create Form State
   const [sessionLabel, setSessionLabel] = useState('');
   const [semester, setSemester] = useState<'FIRST_SEMESTER' | 'SECOND_SEMESTER'>('FIRST_SEMESTER');
@@ -80,7 +115,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
 
   // Status & Feedback
   const [submitting, setSubmitting] = useState(false);
-  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [actionLoadingKey, setActionLoadingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -160,18 +195,26 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
     }
   };
 
-  const handleActivate = async (sessionId: string, label: string) => {
-    setActionLoadingId(sessionId);
+  const handleActivateSemester = async (
+    sessionId: string,
+    targetSemester: 'FIRST_SEMESTER' | 'SECOND_SEMESTER',
+    label: string
+  ) => {
+    const loadingKey = `${sessionId}-${targetSemester}`;
+    setActionLoadingKey(loadingKey);
     setError(null);
     setSuccessMessage(null);
 
+    const semName = targetSemester === 'FIRST_SEMESTER' ? 'First Semester' : 'Second Semester';
+
     try {
-      await onSetCurrentSession(sessionId);
-      setSuccessMessage(`${label} is now the active academic session.`);
+      await onSetCurrentSession(sessionId, targetSemester);
+      setSuccessMessage(`${label} · ${semName} is now active.`);
+      setExpandedSessionIds((prev) => ({ ...prev, [sessionId]: true }));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to switch current session');
+      setError(err instanceof Error ? err.message : 'Failed to switch active semester');
     } finally {
-      setActionLoadingId(null);
+      setActionLoadingKey(null);
     }
   };
 
@@ -180,7 +223,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
       return;
     }
 
-    setActionLoadingId(sessionId);
+    setActionLoadingKey(sessionId);
     setError(null);
     setSuccessMessage(null);
 
@@ -190,11 +233,15 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to delete session');
     } finally {
-      setActionLoadingId(null);
+      setActionLoadingKey(null);
     }
   };
 
   const currentSession = sessions.find((s) => s.is_current);
+
+  const getCleanSemesterDisplay = (sem: string) => {
+    return sem === 'SECOND_SEMESTER' ? 'Second Semester' : 'First Semester';
+  };
 
   return (
     <Dialog
@@ -222,7 +269,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
               Academic Sessions & Semesters
             </h2>
             <p className="text-xs text-charcoal-faint">
-              {institutionName} · Cohort calendars & active semester governance
+              {institutionName} · Expand sessions to manage and switch active semesters
             </p>
           </div>
         </div>
@@ -248,7 +295,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
           </Alert>
         )}
 
-        {/* Current Active Session Highlight Card */}
+        {/* Current Active Session Highlight Banner */}
         {currentSession ? (
           <div className="mb-6 rounded-2xl border border-primary/20 bg-primary-faint/60 p-4 sm:p-5">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -259,10 +306,10 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                      Currently Active Session
+                      Currently Active Campus Baseline
                     </span>
                     <Chip
-                      label="Active Baseline"
+                      label="Live"
                       size="small"
                       sx={{
                         bgcolor: 'primary.main',
@@ -274,13 +321,13 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                     />
                   </div>
                   <h3 className="text-xl font-extrabold text-charcoal mt-1">
-                    {currentSession.session_label}
+                    {currentSession.session_label} · {getCleanSemesterDisplay(currentSession.current_semester)}
                   </h3>
                   <p className="text-xs font-semibold text-charcoal-soft mt-0.5">
-                    {currentSession.current_semester_display || (currentSession.current_semester === 'FIRST_SEMESTER' ? 'First Semester (Harmattan / Alpha)' : 'Second Semester (Rain / Omega)')}
+                    Operational term for student cohorts, milestone submissions, and SIWES approvals.
                     {currentSession.start_date && currentSession.end_date && (
                       <span className="text-charcoal-faint font-normal ml-2">
-                        · {new Date(currentSession.start_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} – {new Date(currentSession.end_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                        · {new Date(currentSession.start_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} to {new Date(currentSession.end_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
                       </span>
                     )}
                   </p>
@@ -292,25 +339,30 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                 size="small"
                 startIcon={<EditIcon sx={{ fontSize: 16 }} />}
                 onClick={() => handleStartEdit(currentSession)}
-                sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+                sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600, shrink: 0 }}
               >
-                Edit Semester / Dates
+                Edit Dates
               </Button>
             </div>
           </div>
         ) : (
           <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <p className="text-xs font-bold text-amber-900">
-              ⚠️ No academic session is currently marked active. Please create or set an active session below.
+              ⚠️ No academic session is currently marked active. Please create or activate a session below.
             </p>
           </div>
         )}
 
-        {/* Action Header: Create Button */}
+        {/* Action Header: Add Session Button */}
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-charcoal-faint">
-            Configured Academic Sessions ({sessions.length})
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-charcoal-faint">
+              Configured Academic Sessions ({sessions.length})
+            </h3>
+            <span className="text-xs text-charcoal-faint">
+              (Click any session to expand/collapse semesters)
+            </span>
+          </div>
           {!showCreateForm && (
             <Button
               variant="contained"
@@ -362,19 +414,15 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                 </div>
                 <div>
                   <FormControl fullWidth size="small">
-                    <InputLabel>Active Semester *</InputLabel>
+                    <InputLabel>Initial Active Semester *</InputLabel>
                     <Select
                       value={semester}
-                      label="Active Semester *"
+                      label="Initial Active Semester *"
                       onChange={(e) => setSemester(e.target.value as 'FIRST_SEMESTER' | 'SECOND_SEMESTER')}
                       sx={{ borderRadius: '10px' }}
                     >
-                      <MenuItem value="FIRST_SEMESTER">
-                        First Semester (Harmattan / Alpha)
-                      </MenuItem>
-                      <MenuItem value="SECOND_SEMESTER">
-                        Second Semester (Rain / Omega)
-                      </MenuItem>
+                      <MenuItem value="FIRST_SEMESTER">First Semester</MenuItem>
+                      <MenuItem value="SECOND_SEMESTER">Second Semester</MenuItem>
                     </Select>
                   </FormControl>
                 </div>
@@ -445,8 +493,8 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
           </div>
         )}
 
-        {/* Sessions List */}
-        <div className="space-y-3">
+        {/* Grouped Collapsible Sessions List */}
+        <div className="space-y-4">
           {sessions.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-line bg-white p-8 text-center">
               <EventNoteIcon sx={{ fontSize: 40, color: 'charcoal.faint', mb: 1 }} />
@@ -458,12 +506,14 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
           ) : (
             sessions.map((sess) => {
               const isEditing = editingSessionId === sess.id;
-              const isActionLoading = actionLoadingId === sess.id;
+              const isExpanded = !!expandedSessionIds[sess.id];
+              const isFirstSemesterActive = sess.is_current && sess.current_semester === 'FIRST_SEMESTER';
+              const isSecondSemesterActive = sess.is_current && sess.current_semester === 'SECOND_SEMESTER';
 
               if (isEditing) {
                 return (
-                  <div key={sess.id} className="rounded-2xl border-2 border-primary bg-white p-4 shadow-sm">
-                    <div className="flex items-center justify-between border-b border-line pb-2 mb-3">
+                  <div key={sess.id} className="rounded-2xl border-2 border-primary bg-white p-5 shadow-sm">
+                    <div className="flex items-center justify-between border-b border-line pb-2 mb-4">
                       <span className="text-xs font-bold text-primary">
                         Editing Academic Session: {sess.session_label}
                       </span>
@@ -492,8 +542,8 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                           onChange={(e) => setEditSemester(e.target.value as 'FIRST_SEMESTER' | 'SECOND_SEMESTER')}
                           sx={{ borderRadius: '8px' }}
                         >
-                          <MenuItem value="FIRST_SEMESTER">First Semester (Harmattan / Alpha)</MenuItem>
-                          <MenuItem value="SECOND_SEMESTER">Second Semester (Rain / Omega)</MenuItem>
+                          <MenuItem value="FIRST_SEMESTER">First Semester</MenuItem>
+                          <MenuItem value="SECOND_SEMESTER">Second Semester</MenuItem>
                         </Select>
                       </FormControl>
                       <TextField
@@ -515,7 +565,7 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
                         sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
                       />
                     </div>
-                    <div className="mt-3 flex justify-end gap-2">
+                    <div className="mt-4 flex justify-end gap-2">
                       <Button
                         size="small"
                         variant="outlined"
@@ -543,79 +593,259 @@ export const AcademicSessionsModal: FC<AcademicSessionsModalProps> = ({
               return (
                 <div
                   key={sess.id}
-                  className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border p-4 transition-colors ${
+                  className={`overflow-hidden rounded-2xl border transition-all ${
                     sess.is_current
-                      ? 'border-primary/40 bg-primary-faint/30 shadow-sm'
+                      ? 'border-primary/40 bg-white shadow-card ring-1 ring-primary/20'
                       : 'border-line bg-white hover:border-line-strong'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold text-sm ${
-                        sess.is_current ? 'bg-primary text-white' : 'bg-bgsoft text-charcoal-faint'
-                      }`}
-                    >
-                      <EventNoteIcon sx={{ fontSize: 18 }} />
-                    </span>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-base text-charcoal">
-                          {sess.session_label}
-                        </span>
-                        {sess.is_current ? (
-                          <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-[10px] font-bold text-primary uppercase tracking-wide">
-                            Active Current
-                          </span>
+                  {/* Collapsible Session Header */}
+                  <div
+                    onClick={() => toggleExpand(sess.id)}
+                    className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 cursor-pointer select-none transition-colors ${
+                      sess.is_current ? 'bg-primary-faint/30 hover:bg-primary-faint/50' : 'hover:bg-bgsoft/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpand(sess.id);
+                        }}
+                        sx={{ color: sess.is_current ? 'primary.main' : 'charcoal.faint' }}
+                      >
+                        {isExpanded ? (
+                          <ExpandLessIcon sx={{ fontSize: 22 }} />
                         ) : (
-                          <span className="rounded-full bg-bgsoft px-2 py-0.5 text-[10px] font-semibold text-charcoal-faint">
-                            Archived
+                          <ExpandMoreIcon sx={{ fontSize: 22 }} />
+                        )}
+                      </IconButton>
+
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold text-sm ${
+                          sess.is_current ? 'bg-primary text-white' : 'bg-bgsoft text-charcoal-faint'
+                        }`}
+                      >
+                        <EventNoteIcon sx={{ fontSize: 18 }} />
+                      </span>
+
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-extrabold text-base text-charcoal">
+                            {sess.session_label}
                           </span>
+                          {sess.is_current ? (
+                            <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-[10px] font-bold text-primary uppercase tracking-wide">
+                              Active Current
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-bgsoft px-2 py-0.5 text-[10px] font-semibold text-charcoal-faint">
+                              Archived
+                            </span>
+                          )}
+                          <Chip
+                            label={`Active: ${getCleanSemesterDisplay(sess.current_semester)}`}
+                            size="small"
+                            variant="outlined"
+                            sx={{
+                              fontSize: 11,
+                              height: 22,
+                              fontWeight: 600,
+                              borderColor: sess.is_current ? 'primary.main' : 'divider',
+                              color: sess.is_current ? 'primary.main' : 'text.secondary',
+                            }}
+                          />
+                        </div>
+
+                        {sess.start_date && sess.end_date && (
+                          <p className="text-xs text-charcoal-faint mt-0.5">
+                            Calendar: {sess.start_date} to {sess.end_date}
+                          </p>
                         )}
                       </div>
-                      <p className="text-xs text-charcoal-soft mt-0.5">
-                        {sess.current_semester_display || (sess.current_semester === 'FIRST_SEMESTER' ? 'First Semester (Harmattan / Alpha)' : 'Second Semester (Rain / Omega)')}
-                        {sess.start_date && sess.end_date && (
-                          <span className="text-charcoal-faint ml-2">
-                            · {sess.start_date} to {sess.end_date}
-                          </span>
-                        )}
-                      </p>
+                    </div>
+
+                    {/* Header Action Buttons */}
+                    <div
+                      className="flex items-center gap-1.5 self-end sm:self-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <IconButton
+                        size="small"
+                        onClick={() => handleStartEdit(sess)}
+                        sx={{ color: 'charcoal.faint', '&:hover': { color: 'charcoal' } }}
+                        title="Edit session dates/label"
+                      >
+                        <EditIcon sx={{ fontSize: 17 }} />
+                      </IconButton>
+                      {!sess.is_current && (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDelete(sess.id, sess.session_label)}
+                          sx={{ color: 'error.main', '&:hover': { color: 'error.dark' } }}
+                          title="Delete session"
+                        >
+                          <DeleteOutlineIcon sx={{ fontSize: 17 }} />
+                        </IconButton>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 self-end sm:self-center">
-                    {!sess.is_current && (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="primary"
-                        disabled={isActionLoading}
-                        onClick={() => handleActivate(sess.id, sess.session_label)}
-                        startIcon={isActionLoading ? <CircularProgress size={12} /> : <PlayArrowIcon sx={{ fontSize: 15 }} />}
-                        sx={{ borderRadius: '8px', textTransform: 'none', fontSize: 11, fontWeight: 700 }}
-                      >
-                        Set as Active
-                      </Button>
-                    )}
-                    <IconButton
-                      size="small"
-                      onClick={() => handleStartEdit(sess)}
-                      sx={{ color: 'charcoal.faint', '&:hover': { color: 'charcoal' } }}
-                      title="Edit session details"
-                    >
-                      <EditIcon sx={{ fontSize: 17 }} />
-                    </IconButton>
-                    {!sess.is_current && (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDelete(sess.id, sess.session_label)}
-                        sx={{ color: 'error.main', '&:hover': { color: 'error.dark' } }}
-                        title="Delete session"
-                      >
-                        <DeleteOutlineIcon sx={{ fontSize: 17 }} />
-                      </IconButton>
-                    )}
-                  </div>
+                  {/* Grouped Semesters (Collapsible Body) */}
+                  <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                    <div className="border-t border-line bg-bgsoft/40 p-4 sm:p-5">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-charcoal-faint mb-3">
+                        Semesters in {sess.session_label} Academic Year
+                      </p>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {/* First Semester Card */}
+                        <div
+                          className={`rounded-xl border p-4 transition-all ${
+                            isFirstSemesterActive
+                              ? 'border-primary bg-white shadow-sm ring-1 ring-primary/20'
+                              : 'border-line bg-white'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`flex h-7 w-7 items-center justify-center rounded-lg ${
+                                  isFirstSemesterActive
+                                    ? 'bg-primary-soft text-primary font-bold text-xs'
+                                    : 'bg-bgsoft text-charcoal-faint text-xs font-semibold'
+                                }`}
+                              >
+                                1
+                              </span>
+                              <div>
+                                <h5 className="text-sm font-bold text-charcoal">
+                                  First Semester
+                                </h5>
+                              </div>
+                            </div>
+
+                            {isFirstSemesterActive ? (
+                              <span className="rounded-full bg-primary text-white px-2.5 py-0.5 text-[10px] font-bold">
+                                Live Active
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-bgsoft px-2 py-0.5 text-[10px] font-semibold text-charcoal-faint">
+                                {sess.is_current ? 'Completed Term' : 'Inactive'}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-between border-t border-line/60 pt-3">
+                            <div className="flex items-center gap-1 text-[11px] text-charcoal-faint">
+                              <AccessTimeIcon sx={{ fontSize: 13 }} />
+                              <span>{isFirstSemesterActive ? 'Campus in session' : 'Term archived / queued'}</span>
+                            </div>
+
+                            {!isFirstSemesterActive && (
+                              <Button
+                                size="small"
+                                variant="contained"
+                                color="primary"
+                                disabled={actionLoadingKey === `${sess.id}-FIRST_SEMESTER`}
+                                onClick={() => handleActivateSemester(sess.id, 'FIRST_SEMESTER', sess.session_label)}
+                                startIcon={
+                                  actionLoadingKey === `${sess.id}-FIRST_SEMESTER` ? (
+                                    <CircularProgress size={12} color="inherit" />
+                                  ) : (
+                                    <PlayArrowIcon sx={{ fontSize: 14 }} />
+                                  )
+                                }
+                                sx={{
+                                  borderRadius: '6px',
+                                  textTransform: 'none',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  py: 0.5,
+                                  px: 1.5,
+                                }}
+                              >
+                                Set as Active
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Second Semester Card */}
+                        <div
+                          className={`rounded-xl border p-4 transition-all ${
+                            isSecondSemesterActive
+                              ? 'border-primary bg-white shadow-sm ring-1 ring-primary/20'
+                              : 'border-line bg-white'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`flex h-7 w-7 items-center justify-center rounded-lg ${
+                                  isSecondSemesterActive
+                                    ? 'bg-primary-soft text-primary font-bold text-xs'
+                                    : 'bg-bgsoft text-charcoal-faint text-xs font-semibold'
+                                }`}
+                              >
+                                2
+                              </span>
+                              <div>
+                                <h5 className="text-sm font-bold text-charcoal">
+                                  Second Semester
+                                </h5>
+                              </div>
+                            </div>
+
+                            {isSecondSemesterActive ? (
+                              <span className="rounded-full bg-primary text-white px-2.5 py-0.5 text-[10px] font-bold">
+                                Live Active
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-bgsoft px-2 py-0.5 text-[10px] font-semibold text-charcoal-faint">
+                                {sess.is_current ? 'Upcoming Term' : 'Inactive'}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-between border-t border-line/60 pt-3">
+                            <div className="flex items-center gap-1 text-[11px] text-charcoal-faint">
+                              <AccessTimeIcon sx={{ fontSize: 13 }} />
+                              <span>{isSecondSemesterActive ? 'Campus in session' : 'Term archived / queued'}</span>
+                            </div>
+
+                            {!isSecondSemesterActive && (
+                              <Button
+                                size="small"
+                                variant="contained"
+                                color="primary"
+                                disabled={actionLoadingKey === `${sess.id}-SECOND_SEMESTER`}
+                                onClick={() => handleActivateSemester(sess.id, 'SECOND_SEMESTER', sess.session_label)}
+                                startIcon={
+                                  actionLoadingKey === `${sess.id}-SECOND_SEMESTER` ? (
+                                    <CircularProgress size={12} color="inherit" />
+                                  ) : (
+                                    <PlayArrowIcon sx={{ fontSize: 14 }} />
+                                  )
+                                }
+                                sx={{
+                                  borderRadius: '6px',
+                                  textTransform: 'none',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  py: 0.5,
+                                  px: 1.5,
+                                }}
+                              >
+                                Set as Active
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Collapse>
                 </div>
               );
             })

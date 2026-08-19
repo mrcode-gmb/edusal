@@ -67,8 +67,8 @@ class AwardLevel(models.TextChoices):
 
 
 class SemesterChoice(models.TextChoices):
-    FIRST_SEMESTER = "FIRST_SEMESTER", "First Semester (Harmattan / Alpha)"
-    SECOND_SEMESTER = "SECOND_SEMESTER", "Second Semester (Rain / Omega)"
+    FIRST_SEMESTER = "FIRST_SEMESTER", "First Semester"
+    SECOND_SEMESTER = "SECOND_SEMESTER", "Second Semester"
 
 
 class DocumentType(models.TextChoices):

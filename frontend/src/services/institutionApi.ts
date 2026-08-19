@@ -199,12 +199,17 @@ export const institutionApi = {
     return res.json();
   },
 
-  async setCurrentSession(sessionId: string, token?: string): Promise<{ status: string; message: string }> {
+  async setCurrentSession(
+    sessionId: string,
+    currentSemester?: 'FIRST_SEMESTER' | 'SECOND_SEMESTER',
+    token?: string
+  ): Promise<{ status: string; message: string }> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Token ${token}`;
     const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/set-current/`, {
       method: 'POST',
       headers,
+      body: currentSemester ? JSON.stringify({ current_semester: currentSemester }) : undefined,
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to set session as current`);
     return res.json();

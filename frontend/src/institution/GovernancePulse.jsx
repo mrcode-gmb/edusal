@@ -34,7 +34,7 @@ const lineData = {
   labels: ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
   datasets: [
     {
-      label: 'First Semester (Omega / Rain)',
+      label: 'First Semester',
       data: [18, 26, 35, 29, 42, 50, 58, 64, 71, 80, 86, 92],
       borderColor: chartColors.primary,
       backgroundColor: 'rgba(20,107,74,0.12)',
@@ -44,7 +44,7 @@ const lineData = {
       pointRadius: 3,
     },
     {
-      label: 'Second Semester (Rain / Omega)',
+      label: 'Second Semester',
       data: [12, 21, 28, 37, 45, 53, 61, 69, 78, 84, 91, 97],
       borderColor: chartColors.green2,
       backgroundColor: 'rgba(127,182,154,0.10)',
@@ -172,7 +172,7 @@ export default function GovernancePulse() {
         actions={
           <>
             <Chip
-              label="2025/2026 · Second Semester (Rain / Omega)"
+              label="2025/2026 · Second Semester"
               size="medium"
               sx={{ bgcolor: 'primary.soft', color: 'primary.main', fontWeight: 700 }}
             />
@@ -390,7 +390,7 @@ function AuditPackModal({ open, onClose }) {
         </h2>
         <p className="mt-2 text-sm text-charcoal-soft">
           Federal University of Technology, Minna · Regulatory Oversight: NUC ·
-          Academic Session: 2025/2026 (Second Semester (Rain / Omega)) · Date:
+          Academic Session: 2025/2026 (Second Semester) · Date:
           16 August 2026
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2 rounded-[15px] border border-line bg-white px-4 py-2.5">

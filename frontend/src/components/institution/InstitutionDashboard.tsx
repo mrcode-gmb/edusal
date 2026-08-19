@@ -329,8 +329,11 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
     }
   };
 
-  const handleSetCurrentSession = async (sessionId: string) => {
-    await institutionApi.setCurrentSession(sessionId, authToken || undefined);
+  const handleSetCurrentSession = async (
+    sessionId: string,
+    currentSemester?: 'FIRST_SEMESTER' | 'SECOND_SEMESTER'
+  ) => {
+    await institutionApi.setCurrentSession(sessionId, currentSemester, authToken || undefined);
     if (selectedInstId) {
       await loadInstitutionData(selectedInstId);
     }
