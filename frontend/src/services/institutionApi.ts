@@ -250,6 +250,32 @@ export const institutionApi = {
     return res.json();
   },
 
+  async verifyOtp(email: string, code: string): Promise<import('../types/institution').OtpResponse> {
+    const res = await fetch(`${API_BASE}/api/auth/verify-otp/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Verification failed (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async resendOtp(email: string): Promise<import('../types/institution').OtpChallenge> {
+    const res = await fetch(`${API_BASE}/api/auth/resend-otp/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Resend failed (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
   async getMe(token: string): Promise<import('../types/institution').AuthUser> {
     const res = await fetch(`${API_BASE}/api/auth/me/`, {
       headers: {

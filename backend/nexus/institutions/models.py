@@ -1557,6 +1557,31 @@ class InstitutionInvoice(models.Model):
         super().save(*args, **kwargs)
 
 
+class LoginOTP(models.Model):
+    """One-time passcode for secure staff/admin sign-in."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="login_otps",
+    )
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    used = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"OTP for {self.user.email} ({'used' if self.used else 'active'})"
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() >= self.expires_at
+
+
 
 
 

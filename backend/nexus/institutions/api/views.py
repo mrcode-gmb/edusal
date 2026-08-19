@@ -47,6 +47,13 @@ from nexus.institutions.models import (
     DivisionType,
 )
 from ..services.document_parser import DocumentParserService
+from ..services.login_otp_service import (
+    OTP_LIFETIME_SECONDS,
+    issue_login_otp,
+    mask_email,
+    resend_login_otp,
+    verify_login_otp,
+)
 from ..services.embedding_service import EmbeddingService
 from ..services.vector_search_service import VectorSearchService
 from ..services.groq_advisor_service import GroqAdvisorService
@@ -605,7 +612,11 @@ class InstitutionStaffViewSet(viewsets.ModelViewSet):
 
 
 class AuthLoginView(APIView):
-    """Authenticates institutional user and returns DRF Token + profile."""
+    """Authenticates institutional user and returns DRF Token + profile.
+
+    Students sign in directly. Staff and platform admins receive a secure
+    one-time code by email (OTP) and must verify it before receiving a token.
+    """
 
     permission_classes = [AllowAny]
 
@@ -631,12 +642,78 @@ class AuthLoginView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        is_student = StudentProfile.objects.filter(user=user).exists()
+        if is_student:
+            token, _ = Token.objects.get_or_create(user=user)
+            user_data = AuthUserSerializer(user).data
+            return Response({
+                "token": token.key,
+                "user": user_data,
+            })
+
+        # Staff or platform admin: require an emailed one-time code.
+        otp = issue_login_otp(user)
+        if otp is None:
+            return Response(
+                {"error": "We couldn't email your secure code. Please try again."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response({
+            "requires_otp": True,
+            "email": mask_email(user.email),
+            "resend_after": 30,
+            "expires_in": OTP_LIFETIME_SECONDS,
+        })
+
+
+class AuthVerifyOtpView(APIView):
+    """Exchanges an emailed one-time code for a full auth token."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email", "").strip().lower()
+        code = request.data.get("code", "").strip()
+        if not email or not code:
+            return Response(
+                {"error": "Email and code are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        otp, error = verify_login_otp(email, code)
+        if error:
+            return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+        user = otp.user
         token, _ = Token.objects.get_or_create(user=user)
         user_data = AuthUserSerializer(user).data
-
         return Response({
             "token": token.key,
             "user": user_data,
+        })
+
+
+class AuthResendOtpView(APIView):
+    """Resends a fresh one-time code after a short cooldown."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email", "").strip().lower()
+        if not email:
+            return Response(
+                {"error": "Email is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        otp, error, resend_after = resend_login_otp(email)
+        if error:
+            return Response(
+                {"error": error, "resend_after": resend_after},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({
+            "requires_otp": True,
+            "email": mask_email(email),
+            "resend_after": resend_after,
+            "expires_in": OTP_LIFETIME_SECONDS,
         })
 
 

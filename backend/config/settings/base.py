@@ -362,6 +362,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://edusal-yrvw-alpha.vercel.app",
+    "https://nexusedtechconsulting.com",
+    "https://www.nexusedtechconsulting.com",
 ]
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://[a-zA-Z0-9-]+\.vercel\.app$",

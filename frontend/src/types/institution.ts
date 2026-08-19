@@ -394,6 +394,22 @@ export interface AuthUser {
 export interface LoginResponse {
   token: string;
   user: AuthUser;
+  requires_otp?: boolean;
+  email?: string;
+  resend_after?: number;
+  expires_in?: number;
+}
+
+export interface OtpResponse {
+  token: string;
+  user: AuthUser;
+}
+
+export interface OtpChallenge {
+  requires_otp: boolean;
+  email: string;
+  resend_after: number;
+  expires_in: number;
 }
 
 export type TemplateVisibility = 'DEPARTMENT' | 'INSTITUTION' | 'NATIONAL_CATALOG';
