@@ -35,6 +35,9 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon,
+  MenuOpen as MenuOpenIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
   Dashboard as DashboardIcon,
   AccountTree as AccountTreeIcon,
   MenuBook as MenuBookIcon,
@@ -115,6 +118,13 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('nexus_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   // Refresh the cached user once after mount so role fields (e.g. is_superuser)
   // stay current even when localStorage holds an older auth payload.
@@ -407,59 +417,120 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
         ? 'College'
         : 'Faculty';
 
-  const SidebarContent = (
-    <div className="flex h-full flex-col bg-charcoal">
-      <div className="flex h-16 items-center px-6">
-        <img src="/logo-white.png" alt="Nexus Edutech Consult Ltd" className="h-9 w-auto" />
+  const renderSidebar = (collapsed: boolean) => (
+    <div className="flex h-full flex-col bg-charcoal text-white select-none">
+      {/* Header / Logo */}
+      <div className={`flex h-16 items-center border-b border-white/10 ${collapsed ? 'justify-center px-2' : 'justify-between px-6'}`}>
+        {collapsed ? (
+          <Tooltip title="Expand Sidebar" placement="right" arrow>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCollapsed(false);
+                try { localStorage.setItem('nexus_sidebar_collapsed', 'false'); } catch {}
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.08] text-white transition-colors hover:bg-white/[0.15]"
+            >
+              <img src="/alogo-white.png" alt="Nexus" className="h-6 w-6 object-contain" />
+            </button>
+          </Tooltip>
+        ) : (
+          <>
+            <Link to="/" className="flex items-center gap-2">
+              <img src="/logo-white.png" alt="Nexus Edutech" className="h-8 w-auto object-contain" />
+            </Link>
+            <Tooltip title="Collapse Sidebar" placement="left" arrow>
+              <IconButton
+                onClick={() => {
+                  setIsCollapsed(true);
+                  try { localStorage.setItem('nexus_sidebar_collapsed', 'true'); } catch {}
+                }}
+                size="small"
+                sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}
+              >
+                <ChevronLeftIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
       </div>
 
-      <div className="mx-4 mt-2 rounded-[15px] bg-white/[0.06] p-4">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-white">
-            {displayName.slice(0, 2).toUpperCase()}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-white">{displayName}</p>
-            <p className="truncate text-xs text-white/60">{displayRole}</p>
-          </div>
-        </div>
-        {selectedInst && (
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <Chip
-              size="small"
-              icon={<VerifiedIcon sx={{ fontSize: 13, color: '#7FB69A' }} />}
-              label={`${selectedInst.regulator} Regulated`}
-              sx={{
-                bgcolor: 'rgba(255,255,255,0.08)',
-                color: '#E6F2EC',
-                '& .MuiChip-label': { fontSize: 11, fontWeight: 700 },
-              }}
-            />
-            {selectedInst.is_founding_partner && (
-              <Chip
-                size="small"
-                label="Founding Charter Member"
-                sx={{
-                  bgcolor: 'rgba(20,107,74,0.55)',
-                  color: '#fff',
-                  '& .MuiChip-label': { fontSize: 11, fontWeight: 700 },
-                }}
-              />
+      {/* User / Institution Info */}
+      <div className={`mx-3 mt-3 rounded-[15px] bg-white/[0.06] ${collapsed ? 'p-2 flex flex-col items-center' : 'p-3.5'}`}>
+        {collapsed ? (
+          <Tooltip
+            title={
+              <div className="text-xs py-0.5">
+                <p className="font-bold">{displayName}</p>
+                <p className="text-white/70">{displayRole}</p>
+                {selectedInst && <p className="text-emerald-300 mt-1 font-semibold">{selectedInst.name}</p>}
+              </div>
+            }
+            placement="right"
+            arrow
+          >
+            <span className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary text-xs font-extrabold text-white shadow-sm">
+              {displayName.slice(0, 2).toUpperCase()}
+            </span>
+          </Tooltip>
+        ) : (
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-white">
+                {displayName.slice(0, 2).toUpperCase()}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-white">{displayName}</p>
+                <p className="truncate text-xs text-white/60">{displayRole}</p>
+              </div>
+            </div>
+            {selectedInst && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                <Chip
+                  size="small"
+                  icon={<VerifiedIcon sx={{ fontSize: 13, color: '#7FB69A' }} />}
+                  label={`${selectedInst.regulator} Regulated`}
+                  sx={{
+                    bgcolor: 'rgba(255,255,255,0.08)',
+                    color: '#E6F2EC',
+                    height: 22,
+                    '& .MuiChip-label': { fontSize: 10, fontWeight: 700, px: 1 },
+                  }}
+                />
+                {selectedInst.is_founding_partner && (
+                  <Chip
+                    size="small"
+                    label="Charter"
+                    sx={{
+                      bgcolor: 'rgba(20,107,74,0.55)',
+                      color: '#fff',
+                      height: 22,
+                      '& .MuiChip-label': { fontSize: 10, fontWeight: 700, px: 1 },
+                    }}
+                  />
+                )}
+              </div>
             )}
           </div>
         )}
       </div>
 
-      <nav className="mt-5 flex-1 overflow-y-auto px-4 pb-6">
+      {/* Navigation Items */}
+      <nav className="mt-4 flex-1 overflow-y-auto px-3 pb-6 space-y-4">
         {NavSections.map((s) => (
-          <div key={s.label} className="mb-5">
-            <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
-              {s.label}
-            </p>
+          <div key={s.label}>
+            {!collapsed ? (
+              <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                {s.label}
+              </p>
+            ) : (
+              <div className="my-2 border-t border-white/10" />
+            )}
             <div className="space-y-1">
               {s.items.map((item) => {
                 const Icon = item.icon;
-                return (
+                const isActive = activeTab === item.key;
+                const buttonContent = (
                   <button
                     key={item.key}
                     type="button"
@@ -467,15 +538,27 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
                       navigate(`/portal/institution/${TAB_PATHS[item.key]}`);
                       setSidebarOpen(false);
                     }}
-                    className={`flex w-full items-center gap-3 rounded-[15px] px-3 py-2.5 text-[13px] font-semibold transition-colors ${
-                      activeTab === item.key
-                        ? 'bg-primary text-white'
-                        : 'text-white/65 hover:bg-white/[0.06] hover:text-white'
+                    className={`flex w-full items-center rounded-[12px] transition-all ${
+                      collapsed
+                        ? 'h-11 w-11 justify-center mx-auto'
+                        : 'gap-3 px-3 py-2.5 text-[13px] font-semibold'
+                    } ${
+                      isActive
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-white/65 hover:bg-white/[0.08] hover:text-white'
                     }`}
                   >
-                    <Icon sx={{ fontSize: 18 }} />
-                    {item.label}
+                    <Icon sx={{ fontSize: 20 }} />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
                   </button>
+                );
+
+                return collapsed ? (
+                  <Tooltip key={item.key} title={item.label} placement="right" arrow>
+                    <div>{buttonContent}</div>
+                  </Tooltip>
+                ) : (
+                  buttonContent
                 );
               })}
             </div>
@@ -483,26 +566,52 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
         ))}
       </nav>
 
-      <div className="border-t border-white/10 px-4 py-4">
-        <Link
-          to="/"
-          onClick={() => setSidebarOpen(false)}
-          className="flex w-full items-center justify-between rounded-[15px] px-3 py-2.5 text-[13px] font-semibold text-white/65 transition-colors hover:bg-white/[0.06] hover:text-white"
-        >
-          <span className="flex items-center gap-3">
-            <PublicIcon sx={{ fontSize: 18 }} />
-            Back to Landing
-          </span>
-          <ArrowForwardIcon sx={{ fontSize: 15 }} />
-        </Link>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="mt-1 flex w-full items-center gap-3 rounded-[15px] px-3 py-2.5 text-[13px] font-semibold text-white/65 transition-colors hover:bg-white/[0.06] hover:text-white"
-        >
-          <LogoutIcon sx={{ fontSize: 18 }} />
-          Sign out
-        </button>
+      {/* Bottom Footer Actions */}
+      <div className="border-t border-white/10 p-3 space-y-1">
+        {collapsed ? (
+          <>
+            <Tooltip title="Back to Landing" placement="right" arrow>
+              <Link
+                to="/"
+                onClick={() => setSidebarOpen(false)}
+                className="flex h-11 w-11 items-center justify-center rounded-[12px] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white mx-auto"
+              >
+                <PublicIcon sx={{ fontSize: 20 }} />
+              </Link>
+            </Tooltip>
+            <Tooltip title="Sign out" placement="right" arrow>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex h-11 w-11 items-center justify-center rounded-[12px] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white mx-auto"
+              >
+                <LogoutIcon sx={{ fontSize: 20 }} />
+              </button>
+            </Tooltip>
+          </>
+        ) : (
+          <>
+            <Link
+              to="/"
+              onClick={() => setSidebarOpen(false)}
+              className="flex w-full items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px] font-semibold text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
+            >
+              <span className="flex items-center gap-3">
+                <PublicIcon sx={{ fontSize: 18 }} />
+                Back to Landing
+              </span>
+              <ArrowForwardIcon sx={{ fontSize: 15 }} />
+            </Link>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-[13px] font-semibold text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
+            >
+              <LogoutIcon sx={{ fontSize: 18 }} />
+              Sign out
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -510,8 +619,12 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
   return (
     <DashboardTheme>
       <div className="min-h-screen bg-bgsoft">
-        <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 lg:block">
-          {SidebarContent}
+        <aside
+          className={`fixed inset-y-0 left-0 z-30 hidden transition-all duration-300 ease-in-out lg:block ${
+            isCollapsed ? 'w-20' : 'w-72'
+          }`}
+        >
+          {renderSidebar(isCollapsed)}
         </aside>
 
         <Drawer
@@ -520,12 +633,17 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
           onClose={() => setSidebarOpen(false)}
           slotProps={{ paper: { sx: { width: 288 } } }}
         >
-          {SidebarContent}
+          {renderSidebar(false)}
         </Drawer>
 
-        <div className="lg:pl-72">
+        <div
+          className={`min-h-screen transition-all duration-300 ease-in-out ${
+            isCollapsed ? 'lg:pl-20' : 'lg:pl-72'
+          }`}
+        >
           <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-white/90 px-4 backdrop-blur-md sm:px-6">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Mobile Menu Button */}
               <IconButton
                 className="lg:hidden"
                 aria-label="Open menu"
@@ -533,6 +651,25 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
               >
                 <MenuIcon />
               </IconButton>
+
+              {/* Desktop Sidebar Collapse Toggle */}
+              <Tooltip title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+                <IconButton
+                  className="hidden lg:inline-flex"
+                  aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                  onClick={() => {
+                    setIsCollapsed((prev) => {
+                      const next = !prev;
+                      try { localStorage.setItem('nexus_sidebar_collapsed', String(next)); } catch {}
+                      return next;
+                    });
+                  }}
+                  sx={{ color: 'charcoal.soft', '&:hover': { color: 'primary.main', bgcolor: 'primary.soft' } }}
+                >
+                  {isCollapsed ? <MenuIcon /> : <MenuOpenIcon />}
+                </IconButton>
+              </Tooltip>
+
               <div className="hidden items-center gap-1.5 text-sm text-charcoal-faint sm:flex">
                 <span className="font-semibold text-charcoal">
                   {selectedInst?.name || 'Institution'}
