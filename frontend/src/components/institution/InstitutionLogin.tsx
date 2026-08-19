@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type FC, type FormEvent, type KeyboardEvent } from 'react';
+import { Link } from 'react-router-dom';
 import type { LoginResponse, OtpChallenge } from '../../types/institution';
 import { institutionApi } from '../../services/institutionApi';
 import {
@@ -421,6 +422,15 @@ export const InstitutionLogin: FC<InstitutionLoginProps> = ({
                       },
                     }}
                   />
+
+                  <div className="mt-1.5 flex justify-end">
+                    <Link
+                      to="/portal/forgot-password"
+                      className="text-xs font-semibold text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
 
                   <Button
                     type="submit"
