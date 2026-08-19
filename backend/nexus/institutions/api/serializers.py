@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
 from nexus.institutions.models import (
     Institution,
     InstitutionStatus,
@@ -27,6 +28,8 @@ from nexus.institutions.models import (
     InstitutionInvoice,
     InvoiceStatus,
 )
+
+User = get_user_model()
 
 
 class AcademicProgramSerializer(serializers.ModelSerializer):
@@ -479,6 +482,8 @@ class AuthUserSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     email = serializers.EmailField()
     name = serializers.CharField()
+    is_superuser = serializers.BooleanField()
+    is_staff = serializers.BooleanField()
     staff_profile = serializers.SerializerMethodField()
     staff_assignments = serializers.SerializerMethodField()
     student_profile = serializers.SerializerMethodField()
@@ -1032,6 +1037,8 @@ class InstitutionInvoiceSerializer(serializers.ModelSerializer):
     institution_status = serializers.CharField(source="institution.status", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     payment_receipt_url = serializers.SerializerMethodField()
+    confirmed_by_name = serializers.SerializerMethodField()
+    confirmed_by_email = serializers.SerializerMethodField()
 
     class Meta:
         model = InstitutionInvoice
@@ -1066,6 +1073,8 @@ class InstitutionInvoiceSerializer(serializers.ModelSerializer):
             "payment_notes",
             "payment_submitted_at",
             "confirmed_at",
+            "confirmed_by_name",
+            "confirmed_by_email",
             "created_at",
             "updated_at",
         ]
@@ -1099,6 +1108,12 @@ class InstitutionInvoiceSerializer(serializers.ModelSerializer):
             return obj.payment_receipt_file.url
         return None
 
+    def get_confirmed_by_name(self, obj):
+        return obj.confirmed_by.get_full_name() or obj.confirmed_by.email if obj.confirmed_by else None
+
+    def get_confirmed_by_email(self, obj):
+        return obj.confirmed_by.email if obj.confirmed_by else None
+
 
 class InvoiceSubmitPaymentSerializer(serializers.Serializer):
     payment_reference = serializers.CharField(required=True, max_length=100)
@@ -1107,6 +1122,56 @@ class InvoiceSubmitPaymentSerializer(serializers.Serializer):
     payment_date = serializers.DateField(required=False, allow_null=True)
     payment_receipt_file = serializers.FileField(required=False, allow_null=True)
     payment_notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    """Platform admin view of a user with their institution role(s)."""
+
+    staff_profile = serializers.SerializerMethodField()
+    student_profile = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "email",
+            "name",
+            "is_active",
+            "is_staff",
+            "is_superuser",
+            "date_joined",
+            "last_login",
+            "staff_profile",
+            "student_profile",
+        ]
+
+    def get_staff_profile(self, obj):
+        staff = (
+            obj.institution_staff_profiles.filter(is_active=True)
+            .select_related("institution")
+            .first()
+        )
+        if not staff:
+            return None
+        return {
+            "institution": str(staff.institution_id) if staff.institution_id else None,
+            "institution_name": staff.institution.name if staff.institution_id else None,
+            "role": staff.role,
+            "role_display": staff.get_role_display(),
+            "title": staff.title,
+        }
+
+    def get_student_profile(self, obj):
+        sp = getattr(obj, "student_profile", None)
+        if not sp:
+            return None
+        return {
+            "institution": str(sp.institution_id) if sp.institution_id else None,
+            "institution_name": sp.institution.name if sp.institution_id else None,
+            "program": sp.program.name if sp.program_id else None,
+            "matric_number": sp.matric_number,
+            "year_of_study": sp.year_of_study,
+        }
 
 
 class InstitutionRegistrationSerializer(serializers.Serializer):

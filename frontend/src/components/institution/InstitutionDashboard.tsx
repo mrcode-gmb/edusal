@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC } from 'react';
+import { useState, useEffect, useRef, type FC } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import type {
   InstitutionSummary,
@@ -19,6 +19,7 @@ import { StudentRoster } from './StudentRoster';
 import { PathwaysManager } from './PathwaysManager';
 import { StudentDashboard } from '../student/StudentDashboard';
 import { InstitutionalPaymentHub } from './InstitutionalPaymentHub';
+import { PlatformAdminDashboard } from '../admin/PlatformAdminDashboard';
 import { AddDivisionModal } from './AddDivisionModal';
 import { AddDepartmentModal } from './AddDepartmentModal';
 import { AddProgramModal } from './AddProgramModal';
@@ -113,6 +114,22 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Refresh the cached user once after mount so role fields (e.g. is_superuser)
+  // stay current even when localStorage holds an older auth payload.
+  const refreshedProfileRef = useRef(false);
+  useEffect(() => {
+    if (authToken && currentUser && !refreshedProfileRef.current) {
+      refreshedProfileRef.current = true;
+      institutionApi
+        .getMe(authToken)
+        .then((me) => {
+          setCurrentUser(me);
+          localStorage.setItem('nexus_auth_user', JSON.stringify(me));
+        })
+        .catch(() => {});
+    }
+  }, [authToken, currentUser]);
+
   const pathSeg = location.pathname.split('/').filter(Boolean).pop() || '';
   const activeTab: TabKey = PATH_TO_TAB[pathSeg] || 'pulse';
 
@@ -200,6 +217,19 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
       <InstitutionLogin
         initialRole={initialRole}
         onLoginSuccess={handleLoginSuccess}
+        onBackToLanding={onBackToLanding}
+      />
+    );
+  }
+
+  // Platform super administrators always land on the Platform Admin dashboard
+  // to manage all tenants, invoices and payments.
+  if (currentUser.is_superuser) {
+    return (
+      <PlatformAdminDashboard
+        currentUser={currentUser}
+        token={authToken}
+        onLogout={handleLogout}
         onBackToLanding={onBackToLanding}
       />
     );

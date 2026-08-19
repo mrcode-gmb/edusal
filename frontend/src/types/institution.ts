@@ -384,6 +384,8 @@ export interface AuthUser {
   id: number;
   email: string;
   name: string;
+  is_superuser: boolean;
+  is_staff: boolean;
   staff_profile: InstitutionStaff | null;
   staff_assignments?: StaffAssignment[];
   student_profile?: StudentProfile | null;
@@ -853,6 +855,8 @@ export interface InstitutionInvoice {
   payment_notes?: string;
   payment_submitted_at?: string | null;
   confirmed_at?: string | null;
+  confirmed_by_name?: string | null;
+  confirmed_by_email?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -889,6 +893,142 @@ export interface InstitutionRegistrationResponse {
   institution: InstitutionSummary;
   invoice: InstitutionInvoice;
   message: string;
+}
+
+export interface AdminInstitutionRow {
+  id: string;
+  name: string;
+  short_name: string;
+  slug: string;
+  institution_type: string;
+  institution_type_display: string;
+  ownership: string;
+  ownership_display: string;
+  regulator: string;
+  regulator_display: string;
+  state: string;
+  status: string;
+  status_display: string;
+  is_founding_partner: boolean;
+  created_at: string;
+  students_count: number;
+  staff_count: number;
+  divisions_count: number;
+  departments_count: number;
+  programs_count: number;
+  latest_invoice: {
+    invoice_number: string;
+    total_amount: number;
+    currency: string;
+    status: string;
+    status_display: string;
+  } | null;
+}
+
+export interface AdminInvoiceRow {
+  id: string;
+  invoice_number: string;
+  institution: string;
+  institution_name: string;
+  institution_short_name: string;
+  institution_status: string;
+  plan_name: string;
+  total_amount: number;
+  currency: string;
+  status: string;
+  status_display: string;
+  due_date?: string | null;
+  payment_reference?: string | null;
+  payment_submitted_at?: string | null;
+  confirmed_at?: string | null;
+  created_at: string;
+}
+
+export interface PlatformAdminOverview {
+  totals: {
+    institutions: number;
+    users: number;
+    staff: number;
+    students: number;
+    divisions: number;
+    departments: number;
+    programs: number;
+    pathways: number;
+    invoices: number;
+  };
+  institutions_by_status: Record<string, number>;
+  invoices_by_status: Record<string, number>;
+  plans: Record<string, number>;
+  revenue: {
+    total_billed: number;
+    total_paid: number;
+    outstanding: number;
+    currency: string;
+  };
+  institutions: AdminInstitutionRow[];
+  recent_invoices: AdminInvoiceRow[];
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  name: string;
+  is_active: boolean;
+  is_staff: boolean;
+  is_superuser: boolean;
+  date_joined: string;
+  last_login?: string | null;
+  staff_profile: {
+    institution: string | null;
+    institution_name?: string | null;
+    role: string | null;
+    role_display: string | null;
+    title: string;
+  } | null;
+  student_profile: {
+    institution: string | null;
+    institution_name?: string | null;
+    program?: string | null;
+    matric_number?: string | null;
+    year_of_study?: number | null;
+  } | null;
+}
+
+export interface AdminInstitutionDetail {
+  id: string;
+  name: string;
+  short_name: string;
+  slug: string;
+  institution_type: string;
+  institution_type_display: string;
+  ownership: string;
+  ownership_display: string;
+  regulator: string;
+  regulator_display: string;
+  tier_two_term: string;
+  state: string;
+  address: string;
+  domain_whitelist: string[];
+  is_founding_partner: boolean;
+  status: InstitutionStatus;
+  status_display: string;
+  created_at: string;
+  updated_at: string;
+  totals: {
+    students: number;
+    staff: number;
+    divisions: number;
+    departments: number;
+    programs: number;
+    pathways: number;
+    invoices: number;
+  };
+  students: StudentProfile[];
+  staff: InstitutionStaff[];
+  divisions: AcademicDivision[];
+  programs: AcademicProgram[];
+  pathways: Pathway[];
+  invoices: InstitutionInvoice[];
 }
 
 

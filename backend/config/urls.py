@@ -27,7 +27,7 @@ urlpatterns = [
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]
 
-from nexus.institutions.api.views import AuthLoginView, AuthMeView, AuthLogoutView, InstitutionRegistrationView
+from nexus.institutions.api.views import AuthLoginView, AuthMeView, AuthLogoutView, InstitutionRegistrationView, PlatformAdminOverviewView, AdminInstitutionDetailView, AdminInstitutionStatusView
 
 # API URLS
 urlpatterns += [
@@ -36,6 +36,17 @@ urlpatterns += [
     path("api/auth/login/", AuthLoginView.as_view(), name="auth-login"),
     path("api/auth/me/", AuthMeView.as_view(), name="auth-me"),
     path("api/auth/logout/", AuthLogoutView.as_view(), name="auth-logout"),
+    path("api/admin/overview/", PlatformAdminOverviewView.as_view(), name="admin-overview"),
+    path(
+        "api/admin/institutions/<uuid:institution_id>/",
+        AdminInstitutionDetailView.as_view(),
+        name="admin-institution-detail",
+    ),
+    path(
+        "api/admin/institutions/<uuid:institution_id>/<str:action>/",
+        AdminInstitutionStatusView.as_view(),
+        name="admin-institution-status",
+    ),
     path("api/", include("nexus.core.urls")),
     path("api/", include("config.api_router")),
     # DRF auth token

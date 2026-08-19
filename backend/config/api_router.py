@@ -24,6 +24,10 @@ from nexus.institutions.api.views import (
     CompanyBankDetailViewSet,
     PricingPlanViewSet,
     InstitutionInvoiceViewSet,
+    AdminBankDetailViewSet,
+    AdminPricingPlanViewSet,
+    AdminInvoiceViewSet,
+    AdminUserViewSet,
 )
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
@@ -49,6 +53,12 @@ router.register("counselling-case-notes", CounsellingCaseNoteViewSet, basename="
 router.register("company-bank-details", CompanyBankDetailViewSet, basename="company-bank-detail")
 router.register("pricing-plans", PricingPlanViewSet, basename="pricing-plan")
 router.register("invoices", InstitutionInvoiceViewSet, basename="invoice")
+
+# Platform Admin Console (super admins only)
+router.register("admin/bank-details", AdminBankDetailViewSet, basename="admin-bank-detail")
+router.register("admin/pricing-plans", AdminPricingPlanViewSet, basename="admin-pricing-plan")
+router.register("admin/invoices", AdminInvoiceViewSet, basename="admin-invoice")
+router.register("admin/users", AdminUserViewSet, basename="admin-user")
 
 
 app_name = "api"

@@ -7,6 +7,7 @@ import {
 } from './auth/AuthPages'
 import InstitutionRegister from './auth/InstitutionRegister'
 import { InstitutionDashboard } from './components/institution/InstitutionDashboard'
+import { SEOHead } from './components/SEOHead'
 import {
   createTheme,
   ThemeProvider,
@@ -2541,6 +2542,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <SEOHead />
       <Routes>
         <Route path="/" element={<Landing />} />
         {/* /portal/login redirects into the institution portal which shows its own login screen */}

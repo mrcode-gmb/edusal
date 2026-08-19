@@ -1,14 +1,19 @@
 import hashlib
+from decimal import Decimal
 from django.utils import timezone
 from django.contrib.auth import authenticate, get_user_model
 from django.db import transaction
 from django.db.models import Count, Q
-from rest_framework import status, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from django.http import HttpResponse
+
+from nexus.institutions.services.invoice_pdf import build_invoice_pdf
 
 from nexus.institutions.models import (
     Institution,
@@ -97,10 +102,20 @@ from .serializers import (
     PricingPlanSerializer,
     InstitutionInvoiceSerializer,
     InvoiceSubmitPaymentSerializer,
+    AdminUserSerializer,
     InstitutionRegistrationSerializer,
 )
 
 User = get_user_model()
+
+
+def duplicate_error(message: str) -> Response:
+    """Standard 400 response for a uniqueness violation with a clear English message.
+
+    Used instead of letting DB IntegrityErrors surface as 500s: every unique
+    field is checked before insert so the caller sees an understandable error.
+    """
+    return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
@@ -652,6 +667,383 @@ class AuthLogoutView(APIView):
         return Response({"status": "ok", "message": "Successfully logged out."})
 
 
+class IsPlatformAdmin(permissions.BasePermission):
+    """Allows access only to platform super administrators."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and user.is_superuser)
+
+
+class PlatformAdminOverviewView(APIView):
+    """Platform-wide overview for system super administrators.
+
+    Aggregates every institution tenant, subscription invoice and payment
+    status into a single payload powering the platform admin dashboard.
+    """
+
+    permission_classes = [IsPlatformAdmin]
+
+    def get(self, request):
+        institutions = list(
+            Institution.objects.annotate(
+                students_count=Count("students", distinct=True),
+                staff_count=Count("staff_members", distinct=True),
+                divisions_count=Count("divisions", distinct=True),
+                departments_count=Count("departments", distinct=True),
+                programs_count=Count("programs", distinct=True),
+            ).order_by("name")
+        )
+
+        invoices = list(
+            InstitutionInvoice.objects.select_related("institution", "plan").order_by("-created_at")
+        )
+
+        institutions_by_status = {s.value: 0 for s in InstitutionStatus}
+        for inst in institutions:
+            institutions_by_status[inst.status] = institutions_by_status.get(inst.status, 0) + 1
+
+        invoices_by_status = {s.value: 0 for s in InvoiceStatus}
+        plan_counts: dict[str, int] = {}
+        for inv in invoices:
+            invoices_by_status[inv.status] = invoices_by_status.get(inv.status, 0) + 1
+            plan_key = inv.plan_name or "Unassigned"
+            plan_counts[plan_key] = plan_counts.get(plan_key, 0) + 1
+
+        paid_total = Decimal("0.00")
+        billed_total = Decimal("0.00")
+        outstanding_total = Decimal("0.00")
+        for inv in invoices:
+            billed_total += inv.total_amount
+            if inv.status == InvoiceStatus.PAID:
+                paid_total += inv.total_amount
+            elif inv.status in (InvoiceStatus.UNPAID, InvoiceStatus.PAYMENT_SUBMITTED):
+                outstanding_total += inv.total_amount
+
+        latest_by_institution = {}
+        for inv in invoices:
+            latest_by_institution.setdefault(str(inv.institution_id), inv)
+
+        institution_rows = []
+        for inst in institutions:
+            latest = latest_by_institution.get(str(inst.id))
+            institution_rows.append(
+                {
+                    "id": str(inst.id),
+                    "name": inst.name,
+                    "short_name": inst.short_name,
+                    "slug": inst.slug,
+                    "institution_type": inst.institution_type,
+                    "institution_type_display": inst.get_institution_type_display(),
+                    "ownership": inst.ownership,
+                    "ownership_display": inst.get_ownership_display(),
+                    "regulator": inst.regulator,
+                    "regulator_display": inst.get_regulator_display(),
+                    "state": inst.state,
+                    "status": inst.status,
+                    "status_display": inst.get_status_display(),
+                    "is_founding_partner": inst.is_founding_partner,
+                    "created_at": inst.created_at.isoformat(),
+                    "students_count": inst.students_count,
+                    "staff_count": inst.staff_count,
+                    "divisions_count": inst.divisions_count,
+                    "departments_count": inst.departments_count,
+                    "programs_count": inst.programs_count,
+                    "latest_invoice": (
+                        {
+                            "invoice_number": latest.invoice_number,
+                            "total_amount": float(latest.total_amount),
+                            "currency": latest.currency,
+                            "status": latest.status,
+                            "status_display": latest.get_status_display(),
+                        }
+                        if latest
+                        else None
+                    ),
+                }
+            )
+
+        recent_invoices = []
+        for inv in invoices[:8]:
+            recent_invoices.append(
+                {
+                    "id": str(inv.id),
+                    "invoice_number": inv.invoice_number,
+                    "institution": str(inv.institution_id),
+                    "institution_name": inv.institution.name,
+                    "institution_short_name": inv.institution.short_name,
+                    "institution_status": inv.institution.status,
+                    "plan_name": inv.plan_name,
+                    "total_amount": float(inv.total_amount),
+                    "currency": inv.currency,
+                    "status": inv.status,
+                    "status_display": inv.get_status_display(),
+                    "due_date": inv.due_date.isoformat() if inv.due_date else None,
+                    "payment_reference": inv.payment_reference or None,
+                    "payment_submitted_at": (
+                        inv.payment_submitted_at.isoformat() if inv.payment_submitted_at else None
+                    ),
+                    "confirmed_at": inv.confirmed_at.isoformat() if inv.confirmed_at else None,
+                    "created_at": inv.created_at.isoformat(),
+                }
+            )
+
+        return Response(
+            {
+                "totals": {
+                    "institutions": len(institutions),
+                    "users": User.objects.filter(is_active=True).count(),
+                    "staff": InstitutionStaff.objects.filter(is_active=True).count(),
+                    "students": StudentProfile.objects.count(),
+                    "divisions": AcademicDivision.objects.count(),
+                    "departments": Department.objects.count(),
+                    "programs": AcademicProgram.objects.count(),
+                    "pathways": Pathway.objects.count(),
+                    "invoices": len(invoices),
+                },
+                "institutions_by_status": institutions_by_status,
+                "invoices_by_status": invoices_by_status,
+                "plans": plan_counts,
+                "revenue": {
+                    "total_billed": float(billed_total),
+                    "total_paid": float(paid_total),
+                    "outstanding": float(outstanding_total),
+                    "currency": "NGN",
+                },
+                "institutions": institution_rows,
+                "recent_invoices": recent_invoices,
+            }
+        )
+
+
+class AdminBankDetailViewSet(viewsets.ModelViewSet):
+    """Admin console: full CRUD over company bank accounts for invoices."""
+
+    queryset = CompanyBankDetail.objects.all().order_by("-is_active", "-created_at")
+    serializer_class = CompanyBankDetailSerializer
+    permission_classes = [IsPlatformAdmin]
+
+
+class AdminPricingPlanViewSet(viewsets.ModelViewSet):
+    """Admin console: full CRUD over pricing plans & fee structures."""
+
+    queryset = PricingPlan.objects.all().order_by("base_fee")
+    serializer_class = PricingPlanSerializer
+    permission_classes = [IsPlatformAdmin]
+
+
+class AdminInvoiceViewSet(viewsets.ReadOnlyModelViewSet):
+    """Admin console: read-only invoices plus confirm/reject verification actions."""
+
+    queryset = (
+        InstitutionInvoice.objects.all()
+        .select_related("institution", "plan", "confirmed_by")
+        .order_by("-created_at")
+    )
+    serializer_class = InstitutionInvoiceSerializer
+    permission_classes = [IsPlatformAdmin]
+
+    @action(detail=True, methods=["get"], url_path="pdf")
+    def download_pdf(self, request, pk=None):
+        """Return a professional printable PDF of the invoice (with payment evidence)."""
+        invoice = self.get_object()
+        pdf_bytes = build_invoice_pdf(invoice)
+        filename = f"{invoice.invoice_number}.pdf".replace(" ", "_")
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=True, methods=["post"], url_path="confirm")
+    def confirm(self, request, pk=None):
+        invoice = self.get_object()
+        invoice.status = InvoiceStatus.PAID
+        invoice.confirmed_by = request.user
+        invoice.confirmed_at = timezone.now()
+        invoice.admin_notes = request.data.get("admin_notes", "")
+        invoice.save()
+        institution = invoice.institution
+        if institution.status != InstitutionStatus.ACTIVE:
+            institution.status = InstitutionStatus.ACTIVE
+            institution.save(update_fields=["status", "updated_at"])
+        return Response(
+            InstitutionInvoiceSerializer(invoice, context={"request": request}).data
+        )
+
+    @action(detail=True, methods=["post"], url_path="reject")
+    def reject(self, request, pk=None):
+        invoice = self.get_object()
+        invoice.status = InvoiceStatus.REJECTED
+        invoice.confirmed_by = request.user
+        invoice.confirmed_at = timezone.now()
+        invoice.admin_notes = request.data.get("admin_notes", "")
+        invoice.save()
+        institution = invoice.institution
+        if institution.status != InstitutionStatus.REJECTED:
+            institution.status = InstitutionStatus.REJECTED
+            institution.save(update_fields=["status", "updated_at"])
+        return Response(
+            InstitutionInvoiceSerializer(invoice, context={"request": request}).data
+        )
+
+
+class AdminUserViewSet(viewsets.ReadOnlyModelViewSet):
+    """Admin console: browse every platform user with their roles."""
+
+    serializer_class = AdminUserSerializer
+    permission_classes = [IsPlatformAdmin]
+
+    def get_queryset(self):
+        qs = User.objects.all().order_by("-date_joined")
+        search = self.request.query_params.get("search")
+        if search:
+            qs = qs.filter(Q(email__icontains=search) | Q(name__icontains=search))
+        return qs.prefetch_related(
+            "institution_staff_profiles", "student_profile", "staff_assignments"
+        )
+
+
+class AdminInstitutionDetailView(APIView):
+    """Platform admin drill-down into a single institution tenant.
+
+    Returns the tenant profile plus every related record (students, staff,
+    divisions/departments/programs, pathways, invoices) in one prefetched
+    payload so the admin console renders fast without N+1 queries.
+    """
+
+    permission_classes = [IsPlatformAdmin]
+
+    def get(self, request, institution_id):
+        inst = (
+            Institution.objects.prefetch_related(
+                "students",
+                "students__program__department__division",
+                "students__entry_session",
+                "staff_members",
+                "staff_members__user",
+                "staff_members__division",
+                "staff_members__department",
+                "divisions",
+                "divisions__departments",
+                "divisions__departments__programs",
+                "programs",
+                "programs__department__division",
+                "pathways",
+                "pathways__program__department__division",
+                "pathways__created_by",
+                "invoices",
+                "invoices__plan",
+                "invoices__confirmed_by",
+            )
+            .filter(id=institution_id)
+            .first()
+        )
+        if inst is None:
+            return Response(
+                {"detail": "Institution not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        students = inst.students.all()
+        staff = inst.staff_members.all()
+        divisions = inst.divisions.all()
+        programs = inst.programs.all()
+        pathways = inst.pathways.all()
+        invoices = inst.invoices.all()
+        departments = Department.objects.filter(institution=inst)
+
+        return Response(
+            {
+                "id": str(inst.id),
+                "name": inst.name,
+                "short_name": inst.short_name,
+                "slug": inst.slug,
+                "institution_type": inst.institution_type,
+                "institution_type_display": inst.get_institution_type_display(),
+                "ownership": inst.ownership,
+                "ownership_display": inst.get_ownership_display(),
+                "regulator": inst.regulator,
+                "regulator_display": inst.get_regulator_display(),
+                "tier_two_term": inst.tier_two_term,
+                "state": inst.state,
+                "address": inst.address,
+                "domain_whitelist": inst.domain_whitelist,
+                "is_founding_partner": inst.is_founding_partner,
+                "status": inst.status,
+                "status_display": inst.get_status_display(),
+                "created_at": inst.created_at.isoformat(),
+                "updated_at": inst.updated_at.isoformat(),
+                "totals": {
+                    "students": students.count(),
+                    "staff": staff.count(),
+                    "divisions": divisions.count(),
+                    "departments": departments.count(),
+                    "programs": programs.count(),
+                    "pathways": pathways.count(),
+                    "invoices": invoices.count(),
+                },
+                "students": StudentProfileSerializer(
+                    students, many=True, context={"request": request}
+                ).data,
+                "staff": InstitutionStaffSerializer(
+                    staff, many=True, context={"request": request}
+                ).data,
+                "divisions": AcademicDivisionSerializer(
+                    divisions, many=True, context={"request": request}
+                ).data,
+                "programs": AcademicProgramSerializer(
+                    programs, many=True, context={"request": request}
+                ).data,
+                "pathways": PathwayListSerializer(
+                    pathways, many=True, context={"request": request}
+                ).data,
+                "invoices": InstitutionInvoiceSerializer(
+                    invoices, many=True, context={"request": request}
+                ).data,
+            }
+        )
+
+
+class AdminInstitutionStatusView(APIView):
+    """Platform admin: deactivate (suspend) or reactivate an institution tenant."""
+
+    permission_classes = [IsPlatformAdmin]
+
+    def post(self, request, institution_id, action):
+        if action not in ("deactivate", "reactivate"):
+            return Response(
+                {"detail": "Invalid action."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        inst = Institution.objects.filter(id=institution_id).first()
+        if inst is None:
+            return Response(
+                {"detail": "Institution not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if action == "deactivate":
+            if inst.status == InstitutionStatus.SUSPENDED:
+                return Response(
+                    {"detail": "Institution is already deactivated.", "status": inst.status},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            inst.status = InstitutionStatus.SUSPENDED
+            detail = "Institution deactivated."
+        else:
+            inst.status = InstitutionStatus.ACTIVE
+            detail = "Institution reactivated."
+
+        inst.save(update_fields=["status", "updated_at"])
+        return Response(
+            {
+                "detail": detail,
+                "status": inst.status,
+                "status_display": inst.get_status_display(),
+            }
+        )
+
+
 def get_staff_scoped_students(user, institution_id=None):
     """
     Returns StudentProfile QuerySet restricted strictly to the staff member's
@@ -824,8 +1216,22 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
+        email = data["email"].lower().strip()
+        matric = data["matric_number"].strip()
+
+        # Matric number is unique per institution — check before insert so the
+        # caller gets a clear message instead of a DB IntegrityError (500).
+        existing_user = User.objects.filter(email=email).first()
+        if StudentProfile.objects.filter(
+            institution_id=data["institution"],
+            matric_number__iexact=matric,
+        ).exclude(user_id=existing_user.id if existing_user else -1).exists():
+            return duplicate_error(
+                f"A student with matric number '{matric}' is already registered in this institution. "
+                "Matric numbers must be unique per institution."
+            )
+
         with transaction.atomic():
-            email = data["email"].lower().strip()
             user, created = User.objects.get_or_create(
                 email=email,
                 defaults={"name": data["name"]},
@@ -844,7 +1250,7 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
                 defaults={
                     "institution": institution,
                     "program": program,
-                    "matric_number": data["matric_number"].strip(),
+                    "matric_number": matric,
                     "jamb_reg_number": data.get("jamb_reg_number", "").strip(),
                     "entry_session": session,
                     "entry_mode": data.get("entry_mode", "UTME"),
@@ -1698,6 +2104,30 @@ class InstitutionRegistrationView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Check existing institution by name (case-insensitive) — name is unique
+        if Institution.objects.filter(name__iexact=legal_name).exists():
+            return duplicate_error(
+                f"'{legal_name}' is already registered on the Nexus platform. "
+                "If this is your institution, please contact support to claim your tenant."
+            )
+
+        # Reject duplicate faculty/school names before the unique-together insert
+        faculties = data.get("faculties", [])
+        clean_faculties = [f.strip() for f in faculties if f and f.strip()]
+        seen_faculties: dict[str, str] = {}
+        duplicate_faculties: list[str] = []
+        for faculty_name in clean_faculties:
+            key = faculty_name.casefold()
+            if key in seen_faculties:
+                duplicate_faculties.append(faculty_name)
+            seen_faculties[key] = faculty_name
+        if duplicate_faculties:
+            return duplicate_error(
+                "Duplicate division/faculty name(s) in the list: "
+                + ", ".join(dict.fromkeys(duplicate_faculties))
+                + ". Each faculty/school must have a unique name."
+            )
+
         # Check existing institution
         base_slug = slugify(short_name) or slugify(legal_name) or f"inst-{random.randint(100, 999)}"
         slug = base_slug
@@ -1749,8 +2179,7 @@ class InstitutionRegistrationView(APIView):
             )
 
             # 4. Create Scoped Divisions
-            faculties = data.get("faculties", [])
-            for idx, faculty_name in enumerate(faculties, start=1):
+            for idx, faculty_name in enumerate(clean_faculties, start=1):
                 clean_name = faculty_name.strip()
                 if clean_name:
                     code = "".join([w[0] for w in clean_name.split() if w]).upper()[:6] or f"FAC{idx}"

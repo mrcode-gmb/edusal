@@ -1,0 +1,21 @@
+# Robots.txt for Nexus Edutech Consult Ltd (Edusal Consult)
+# https://edusal.ng
+
+User-agent: *
+Allow: /
+Allow: /portal/register/institution
+Allow: /portal/register
+Allow: /portal/login
+Allow: /logo.png
+Allow: /favicon.ico
+Allow: /sitemap.xml
+Allow: /manifest.json
+
+# Disallow private API endpoints & token paths from indexing
+Disallow: /api/
+Disallow: /admin/
+Disallow: /portal/reset-password
+Disallow: /portal/forgot-password
+
+# Search Engine Sitemaps
+Sitemap: https://edusal.ng/sitemap.xml

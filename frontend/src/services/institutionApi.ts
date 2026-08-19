@@ -12,6 +12,19 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 
+async function adminFetch<T>(url: string, token: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Token ${token}`,
+  };
+  const res = await fetch(`${API_BASE}${url}`, { ...init, headers });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || errData.error || `HTTP ${res.status}: Request failed`);
+  }
+  return res.json();
+}
+
 export const institutionApi = {
   // Institutions List & Summary
   async getInstitutions(params?: Record<string, string>): Promise<InstitutionSummary[]> {
@@ -256,6 +269,117 @@ export const institutionApi = {
         Authorization: `Token ${token}`,
       },
     }).catch(() => {});
+  },
+
+  // Platform Admin Overview (super admins only)
+  async getAdminOverview(
+    token: string
+  ): Promise<import('../types/institution').PlatformAdminOverview> {
+    const res = await fetch(`${API_BASE}/api/admin/overview/`, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Token ${token}`,
+      },
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || `HTTP ${res.status}: Failed to fetch platform overview`);
+    }
+    return res.json();
+  },
+
+  // ---- Platform Admin Console: Bank Details ----
+  getAdminBankDetails(token: string) {
+    return adminFetch<import('../types/institution').CompanyBankDetail[]>(
+      '/api/admin/bank-details/', token
+    );
+  },
+  createAdminBankDetail(token: string, data: Record<string, unknown>) {
+    return adminFetch<import('../types/institution').CompanyBankDetail>(
+      '/api/admin/bank-details/', token, { method: 'POST', body: JSON.stringify(data) }
+    );
+  },
+  updateAdminBankDetail(token: string, id: string, data: Record<string, unknown>) {
+    return adminFetch<import('../types/institution').CompanyBankDetail>(
+      `/api/admin/bank-details/${id}/`, token, { method: 'PUT', body: JSON.stringify(data) }
+    );
+  },
+  deleteAdminBankDetail(token: string, id: string) {
+    return adminFetch<{ message?: string }>(
+      `/api/admin/bank-details/${id}/`, token, { method: 'DELETE' }
+    );
+  },
+
+  // ---- Platform Admin Console: Pricing Plans ----
+  getAdminPricingPlans(token: string) {
+    return adminFetch<import('../types/institution').PricingPlan[]>(
+      '/api/admin/pricing-plans/', token
+    );
+  },
+  createAdminPricingPlan(token: string, data: Record<string, unknown>) {
+    return adminFetch<import('../types/institution').PricingPlan>(
+      '/api/admin/pricing-plans/', token, { method: 'POST', body: JSON.stringify(data) }
+    );
+  },
+  updateAdminPricingPlan(token: string, id: string, data: Record<string, unknown>) {
+    return adminFetch<import('../types/institution').PricingPlan>(
+      `/api/admin/pricing-plans/${id}/`, token, { method: 'PUT', body: JSON.stringify(data) }
+    );
+  },
+  deleteAdminPricingPlan(token: string, id: string) {
+    return adminFetch<{ message?: string }>(
+      `/api/admin/pricing-plans/${id}/`, token, { method: 'DELETE' }
+    );
+  },
+
+  // ---- Platform Admin Console: Invoices ----
+  getAdminInvoices(token: string) {
+    return adminFetch<import('../types/institution').InstitutionInvoice[]>(
+      '/api/admin/invoices/', token
+    );
+  },
+  confirmAdminInvoice(token: string, id: string, admin_notes?: string) {
+    return adminFetch<import('../types/institution').InstitutionInvoice>(
+      `/api/admin/invoices/${id}/confirm/`, token, {
+        method: 'POST',
+        body: JSON.stringify({ admin_notes: admin_notes || '' }),
+      }
+    );
+  },
+  rejectAdminInvoice(token: string, id: string, admin_notes?: string) {
+    return adminFetch<import('../types/institution').InstitutionInvoice>(
+      `/api/admin/invoices/${id}/reject/`, token, {
+        method: 'POST',
+        body: JSON.stringify({ admin_notes: admin_notes || '' }),
+      }
+    );
+  },
+  async downloadAdminInvoicePdf(token: string, id: string): Promise<Blob> {
+    const res = await fetch(`${API_BASE}/api/admin/invoices/${id}/pdf/`, {
+      headers: { Authorization: `Token ${token}` },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to generate invoice PDF`);
+    return res.blob();
+  },
+
+  // ---- Platform Admin Console: Users ----
+  getAdminUsers(token: string, search?: string) {
+    const q = search ? `?search=${encodeURIComponent(search)}` : '';
+    return adminFetch<import('../types/institution').AdminUser[]>(
+      `/api/admin/users/${q}`, token
+    );
+  },
+
+  // ---- Platform Admin Console: Institution Drill-Down ----
+  getAdminInstitutionDetail(token: string, id: string) {
+    return adminFetch<import('../types/institution').AdminInstitutionDetail>(
+      `/api/admin/institutions/${id}/`, token
+    );
+  },
+  setAdminInstitutionStatus(token: string, id: string, action: 'deactivate' | 'reactivate') {
+    return adminFetch<{ detail: string; status: import('../types/institution').InstitutionStatus; status_display: string }>(
+      `/api/admin/institutions/${id}/${action}/`, token, { method: 'POST' }
+    );
   },
 
   // Staff & Faculty Directory
