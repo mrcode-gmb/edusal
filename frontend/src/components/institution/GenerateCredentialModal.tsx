@@ -6,8 +6,12 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DialogActions,
   IconButton,
   TextField,
+  Chip,
+  Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import {
   Key as KeyIcon,
@@ -15,6 +19,9 @@ import {
   AutoAwesome as SparklesIcon,
   OpenInNew as ExternalLinkIcon,
   Close as CloseIcon,
+  ContentCopy as CopyIcon,
+  Check as CheckIcon,
+  Email as EmailIcon,
 } from '@mui/icons-material';
 
 interface GenerateCredentialModalProps {
@@ -34,6 +41,7 @@ export const GenerateCredentialModal: FC<GenerateCredentialModalProps> = ({
 }) => {
   const [customPassword, setCustomPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<StudentCredentialResult | null>(null);
 
   if (!isOpen) return null;
@@ -59,155 +67,192 @@ export const GenerateCredentialModal: FC<GenerateCredentialModalProps> = ({
     }
   };
 
+  const handleCopyPassword = () => {
+    if (!result?.plain_password) return;
+    navigator.clipboard.writeText(result.plain_password);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
   return (
     <Dialog
       open={isOpen}
-      onClose={onClose}
-      maxWidth="md"
+      onClose={() => !isSubmitting && onClose()}
+      maxWidth="sm"
       fullWidth
-      slotProps={{ paper: { sx: { borderRadius: '15px' } } }}
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: '20px',
+            p: 0.5,
+          },
+        },
+      }}
     >
       <DialogTitle
         sx={{
-          p: 3,
-          pb: 2,
+          p: 2.5,
+          pb: 1.5,
           display: 'flex',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 2,
+          borderBottom: '1px solid #f1f5f9',
         }}
       >
-        <div className="flex items-start gap-2">
-          <KeyIcon sx={{ fontSize: 22, color: 'primary.main', mt: 0.5 }} />
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+            <KeyIcon />
+          </span>
           <div>
-            <p className="text-base font-bold text-charcoal">
-              Generate Student Login Credentials
-            </p>
-            <p className="mt-0.5 text-sm text-charcoal-faint">
-              Issue password and dispatch welcome email via Mailpit SMTP
+            <h3 className="text-base font-bold text-charcoal">
+              Set Student Password & Dispatch Credentials
+            </h3>
+            <p className="text-xs text-charcoal-faint">
+              Issue temporary login password and send welcome email to student.
             </p>
           </div>
         </div>
-        <IconButton size="medium" onClick={onClose}>
+        <IconButton size="small" onClick={onClose} disabled={isSubmitting}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
-      <DialogContent sx={{ p: 3, pt: 1 }}>
+
+      <DialogContent sx={{ p: 2.5, pt: 2 }}>
         {result ? (
-          <div>
-            <div className="flex items-center gap-3 rounded-[15px] bg-primary-soft/40 p-4">
-              <CheckCircleIcon sx={{ fontSize: 28, color: 'primary.main' }} />
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 rounded-[16px] bg-primary-soft/50 p-4 border border-primary/20">
+              <CheckCircleIcon sx={{ fontSize: 26, color: 'primary.main' }} />
               <div>
-                <p className="text-base font-bold text-charcoal">
+                <p className="text-sm font-bold text-charcoal">
                   Credentials Generated & Email Sent!
                 </p>
-                <p className="text-sm text-charcoal-faint">
-                  Welcome email dispatched via SMTP to <strong>{result.recipient}</strong>
+                <p className="text-xs text-charcoal-faint">
+                  Welcome email dispatched via SMTP to <strong className="break-all">{result.recipient}</strong>
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 rounded-[15px] bg-bgsoft p-5">
-              <div className="space-y-2.5 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-charcoal-faint">Student Name</span>
-                  <strong className="text-charcoal">{student.user_name}</strong>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-charcoal-faint">Matric Number</span>
-                  <strong className="text-charcoal">{student.matric_number}</strong>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-charcoal-faint">Login Email</span>
-                  <strong className="text-charcoal">{result.email}</strong>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-charcoal-faint">Generated Password</span>
-                  <code className="rounded bg-primary-soft px-2 py-0.5 font-mono text-primary">
+            <div className="rounded-[16px] bg-bgsoft p-4 border border-line space-y-2.5 text-xs">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-charcoal-faint font-semibold">Student Name:</span>
+                <strong className="text-charcoal text-right">{student.user_name}</strong>
+              </div>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-charcoal-faint font-semibold">Matric Number:</span>
+                <strong className="text-charcoal font-mono text-right">{student.matric_number}</strong>
+              </div>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-charcoal-faint font-semibold">Login Email:</span>
+                <strong className="text-charcoal break-all text-right font-mono">{result.email}</strong>
+              </div>
+              <div className="pt-2 border-t border-line flex items-center justify-between gap-2">
+                <span className="text-charcoal-faint font-semibold">Generated Password:</span>
+                <div className="flex items-center gap-1.5">
+                  <code className="rounded-lg bg-primary-soft px-2.5 py-1 font-mono text-xs font-bold text-primary">
                     {result.plain_password}
                   </code>
+                  <Tooltip title={copied ? 'Copied!' : 'Copy Password'}>
+                    <IconButton size="small" onClick={handleCopyPassword} color="primary">
+                      {copied ? <CheckIcon fontSize="small" /> : <CopyIcon fontSize="small" />}
+                    </IconButton>
+                  </Tooltip>
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 rounded-[15px] bg-bgsoft p-4">
-              <p className="text-sm text-charcoal-faint">
-                You can inspect this email immediately in the local Mailpit web console:
+            <div className="rounded-[14px] bg-amber-50/60 p-3.5 border border-amber-200/60 text-xs text-charcoal space-y-2">
+              <p className="font-semibold text-amber-900 flex items-center gap-1.5">
+                <EmailIcon sx={{ fontSize: 16 }} />
+                Inspect in Local Mailpit Console:
+              </p>
+              <p className="text-charcoal-faint">
+                You can test and view the formatted student onboarding email in Mailpit:
               </p>
               <Button
                 variant="outlined"
                 color="inherit"
-                className="mt-2"
+                size="small"
                 component="a"
                 href="http://localhost:8025"
                 target="_blank"
                 rel="noreferrer"
-                startIcon={<ExternalLinkIcon />}
-                sx={{ color: 'primary.main', borderColor: 'primary.main' }}
+                startIcon={<ExternalLinkIcon fontSize="small" />}
+                sx={{ borderRadius: '8px', textTransform: 'none', color: 'primary.main', borderColor: 'primary.main', fontWeight: 600 }}
               >
                 Open Mailpit Inbox (Port 8025)
               </Button>
             </div>
-
-            <div className="flex justify-end pt-4">
-              <Button variant="contained" color="primary" onClick={onClose}>
-                Done
-              </Button>
-            </div>
           </div>
         ) : (
-          <form onSubmit={handleGenerate} className="space-y-5">
-            <div className="rounded-[15px] bg-bgsoft p-4">
-              <div className="space-y-2 text-sm">
-                <p className="flex items-center justify-between text-charcoal-faint">
-                  <span>Student</span>
-                  <strong className="text-charcoal">
-                    {student.user_name} ({student.matric_number})
-                  </strong>
-                </p>
-                <p className="flex items-center justify-between text-charcoal-faint">
-                  <span>Degree Programme</span>
-                  <strong className="text-charcoal">{student.program_name}</strong>
-                </p>
-                <p className="flex items-center justify-between text-charcoal-faint">
-                  <span>Level</span>
-                  <strong className="text-charcoal">{student.level_display}</strong>
-                </p>
-                <p className="flex items-center justify-between text-charcoal-faint">
-                  <span>Target Email</span>
-                  <strong className="text-charcoal">{student.user_email}</strong>
-                </p>
+          <form onSubmit={handleGenerate} className="space-y-4">
+            {/* Student Metadata Card */}
+            <div className="rounded-[16px] bg-bgsoft p-3.5 border border-line space-y-2 text-xs">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-charcoal-faint font-semibold">Student:</span>
+                <div className="text-right">
+                  <span className="font-bold text-charcoal block">{student.user_name}</span>
+                  <span className="text-charcoal-faint font-mono text-[11px]">{student.matric_number}</span>
+                </div>
+              </div>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-charcoal-faint font-semibold">Programme:</span>
+                <span className="font-bold text-charcoal text-right">{student.program_name}</span>
+              </div>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-charcoal-faint font-semibold">Level / Standing:</span>
+                <div className="flex items-center gap-1.5 justify-end">
+                  <Chip
+                    size="small"
+                    label={student.level_display || `${student.year_of_study * 100}L`}
+                    sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
+                  />
+                  <span className="text-charcoal font-semibold text-[11px]">
+                    {student.academic_standing_display || 'In Good Standing'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-start justify-between gap-2 pt-1 border-t border-line/60">
+                <span className="text-charcoal-faint font-semibold">Recipient Email:</span>
+                <span className="font-mono text-charcoal break-all text-right font-semibold">
+                  {student.user_email}
+                </span>
               </div>
             </div>
 
-            <TextField
-              fullWidth
-              size="medium"
-              label="Custom Temporary Password (Optional)"
-              placeholder="Leave blank to auto-generate secure password (e.g. Nexus-2026!7xK)"
-              value={customPassword}
-              onChange={(e) => setCustomPassword(e.target.value)}
-            />
-            <p className="-mt-2 text-xs text-charcoal-faint">
-              If left blank, a cryptographically secure random password will be created
-              automatically.
-            </p>
-
-            <div className="flex items-start gap-2 rounded-[15px] bg-primary-soft/40 p-4">
-              <SparklesIcon sx={{ fontSize: 18, color: 'primary.main', mt: 0.5 }} />
-              <p className="text-sm text-charcoal">
-                The system will set the student password and send a formatted HTML welcome
-                email with login instructions to <strong>{student.user_email}</strong> via
-                Mailpit.
+            {/* Custom Password Field */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-charcoal block">
+                Custom Password (Optional)
+              </label>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Leave blank to auto-generate secure password"
+                value={customPassword}
+                onChange={(e) => setCustomPassword(e.target.value)}
+                sx={{ bgcolor: '#fff', borderRadius: '8px' }}
+              />
+              <p className="text-[11px] text-charcoal-faint">
+                Leave blank to let the system generate a secure password (e.g. <code>Nexus-2026!7xK</code>).
               </p>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            {/* Info notice */}
+            <div className="flex items-start gap-2 rounded-[14px] bg-primary-soft/40 p-3 border border-primary/10">
+              <SparklesIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.25, shrink: 0 }} />
+              <p className="text-xs text-charcoal leading-relaxed">
+                The student account will be updated with the password and an HTML welcome email will be dispatched to <strong>{student.user_email}</strong>.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
               <Button
                 variant="outlined"
                 color="inherit"
+                size="small"
                 onClick={onClose}
-                sx={{ color: 'charcoal.soft', borderColor: 'border.strong' }}
+                disabled={isSubmitting}
+                sx={{ borderRadius: '8px', textTransform: 'none' }}
               >
                 Cancel
               </Button>
@@ -215,17 +260,31 @@ export const GenerateCredentialModal: FC<GenerateCredentialModalProps> = ({
                 type="submit"
                 variant="contained"
                 color="primary"
+                size="small"
                 disabled={isSubmitting}
-                startIcon={<KeyIcon />}
+                startIcon={isSubmitting ? <CircularProgress size={14} color="inherit" /> : <KeyIcon fontSize="small" />}
+                sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
               >
-                {isSubmitting
-                  ? 'Generating & Sending Email...'
-                  : 'Generate & Send Credentials Email'}
+                {isSubmitting ? 'Issuing & Sending…' : 'Issue Password & Email'}
               </Button>
             </div>
           </form>
         )}
       </DialogContent>
+
+      {result && (
+        <DialogActions sx={{ px: 2.5, pb: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            onClick={onClose}
+            sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
+          >
+            Done
+          </Button>
+        </DialogActions>
+      )}
     </Dialog>
   );
 };
