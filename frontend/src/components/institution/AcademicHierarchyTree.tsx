@@ -25,6 +25,7 @@ interface AcademicHierarchyTreeProps {
   onAddDivision: () => void;
   onAddDepartment: (divisionId: string) => void;
   onAddProgram: (departmentId: string) => void;
+  onOpenBulkImport?: () => void;
 }
 
 type TreeNode = {
@@ -71,7 +72,10 @@ function buildTree(tree: InstitutionHierarchyTree): TreeNode {
           meta: {
             code: prog.program_code,
             rubric: prog.award_level_display,
+            duration: `${prog.duration_years} Years`,
             siwes: prog.siwes_duration_months > 0,
+            siwes_months: prog.siwes_duration_months > 0 ? `${prog.siwes_duration_months} Months` : 'Exempt',
+            siwes_pattern: prog.siwes_pattern_display || (prog.siwes_duration_months > 0 ? `${prog.siwes_duration_months} Mo SIWES` : 'Non-SIWES'),
           },
         })),
       })),
@@ -240,7 +244,9 @@ function DetailPanel({
           { k: 'Departments', v: m.depts ?? '—' },
           { k: 'Programmes', v: m.programmes ?? '—' },
           { k: 'Rubric', v: m.rubric || '—' },
-        ].map((r) => (
+          { k: 'Duration', v: m.duration || '—' },
+          { k: 'SIWES Schedule', v: m.siwes_pattern || '—' },
+        ].filter((r) => r.v !== '—').map((r) => (
           <div key={r.k} className="rounded-[15px] bg-bgsoft px-4 py-3">
             <p className="text-[11px] font-bold uppercase tracking-wide text-charcoal-faint">
               {r.k}
@@ -286,6 +292,7 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
   onAddDivision,
   onAddDepartment,
   onAddProgram,
+  onOpenBulkImport,
 }) => {
   const [selected, setSelected] = useState<TreeNode | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -335,14 +342,28 @@ export const AcademicHierarchyTree: FC<AcademicHierarchyTreeProps> = ({
         title="4-Tier Hierarchy Explorer"
         sub="Every faculty, department, and degree option mapped as a strictly relational governance tree."
         actions={
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={onAddDivision}
-          >
-            Add Academic Division
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {onOpenBulkImport && (
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<AutoAwesomeIcon />}
+                onClick={onOpenBulkImport}
+                sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
+              >
+                Bulk Setup Wizard (Excel / Blueprint)
+              </Button>
+            )}
+            <Button
+              variant="outlined"
+              color="inherit"
+              startIcon={<AddIcon />}
+              onClick={onAddDivision}
+              sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+            >
+              Add Academic Division
+            </Button>
+          </div>
         }
       />
 

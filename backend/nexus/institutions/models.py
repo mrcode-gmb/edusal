@@ -58,7 +58,9 @@ class AwardLevel(models.TextChoices):
     BTECH = "BTECH", "Bachelor of Technology (B.Tech.)"
     BENG = "BENG", "Bachelor of Engineering (B.Eng.)"
     BA = "BA", "Bachelor of Arts (B.A.)"
+    BED = "BED", "Bachelor of Education (B.Ed.)"
     LLB = "LLB", "Bachelor of Laws (LL.B.)"
+    MBBS = "MBBS", "Bachelor of Medicine & Surgery (MBBS)"
     ND = "ND", "National Diploma (ND)"
     HND = "HND", "Higher National Diploma (HND)"
     NCE = "NCE", "Nigeria Certificate in Education (NCE)"
@@ -69,6 +71,23 @@ class AwardLevel(models.TextChoices):
 class SemesterChoice(models.TextChoices):
     FIRST_SEMESTER = "FIRST_SEMESTER", "First Semester"
     SECOND_SEMESTER = "SECOND_SEMESTER", "Second Semester"
+
+
+class SiwesPatternChoice(models.TextChoices):
+    SPLIT_200L_300L = "SPLIT_200L_300L", "Split Vacation (3 Mo @ 200L End + 3 Mo @ 300L End)"
+    SEM2_300L = "SEM2_300L", "300 Level Second Semester (6 Months Continuous)"
+    YEAR4_400L_EXTENDED = "YEAR4_400L_EXTENDED", "400 Level Extended (6 to 9 Months Attachment)"
+    ND_VACATION = "ND_VACATION", "ND Industrial Attachment (3 to 4 Months Vacation)"
+    POST_ND_MANDATORY = "POST_ND_MANDATORY", "Post-ND Mandatory Industrial Training (12 Months)"
+    TEACHING_PRACTICE = "TEACHING_PRACTICE", "Teaching Practice / Practicum (3 to 6 Months)"
+    EXEMPT = "EXEMPT", "Exempt / Non-Participating (0 Months)"
+
+
+class SiwesAcademicImpactChoice(models.TextChoices):
+    VACATION_ONLY = "VACATION_ONLY", "Vacation Only (Zero Academic Semester Disruption)"
+    SECOND_SEMESTER_SUBSTITUTE = "SECOND_SEMESTER_SUBSTITUTE", "Replaces Second Semester Coursework"
+    FULL_SESSION_ATTACHMENT = "FULL_SESSION_ATTACHMENT", "Replaces Full Academic Session"
+    EXEMPT = "EXEMPT", "No Academic Impact"
 
 
 class DocumentType(models.TextChoices):
@@ -234,6 +253,23 @@ class AcademicProgram(models.Model):
     siwes_duration_months = models.PositiveSmallIntegerField(
         default=6,
         help_text="Typical SIWES attachment period in months (0 if not applicable)",
+    )
+    siwes_pattern = models.CharField(
+        max_length=35,
+        choices=SiwesPatternChoice.choices,
+        default=SiwesPatternChoice.SEM2_300L,
+        help_text="Operational timeline and calendar structure for student industrial training",
+    )
+    siwes_academic_impact = models.CharField(
+        max_length=35,
+        choices=SiwesAcademicImpactChoice.choices,
+        default=SiwesAcademicImpactChoice.SECOND_SEMESTER_SUBSTITUTE,
+        help_text="Specifies whether SIWES runs purely during vacation or substitutes regular semester coursework",
+    )
+    siwes_target_levels = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of qualifying level numbers, e.g. [2, 3] for split vacation or [4] for 400L",
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -684,14 +720,38 @@ class StudentProfile(models.Model):
 
     @property
     def is_siwes_year(self) -> bool:
-        """Determines if the current year of study is the program's primary SIWES attachment year."""
+        """
+        Dynamically evaluates if the student's current year of study qualifies for SIWES
+        based on the program's specific SIWES operational pattern.
+        """
+        if not self.program.department.siwes_eligible or self.program.siwes_pattern == SiwesPatternChoice.EXEMPT:
+            return False
+
+        # If custom target levels are explicitly defined:
+        if self.program.siwes_target_levels:
+            return self.year_of_study in self.program.siwes_target_levels
+
+        pattern = self.program.siwes_pattern
+        if pattern == SiwesPatternChoice.SPLIT_200L_300L:
+            return self.year_of_study in [2, 3]  # Qualifying at 200L and 300L
+        elif pattern == SiwesPatternChoice.SEM2_300L:
+            return self.year_of_study == 3
+        elif pattern == SiwesPatternChoice.YEAR4_400L_EXTENDED:
+            return self.year_of_study == 4
+        elif pattern == SiwesPatternChoice.ND_VACATION:
+            return self.year_of_study in [1, 2]
+        elif pattern == SiwesPatternChoice.POST_ND_MANDATORY:
+            return self.year_of_study == 2
+        elif pattern == SiwesPatternChoice.TEACHING_PRACTICE:
+            return self.year_of_study in [3, 4] if self.program.duration_years >= 4 else self.year_of_study in [2, 3]
+
         dur = self.program.duration_years
         if dur == 5:
-            return self.year_of_study == 4  # Year 4 for 5-year programs (B.Tech / B.Eng / SLT)
+            return self.year_of_study == 4
         elif dur == 4:
-            return self.year_of_study == 3  # Year 3 for 4-year programs (B.Sc.)
+            return self.year_of_study == 3
         elif dur == 2 and self.program.award_level == AwardLevel.ND:
-            return self.year_of_study == 2  # Year 2 for ND programs
+            return self.year_of_study == 2
         return False
 
     def get_level_code(self) -> str:

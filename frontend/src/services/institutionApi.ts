@@ -138,6 +138,9 @@ export const institutionApi = {
     award_level: string;
     duration_years: number;
     siwes_duration_months: number;
+    siwes_pattern?: string;
+    siwes_academic_impact?: string;
+    siwes_target_levels?: number[];
   }): Promise<AcademicProgram> {
     const res = await fetch(`${API_BASE}/api/programs/`, {
       method: 'POST',
@@ -145,6 +148,75 @@ export const institutionApi = {
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to create program`);
+    return res.json();
+  },
+
+  // Master Blueprints & Bulk Importer
+  async getHierarchyBlueprints(archetype?: string): Promise<{ archetype: string; total_faculties: number; blueprints: any[] }> {
+    let url = `${API_BASE}/api/institutions/hierarchy-blueprints/`;
+    if (archetype) url += `?archetype=${archetype}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch master hierarchy blueprints`);
+    return res.json();
+  },
+
+  getDownloadHierarchyTemplateUrl(prepopulate: boolean = true, archetype?: string): string {
+    let url = `${API_BASE}/api/institutions/download-hierarchy-template/?prepopulate=${prepopulate}`;
+    if (archetype) url += `&archetype=${archetype}`;
+    return url;
+  },
+
+  async importHierarchyBlueprint(
+    institutionId: string,
+    divisionKeys: string[],
+    token?: string
+  ): Promise<{ success: boolean; message: string; stats: Record<string, number> }> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/institutions/${institutionId}/import-blueprint/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ division_keys: divisionKeys }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || err.error || `HTTP ${res.status}: Failed to import master blueprint`);
+    }
+    return res.json();
+  },
+
+  async bulkImportHierarchy(
+    institutionId: string,
+    payload: { file?: File; rows?: Record<string, unknown>[] },
+    token?: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+    stats: { created_divisions: number; created_departments: number; created_programs: number; total_rows_processed: number };
+    errors: string[];
+  }> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Token ${token}`;
+
+    let body: BodyInit;
+    if (payload.file) {
+      const formData = new FormData();
+      formData.append('file', payload.file);
+      body = formData;
+    } else {
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify({ rows: payload.rows });
+    }
+
+    const res = await fetch(`${API_BASE}/api/institutions/${institutionId}/bulk-import-hierarchy/`, {
+      method: 'POST',
+      headers,
+      body,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || err.error || `HTTP ${res.status}: Failed to bulk import hierarchy`);
+    }
     return res.json();
   },
 

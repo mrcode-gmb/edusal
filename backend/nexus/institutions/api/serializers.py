@@ -35,6 +35,8 @@ User = get_user_model()
 class AcademicProgramSerializer(serializers.ModelSerializer):
     award_level_display = serializers.CharField(source="get_award_level_display", read_only=True)
     department_name = serializers.CharField(source="department.name", read_only=True)
+    siwes_pattern_display = serializers.CharField(source="get_siwes_pattern_display", read_only=True)
+    siwes_academic_impact_display = serializers.CharField(source="get_siwes_academic_impact_display", read_only=True)
 
     class Meta:
         model = AcademicProgram
@@ -49,6 +51,11 @@ class AcademicProgramSerializer(serializers.ModelSerializer):
             "award_level_display",
             "duration_years",
             "siwes_duration_months",
+            "siwes_pattern",
+            "siwes_pattern_display",
+            "siwes_academic_impact",
+            "siwes_academic_impact_display",
+            "siwes_target_levels",
             "is_active",
             "created_at",
             "updated_at",

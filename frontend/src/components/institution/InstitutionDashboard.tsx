@@ -25,6 +25,7 @@ import { AddDepartmentModal } from './AddDepartmentModal';
 import { AddProgramModal } from './AddProgramModal';
 import { SenateReportModal } from './SenateReportModal';
 import { AcademicSessionsModal } from './AcademicSessionsModal';
+import { HierarchyBulkImportModal } from './HierarchyBulkImportModal';
 import { DashboardTheme, LoadingBlock } from './Shared';
 import {
   Chip,
@@ -156,6 +157,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
   const [selectedDeptForProg, setSelectedDeptForProg] = useState<string>('');
   const [showSenateModal, setShowSenateModal] = useState(false);
   const [showSessionsModal, setShowSessionsModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
 
   // Handle Login Success
   const handleLoginSuccess = (authData: LoginResponse) => {
@@ -576,6 +578,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
                 tree={tree}
                 loading={loading}
                 onAddDivision={() => setShowDivisionModal(true)}
+                onOpenBulkImport={() => setShowBulkImportModal(true)}
                 onAddDepartment={(divId) => {
                   setSelectedDivisionForDept(divId);
                   setShowDepartmentModal(true);
@@ -677,6 +680,17 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
             onSetCurrentSession={handleSetCurrentSession}
             onUpdateSession={handleUpdateSession}
             onDeleteSession={handleDeleteSession}
+          />
+
+          <HierarchyBulkImportModal
+            open={showBulkImportModal}
+            onClose={() => setShowBulkImportModal(false)}
+            institutionId={selectedInst.id}
+            institutionName={selectedInst.name}
+            token={authToken || undefined}
+            onSuccess={async () => {
+              await loadInstitutionData(selectedInst.id);
+            }}
           />
         </>
       )}

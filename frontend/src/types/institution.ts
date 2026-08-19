@@ -1,8 +1,23 @@
 export type RegulatorType = 'NUC' | 'NBTE' | 'NCCE';
 export type InstitutionType = 'UNIVERSITY' | 'POLYTECHNIC' | 'COLLEGE_OF_EDUCATION' | 'MONOTECHNIC';
 export type TierTwoTerm = 'FACULTY' | 'SCHOOL' | 'COLLEGE';
-export type AwardLevel = 'BSC' | 'BTECH' | 'BENG' | 'BA' | 'LLB' | 'ND' | 'HND' | 'NCE' | 'PGD' | 'MSC';
+export type AwardLevel = 'BSC' | 'BTECH' | 'BENG' | 'BA' | 'BED' | 'LLB' | 'MBBS' | 'ND' | 'HND' | 'NCE' | 'PGD' | 'MSC';
 export type DocumentType = 'STUDENT_HANDBOOK' | 'SIWES_CALENDAR' | 'CURRICULUM_BMAS' | 'EMPLOYER_BRIEF' | 'POLICY';
+
+export type SiwesPattern =
+  | 'SPLIT_200L_300L'
+  | 'SEM2_300L'
+  | 'YEAR4_400L_EXTENDED'
+  | 'ND_VACATION'
+  | 'POST_ND_MANDATORY'
+  | 'TEACHING_PRACTICE'
+  | 'EXEMPT';
+
+export type SiwesAcademicImpact =
+  | 'VACATION_ONLY'
+  | 'SECOND_SEMESTER_SUBSTITUTE'
+  | 'FULL_SESSION_ATTACHMENT'
+  | 'EXEMPT';
 
 export interface AcademicProgram {
   id: string;
@@ -15,9 +30,62 @@ export interface AcademicProgram {
   award_level_display?: string;
   duration_years: number;
   siwes_duration_months: number;
+  siwes_pattern?: SiwesPattern;
+  siwes_pattern_display?: string;
+  siwes_academic_impact?: SiwesAcademicImpact;
+  siwes_academic_impact_display?: string;
+  siwes_target_levels?: number[];
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface BlueprintProgram {
+  name: string;
+  code: string;
+  award_level: AwardLevel;
+  duration_years: number;
+  siwes_pattern: SiwesPattern;
+  siwes_academic_impact: SiwesAcademicImpact;
+  siwes_duration_months: number;
+  siwes_target_levels: number[];
+}
+
+export interface BlueprintDepartment {
+  name: string;
+  code: string;
+  siwes_eligible: boolean;
+  programs: BlueprintProgram[];
+}
+
+export interface BlueprintFaculty {
+  key: string;
+  name: string;
+  code: string;
+  division_type: 'FACULTY' | 'SCHOOL' | 'COLLEGE';
+  archetypes: string[];
+  departments_count: number;
+  programs_count: number;
+  siwes_departments_count: number;
+  departments: BlueprintDepartment[];
+}
+
+export interface HierarchyBlueprintsResponse {
+  archetype: string;
+  total_faculties: number;
+  blueprints: BlueprintFaculty[];
+}
+
+export interface BulkImportHierarchyResult {
+  success: boolean;
+  message: string;
+  stats: {
+    created_divisions: number;
+    created_departments: number;
+    created_programs: number;
+    total_rows_processed: number;
+  };
+  errors: string[];
 }
 
 export interface Department {
@@ -165,6 +233,10 @@ export interface TreeProgram {
   award_level_display: string;
   duration_years: number;
   siwes_duration_months: number;
+  siwes_pattern?: SiwesPattern;
+  siwes_pattern_display?: string;
+  siwes_academic_impact?: SiwesAcademicImpact;
+  siwes_academic_impact_display?: string;
 }
 
 export interface TreeDepartment {

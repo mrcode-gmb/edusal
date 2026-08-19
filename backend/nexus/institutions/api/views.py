@@ -45,6 +45,14 @@ from nexus.institutions.models import (
     InstitutionInvoice,
     InvoiceStatus,
     DivisionType,
+    AwardLevel,
+    SiwesPatternChoice,
+    SiwesAcademicImpactChoice,
+)
+from ..services.nigerian_curriculum_blueprint import (
+    get_master_blueprints,
+    import_blueprint_to_institution,
+    generate_hierarchy_csv,
 )
 from ..services.document_parser import DocumentParserService
 from ..services.login_otp_service import (
@@ -318,6 +326,164 @@ class InstitutionViewSet(viewsets.ModelViewSet):
             top_k=data.get("top_k", 5),
         )
         return Response(response_data)
+
+    @action(detail=False, methods=["get"], url_path="hierarchy-blueprints")
+    def hierarchy_blueprints(self, request):
+        """Returns standard NUC / Nigerian higher education master blueprints."""
+        archetype = request.query_params.get("archetype")
+        blueprints = get_master_blueprints(archetype=archetype)
+        return Response({
+            "archetype": archetype or "ALL",
+            "total_faculties": len(blueprints),
+            "blueprints": blueprints,
+        })
+
+    @action(detail=False, methods=["get"], url_path="download-hierarchy-template")
+    def download_hierarchy_template(self, request):
+        """Downloads a pre-populated or blank Excel/CSV template with standard Nigerian disciplines."""
+        prepopulate = request.query_params.get("prepopulate", "true").lower() in ["true", "1", "yes"]
+        archetype = request.query_params.get("archetype")
+        csv_data = generate_hierarchy_csv(prepopulate=prepopulate, archetype=archetype)
+        filename = f"hierarchy_template_{archetype or 'master'}.csv"
+        response = HttpResponse(csv_data, content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=True, methods=["post"], url_path="import-blueprint")
+    def import_blueprint(self, request, id=None):
+        """Deploys selected master blueprint faculties, departments, and programmes into the institution."""
+        institution = self.get_object()
+        division_keys = request.data.get("division_keys", ["ALL"])
+        stats = import_blueprint_to_institution(institution, division_keys)
+        return Response({
+            "success": True,
+            "message": f"Successfully imported master blueprint hierarchy for {institution.short_name}.",
+            "stats": stats,
+        })
+
+    @action(detail=True, methods=["post"], url_path="bulk-import-hierarchy")
+    def bulk_import_hierarchy(self, request, id=None):
+        """
+        Parses and batch-provisions 4-Tier Hierarchy (Divisions, Departments, Programmes)
+        from uploaded CSV file or structured JSON rows with full validation.
+        """
+        institution = self.get_object()
+        rows = request.data.get("rows")
+        uploaded_file = request.FILES.get("file")
+
+        if uploaded_file and not rows:
+            import io
+            import csv
+            content = uploaded_file.read().decode("utf-8-sig", errors="ignore")
+            reader = csv.DictReader(io.StringIO(content))
+            rows = [r for r in reader]
+
+        if not rows or not isinstance(rows, list):
+            return Response(
+                {"detail": "Please provide either a valid CSV file or a 'rows' array of data."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        created_divs = 0
+        created_depts = 0
+        created_progs = 0
+        errors = []
+
+        with transaction.atomic():
+            for idx, r in enumerate(rows, start=1):
+                div_name = (r.get("division_name") or "").strip()
+                dept_name = (r.get("department_name") or "").strip()
+                prog_name = (r.get("program_name") or "").strip()
+
+                if not div_name or not dept_name:
+                    errors.append(f"Row {idx}: Missing division_name or department_name.")
+                    continue
+
+                div_code = (r.get("division_code") or "").strip()
+                div_type = (r.get("division_type") or "FACULTY").strip().upper()
+                dean_name = (r.get("dean_name") or "").strip()
+                dean_email = (r.get("dean_email") or "").strip()
+
+                dept_code = (r.get("department_code") or "").strip()
+                hod_name = (r.get("hod_name") or "").strip()
+                hod_email = (r.get("hod_email") or "").strip()
+                siwes_eligible_raw = str(r.get("siwes_eligible", "TRUE")).strip().upper()
+                siwes_eligible = siwes_eligible_raw in ["TRUE", "1", "YES", "Y"]
+
+                # 1. Get or Create Division
+                division, d_created = AcademicDivision.objects.get_or_create(
+                    institution=institution,
+                    name=div_name,
+                    defaults={
+                        "code": div_code,
+                        "division_type": div_type if hasattr(DivisionType, div_type) else DivisionType.FACULTY,
+                        "dean_name": dean_name,
+                        "dean_email": dean_email,
+                        "is_active": True,
+                    },
+                )
+                if d_created:
+                    created_divs += 1
+
+                # 2. Get or Create Department
+                department, dp_created = Department.objects.get_or_create(
+                    division=division,
+                    name=dept_name,
+                    defaults={
+                        "institution": institution,
+                        "code": dept_code,
+                        "hod_name": hod_name,
+                        "hod_email": hod_email,
+                        "siwes_eligible": siwes_eligible,
+                        "is_active": True,
+                    },
+                )
+                if dp_created:
+                    created_depts += 1
+
+                # 3. Get or Create Programme if specified
+                if prog_name:
+                    prog_code = (r.get("program_code") or "").strip()
+                    award_raw = (r.get("award_level") or "B_SC").strip().upper()
+                    try:
+                        dur_years = int(r.get("duration_years") or 4)
+                    except (ValueError, TypeError):
+                        dur_years = 4
+
+                    try:
+                        siwes_months = int(r.get("siwes_duration_months") or 6)
+                    except (ValueError, TypeError):
+                        siwes_months = 6
+
+                    siwes_pat = (r.get("siwes_pattern") or SiwesPatternChoice.SEM2_300L).strip()
+
+                    program, p_created = AcademicProgram.objects.get_or_create(
+                        department=department,
+                        name=prog_name,
+                        defaults={
+                            "institution": institution,
+                            "program_code": prog_code,
+                            "award_level": award_raw if award_raw in AwardLevel.values else AwardLevel.BSC,
+                            "duration_years": dur_years,
+                            "siwes_duration_months": siwes_months,
+                            "siwes_pattern": siwes_pat if siwes_pat in SiwesPatternChoice.values else SiwesPatternChoice.SEM2_300L,
+                            "is_active": True,
+                        },
+                    )
+                    if p_created:
+                        created_progs += 1
+
+        return Response({
+            "success": True,
+            "message": f"Successfully processed {len(rows)} hierarchy records.",
+            "stats": {
+                "created_divisions": created_divs,
+                "created_departments": created_depts,
+                "created_programs": created_progs,
+                "total_rows_processed": len(rows),
+            },
+            "errors": errors,
+        })
 
 
 
