@@ -17,6 +17,7 @@ import {
   FactCheck as FactCheckIcon,
   Download as DownloadIcon,
   Verified as VerifiedIcon,
+  CalendarMonth as CalendarMonthIcon,
 } from '@mui/icons-material';
 import { Bar, Doughnut } from './charts';
 import { chartColors } from './charts';
@@ -28,6 +29,7 @@ interface GovernancePulseProps {
   documents: InstitutionalDocument[];
   loading: boolean;
   onGenerateReport: () => void;
+  onManageSessions?: () => void;
 }
 
 export const GovernancePulse: FC<GovernancePulseProps> = ({
@@ -36,6 +38,7 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
   documents,
   loading,
   onGenerateReport,
+  onManageSessions,
 }) => {
   if (loading) {
     return (
@@ -178,11 +181,23 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
         }
         actions={
           <>
-            <Chip
-              label={`${active_session.label} · ${active_session.semester}`}
-              size="medium"
-              sx={{ bgcolor: 'primary.soft', color: 'primary.main', fontWeight: 700 }}
-            />
+            {onManageSessions && (
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<CalendarMonthIcon sx={{ fontSize: 18 }} />}
+                onClick={onManageSessions}
+                sx={{
+                  fontWeight: 700,
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  borderColor: 'primary.main',
+                  '&:hover': { bgcolor: 'primary.soft' },
+                }}
+              >
+                Academic Calendar ({active_session.label})
+              </Button>
+            )}
             <Chip
               label={`Regulatory Scope: ${summary.institution.regulator}`}
               size="medium"
@@ -292,12 +307,28 @@ export const GovernancePulse: FC<GovernancePulseProps> = ({
           />
           <div className="space-y-4">
             <div className="rounded-[15px] bg-bgsoft px-4 py-3">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-charcoal-faint">
-                Active Session
-              </p>
-              <p className="mt-0.5 text-sm font-bold text-charcoal">
-                {active_session.label} · {active_session.semester}
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-charcoal-faint">
+                    Active Session
+                  </p>
+                  <p className="mt-0.5 text-sm font-bold text-charcoal">
+                    {active_session.label} · {active_session.semester}
+                  </p>
+                </div>
+                {onManageSessions && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="primary"
+                    onClick={onManageSessions}
+                    startIcon={<CalendarMonthIcon sx={{ fontSize: 13 }} />}
+                    sx={{ fontSize: 11, fontWeight: 700, textTransform: 'none', borderRadius: '6px', px: 1.5, py: 0.5 }}
+                  >
+                    Manage
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="rounded-[15px] bg-bgsoft px-4 py-3">
               <p className="text-[11px] font-bold uppercase tracking-wide text-charcoal-faint">

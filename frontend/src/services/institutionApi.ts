@@ -149,10 +149,75 @@ export const institutionApi = {
   },
 
   // Sessions CRUD
-  async getSessions(institutionId: string): Promise<AcademicSession[]> {
-    const res = await fetch(`${API_BASE}/api/sessions/?institution=${institutionId}`);
+  async getSessions(institutionId: string, token?: string): Promise<AcademicSession[]> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/sessions/?institution=${institutionId}`, { headers });
     if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch sessions`);
     return res.json();
+  },
+
+  async createSession(
+    data: {
+      institution: string;
+      session_label: string;
+      current_semester: string;
+      start_date?: string | null;
+      end_date?: string | null;
+      is_current?: boolean;
+    },
+    token?: string
+  ): Promise<AcademicSession> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/sessions/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      const msg = errData.session_label || errData.non_field_errors || errData.detail || `HTTP ${res.status}: Failed to create academic session`;
+      throw new Error(Array.isArray(msg) ? msg.join(', ') : String(msg));
+    }
+    return res.json();
+  },
+
+  async updateSession(
+    sessionId: string,
+    data: Partial<AcademicSession>,
+    token?: string
+  ): Promise<AcademicSession> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to update academic session`);
+    return res.json();
+  },
+
+  async setCurrentSession(sessionId: string, token?: string): Promise<{ status: string; message: string }> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/set-current/`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to set session as current`);
+    return res.json();
+  },
+
+  async deleteSession(sessionId: string, token?: string): Promise<void> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Token ${token}`;
+    const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to delete academic session`);
   },
 
   // Documents CRUD & Text Ingestion

@@ -24,6 +24,7 @@ import { AddDivisionModal } from './AddDivisionModal';
 import { AddDepartmentModal } from './AddDepartmentModal';
 import { AddProgramModal } from './AddProgramModal';
 import { SenateReportModal } from './SenateReportModal';
+import { AcademicSessionsModal } from './AcademicSessionsModal';
 import { DashboardTheme, LoadingBlock } from './Shared';
 import {
   Chip,
@@ -154,6 +155,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
   const [showProgramModal, setShowProgramModal] = useState(false);
   const [selectedDeptForProg, setSelectedDeptForProg] = useState<string>('');
   const [showSenateModal, setShowSenateModal] = useState(false);
+  const [showSessionsModal, setShowSessionsModal] = useState(false);
 
   // Handle Login Success
   const handleLoginSuccess = (authData: LoginResponse) => {
@@ -311,6 +313,44 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
   }) => {
     await institutionApi.createProgram(data);
     await loadInstitutionData(selectedInstId);
+  };
+
+  const handleCreateSession = async (data: {
+    institution: string;
+    session_label: string;
+    current_semester: string;
+    start_date?: string | null;
+    end_date?: string | null;
+    is_current?: boolean;
+  }) => {
+    await institutionApi.createSession(data, authToken || undefined);
+    if (selectedInstId) {
+      await loadInstitutionData(selectedInstId);
+    }
+  };
+
+  const handleSetCurrentSession = async (sessionId: string) => {
+    await institutionApi.setCurrentSession(sessionId, authToken || undefined);
+    if (selectedInstId) {
+      await loadInstitutionData(selectedInstId);
+    }
+  };
+
+  const handleUpdateSession = async (
+    sessionId: string,
+    data: Partial<AcademicSession>
+  ) => {
+    await institutionApi.updateSession(sessionId, data, authToken || undefined);
+    if (selectedInstId) {
+      await loadInstitutionData(selectedInstId);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    await institutionApi.deleteSession(sessionId, authToken || undefined);
+    if (selectedInstId) {
+      await loadInstitutionData(selectedInstId);
+    }
   };
 
   const selectedInst = institution || (tree ? {
@@ -520,6 +560,7 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
                 documents={documents}
                 loading={loading}
                 onGenerateReport={() => setShowSenateModal(true)}
+                onManageSessions={() => setShowSessionsModal(true)}
               />
             )}
 
@@ -616,6 +657,19 @@ export const InstitutionDashboard: FC<InstitutionDashboardProps> = ({
             isOpen={showSenateModal}
             onClose={() => setShowSenateModal(false)}
             summary={summary}
+          />
+
+          <AcademicSessionsModal
+            open={showSessionsModal}
+            onClose={() => setShowSessionsModal(false)}
+            institutionId={selectedInst.id}
+            institutionName={selectedInst.name}
+            sessions={sessions}
+            token={authToken || undefined}
+            onCreateSession={handleCreateSession}
+            onSetCurrentSession={handleSetCurrentSession}
+            onUpdateSession={handleUpdateSession}
+            onDeleteSession={handleDeleteSession}
           />
         </>
       )}
