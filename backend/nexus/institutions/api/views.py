@@ -53,6 +53,7 @@ from ..services.nigerian_curriculum_blueprint import (
     get_master_blueprints,
     import_blueprint_to_institution,
     generate_hierarchy_csv,
+    generate_hierarchy_excel,
 )
 from ..services.document_parser import DocumentParserService
 from ..services.login_otp_service import (
@@ -340,14 +341,26 @@ class InstitutionViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="download-hierarchy-template")
     def download_hierarchy_template(self, request):
-        """Downloads a pre-populated or blank Excel/CSV template with standard Nigerian disciplines."""
+        """Downloads a professionally styled multi-sheet Excel (.xlsx) or CSV template with SIWES guide and lookups."""
         prepopulate = request.query_params.get("prepopulate", "true").lower() in ["true", "1", "yes"]
         archetype = request.query_params.get("archetype")
-        csv_data = generate_hierarchy_csv(prepopulate=prepopulate, archetype=archetype)
-        filename = f"hierarchy_template_{archetype or 'master'}.csv"
-        response = HttpResponse(csv_data, content_type="text/csv")
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-        return response
+        fmt = request.query_params.get("format", "excel").lower()
+
+        if fmt in ["excel", "xlsx"]:
+            excel_bytes = generate_hierarchy_excel(prepopulate=prepopulate, archetype=archetype)
+            filename = f"nexus_academic_hierarchy_template_{archetype or 'master'}.xlsx"
+            response = HttpResponse(
+                excel_bytes,
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+        else:
+            csv_data = generate_hierarchy_csv(prepopulate=prepopulate, archetype=archetype)
+            filename = f"nexus_academic_hierarchy_template_{archetype or 'master'}.csv"
+            response = HttpResponse(csv_data, content_type="text/csv")
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
 
     @action(detail=True, methods=["post"], url_path="import-blueprint")
     def import_blueprint(self, request, id=None):
@@ -365,22 +378,47 @@ class InstitutionViewSet(viewsets.ModelViewSet):
     def bulk_import_hierarchy(self, request, id=None):
         """
         Parses and batch-provisions 4-Tier Hierarchy (Divisions, Departments, Programmes)
-        from uploaded CSV file or structured JSON rows with full validation.
+        from uploaded Excel (.xlsx) or CSV file or structured JSON rows with full validation.
         """
         institution = self.get_object()
         rows = request.data.get("rows")
         uploaded_file = request.FILES.get("file")
 
         if uploaded_file and not rows:
-            import io
-            import csv
-            content = uploaded_file.read().decode("utf-8-sig", errors="ignore")
-            reader = csv.DictReader(io.StringIO(content))
-            rows = [r for r in reader]
+            filename = uploaded_file.name.lower()
+            if filename.endswith(".xlsx") or filename.endswith(".xls"):
+                import openpyxl
+                wb = openpyxl.load_workbook(uploaded_file, data_only=True)
+                target_sheet_name = "Academic Hierarchy Data"
+                if target_sheet_name in wb.sheetnames:
+                    ws = wb[target_sheet_name]
+                else:
+                    ws = wb.active
+                
+                rows_iter = list(ws.iter_rows(values_only=True))
+                if rows_iter and len(rows_iter) > 1:
+                    raw_headers = [str(h or "").strip() for h in rows_iter[0]]
+                    rows = []
+                    for r in rows_iter[1:]:
+                        if not any(r):
+                            continue
+                        row_dict = {}
+                        for idx, h in enumerate(raw_headers):
+                            if idx < len(r) and h:
+                                val = r[idx]
+                                row_dict[h] = str(val).strip() if val is not None else ""
+                        if row_dict.get("division_name") or row_dict.get("department_name"):
+                            rows.append(row_dict)
+            else:
+                import io
+                import csv
+                content = uploaded_file.read().decode("utf-8-sig", errors="ignore")
+                reader = csv.DictReader(io.StringIO(content))
+                rows = [r for r in reader]
 
         if not rows or not isinstance(rows, list):
             return Response(
-                {"detail": "Please provide either a valid CSV file or a 'rows' array of data."},
+                {"detail": "Please provide either a valid Excel/CSV spreadsheet or a 'rows' array of data."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

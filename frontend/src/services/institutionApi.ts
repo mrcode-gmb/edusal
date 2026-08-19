@@ -160,8 +160,8 @@ export const institutionApi = {
     return res.json();
   },
 
-  getDownloadHierarchyTemplateUrl(prepopulate: boolean = true, archetype?: string): string {
-    let url = `${API_BASE}/api/institutions/download-hierarchy-template/?prepopulate=${prepopulate}`;
+  getDownloadHierarchyTemplateUrl(prepopulate: boolean = true, archetype?: string, format: 'excel' | 'csv' = 'excel'): string {
+    let url = `${API_BASE}/api/institutions/download-hierarchy-template/?prepopulate=${prepopulate}&format=${format}`;
     if (archetype) url += `&archetype=${archetype}`;
     return url;
   },
