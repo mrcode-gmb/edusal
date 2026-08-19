@@ -10,8 +10,16 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.renderers import BaseRenderer, JSONRenderer
 
 from django.http import HttpResponse
+
+class BinaryFileRenderer(BaseRenderer):
+    media_type = "*/*"
+    format = "binary"
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return data
 
 from nexus.institutions.services.invoice_pdf import build_invoice_pdf
 
@@ -339,12 +347,23 @@ class InstitutionViewSet(viewsets.ModelViewSet):
             "blueprints": blueprints,
         })
 
-    @action(detail=False, methods=["get"], url_path="download-hierarchy-template")
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="download-hierarchy-template",
+        renderer_classes=[BinaryFileRenderer, JSONRenderer],
+    )
     def download_hierarchy_template(self, request):
         """Downloads a professionally styled multi-sheet Excel (.xlsx) or CSV template with SIWES guide and lookups."""
         prepopulate = request.query_params.get("prepopulate", "true").lower() in ["true", "1", "yes"]
         archetype = request.query_params.get("archetype")
-        fmt = request.query_params.get("format", "excel").lower()
+        fmt = (
+            request.query_params.get("export_format")
+            or request.query_params.get("template_format")
+            or request.query_params.get("file_format")
+            or request.query_params.get("format")
+            or "excel"
+        ).lower()
 
         if fmt in ["excel", "xlsx"]:
             excel_bytes = generate_hierarchy_excel(prepopulate=prepopulate, archetype=archetype)
@@ -358,7 +377,7 @@ class InstitutionViewSet(viewsets.ModelViewSet):
         else:
             csv_data = generate_hierarchy_csv(prepopulate=prepopulate, archetype=archetype)
             filename = f"nexus_academic_hierarchy_template_{archetype or 'master'}.csv"
-            response = HttpResponse(csv_data, content_type="text/csv")
+            response = HttpResponse(csv_data, content_type="text/csv; charset=utf-8")
             response["Content-Disposition"] = f'attachment; filename="{filename}"'
             return response
 

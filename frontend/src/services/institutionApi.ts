@@ -161,7 +161,7 @@ export const institutionApi = {
   },
 
   getDownloadHierarchyTemplateUrl(prepopulate: boolean = true, archetype?: string, format: 'excel' | 'csv' = 'excel'): string {
-    let url = `${API_BASE}/api/institutions/download-hierarchy-template/?prepopulate=${prepopulate}&format=${format}`;
+    let url = `${API_BASE}/api/institutions/download-hierarchy-template/?prepopulate=${prepopulate}&export_format=${format}`;
     if (archetype) url += `&archetype=${archetype}`;
     return url;
   },
