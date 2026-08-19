@@ -9,7 +9,9 @@ import {
   IconButton,
   Alert,
   Divider,
+  CircularProgress,
 } from '@mui/material'
+import { institutionApi } from '../services/institutionApi'
 import {
   Verified as VerifiedIcon,
   LockOutlined as LockIcon,
@@ -489,57 +491,150 @@ function RegisterPage() {
 -------------------------------------------------------------------------- */
 
 function ForgotPasswordPage() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
-  const [error, setError] = useState(false)
-  const [sent, setSent] = useState(false)
+  const [stage, setStage] = useState('email') // 'email' | 'otp'
+  const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [show, setShow] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [done, setDone] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleRequest = async (e) => {
     e.preventDefault()
     if (!email) {
-      setError(true)
+      setError('Please enter your institutional email.')
       return
     }
-    setError(false)
-    setSent(true)
+    setLoading(true)
+    setError(null)
+    try {
+      await institutionApi.forgotPassword(email.trim())
+      setStage('otp')
+      setCode('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'We could not send the reset code. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleReset = async (e) => {
+    e.preventDefault()
+    if (!code.trim() || !password || !confirm) {
+      setError('Code and new password are all required.')
+      return
+    }
+    if (password !== confirm) {
+      setError('Passwords do not match.')
+      return
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      await institutionApi.resetPassword(email.trim(), code.trim(), password)
+      setDone(true)
+      setTimeout(() => navigate('/portal/login'), 1200)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'We could not verify the code. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <AuthLayout>
       <PageHeading
         eyebrow="Institutional Portal"
-        title="Reset your password"
-        subtitle="Enter the institutional email associated with your account and we'll send you a reset link."
+        title={stage === 'otp' ? 'Enter your reset code' : 'Reset your password'}
+        subtitle={
+          stage === 'otp'
+            ? `We emailed a 6-digit code to ${email}. Enter it below with your new password.`
+            : "Enter the institutional email associated with your account and we'll email you a secure one-time code."
+        }
       />
 
       <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-card md:p-8">
-        {sent ? (
+        {done ? (
           <div className="py-6 text-center">
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-soft">
               <CheckCircleIcon sx={{ fontSize: 30, color: 'primary.main' }} />
             </span>
-            <h3 className="mt-5 text-xl text-charcoal">Check your inbox</h3>
+            <h3 className="mt-5 text-xl text-charcoal">Password updated</h3>
             <p className="mx-auto mt-2 max-w-sm text-charcoal-soft">
-              If an account exists for <strong>{email}</strong>, a password
-              reset link has been sent. It expires in 30 minutes.
+              Your password has been changed. Redirecting you to sign in…
             </p>
+          </div>
+        ) : stage === 'otp' ? (
+          <form onSubmit={handleReset} noValidate>
+            {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
+            <TextField
+              label="6-digit code"
+              size="medium"
+              fullWidth
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Enter the code from your email"
+              sx={inputSx}
+            />
+            <TextField
+              label="New Password"
+              type={show ? 'text' : 'password'}
+              size="medium"
+              fullWidth
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              sx={{ ...inputSx, mt: 2 }}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton aria-label="Toggle password visibility" onClick={() => setShow((s) => !s)} edge="end">
+                        {show ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <TextField
+              label="Confirm New Password"
+              type={show ? 'text' : 'password'}
+              size="medium"
+              fullWidth
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              sx={{ ...inputSx, mt: 2 }}
+            />
             <Button
+              type="submit"
               variant="contained"
               color="primary"
-              component={Link}
-              to="/portal/reset-password"
-              sx={{ mt: 6 }}
-              endIcon={<ArrowForwardIcon />}
+              size="large"
+              fullWidth
+              disabled={loading}
+              endIcon={loading ? <CircularProgress size={16} color="inherit" /> : <ArrowForwardIcon />}
+              sx={{ mt: 3 }}
             >
-              I have a reset link
+              {loading ? 'Updating…' : 'Update Password'}
             </Button>
-          </div>
+            <button
+              type="button"
+              onClick={() => setStage('email')}
+              className="mt-4 flex w-full items-center justify-center gap-1.5 text-sm font-semibold text-charcoal-faint hover:text-primary transition-colors"
+            >
+              <ArrowBackIcon sx={{ fontSize: 16 }} /> Back to email
+            </button>
+          </form>
         ) : (
-          <form onSubmit={handleSubmit} noValidate>
-            {error && (
-              <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
-                Please enter your institutional email.
-              </Alert>
-            )}
+          <form onSubmit={handleRequest} noValidate>
+            {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
             <TextField
               label="Institutional Email"
               type="email"
@@ -555,10 +650,11 @@ function ForgotPasswordPage() {
               color="primary"
               size="large"
               fullWidth
-              endIcon={<ArrowForwardIcon />}
+              disabled={loading}
+              endIcon={loading ? <CircularProgress size={16} color="inherit" /> : <ArrowForwardIcon />}
               sx={{ mt: 3 }}
             >
-              Send Reset Link
+              {loading ? 'Sending…' : 'Send Reset Code'}
             </Button>
           </form>
         )}
@@ -583,26 +679,40 @@ function ForgotPasswordPage() {
 
 function ResetPasswordPage() {
   const navigate = useNavigate()
-  const [form, setForm] = useState({ password: '', confirm: '' })
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [show, setShow] = useState(false)
-  const [error, setError] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
   const [done, setDone] = useState(false)
 
-  const update = (k) => (e) => setForm({ ...form, [k]: e.target.value })
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.password || !form.confirm) {
-      setError(true)
+    if (!email || !code.trim() || !password || !confirm) {
+      setError('Email, code and new password are all required.')
       return
     }
-    if (form.password !== form.confirm) {
-      setError(true)
+    if (password !== confirm) {
+      setError('Passwords do not match.')
       return
     }
-    setError(false)
-    setDone(true)
-    setTimeout(() => navigate('/portal/login'), 1100)
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      await institutionApi.resetPassword(email.trim(), code.trim(), password)
+      setDone(true)
+      setTimeout(() => navigate('/portal/login'), 1200)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'We could not verify the code. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -610,7 +720,7 @@ function ResetPasswordPage() {
       <PageHeading
         eyebrow="Institutional Portal"
         title="Set a new password"
-        subtitle="Choose a strong password for your Nexus workspace."
+        subtitle="Enter your email, the 6-digit code we sent you, and your new password."
       />
 
       <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-card md:p-8">
@@ -626,36 +736,43 @@ function ResetPasswordPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate>
-            {error && (
-              <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
-                Passwords must match and cannot be empty.
-              </Alert>
-            )}
+            {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
+            <TextField
+              label="Institutional Email"
+              type="email"
+              size="medium"
+              fullWidth
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              sx={inputSx}
+            />
+            <TextField
+              label="6-digit code"
+              size="medium"
+              fullWidth
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Enter the code from your email"
+              sx={{ ...inputSx, mt: 2 }}
+            />
             <TextField
               label="New Password"
               type={show ? 'text' : 'password'}
               size="medium"
               fullWidth
-              value={form.password}
-              onChange={update('password')}
-              sx={inputSx}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockIcon sx={{ fontSize: 18, color: 'charcoal.faint' }} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="Toggle password visibility"
-                      onClick={() => setShow((s) => !s)}
-                      edge="end"
-                    >
-                      {show ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              sx={{ ...inputSx, mt: 2 }}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton aria-label="Toggle password visibility" onClick={() => setShow((s) => !s)} edge="end">
+                        {show ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
               }}
             />
             <TextField
@@ -663,8 +780,8 @@ function ResetPasswordPage() {
               type={show ? 'text' : 'password'}
               size="medium"
               fullWidth
-              value={form.confirm}
-              onChange={update('confirm')}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
               sx={{ ...inputSx, mt: 2 }}
             />
             <Button
@@ -673,13 +790,24 @@ function ResetPasswordPage() {
               color="primary"
               size="large"
               fullWidth
-              endIcon={<ArrowForwardIcon />}
+              disabled={loading}
+              endIcon={loading ? <CircularProgress size={16} color="inherit" /> : <ArrowForwardIcon />}
               sx={{ mt: 3 }}
             >
-              Update Password
+              {loading ? 'Updating…' : 'Update Password'}
             </Button>
           </form>
         )}
+
+        <p className="mt-5 text-center text-sm text-charcoal-faint">
+          Remembered it?{' '}
+          <Link
+            to="/portal/login"
+            className="font-semibold text-primary hover:underline"
+          >
+            Back to sign in
+          </Link>
+        </p>
       </div>
     </AuthLayout>
   )

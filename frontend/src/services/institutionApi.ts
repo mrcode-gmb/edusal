@@ -458,6 +458,36 @@ export const institutionApi = {
     return res.json();
   },
 
+  async forgotPassword(email: string): Promise<import('../types/institution').OtpChallenge> {
+    const res = await fetch(`${API_BASE}/api/auth/forgot-password/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Failed to send reset code (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async resetPassword(
+    email: string,
+    code: string,
+    newPassword: string
+  ): Promise<{ status: string; message: string }> {
+    const res = await fetch(`${API_BASE}/api/auth/reset-password/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code, new_password: newPassword }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Password reset failed (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
   async getMe(token: string): Promise<import('../types/institution').AuthUser> {
     const res = await fetch(`${API_BASE}/api/auth/me/`, {
       headers: {

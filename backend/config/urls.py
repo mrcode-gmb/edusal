@@ -27,7 +27,7 @@ urlpatterns = [
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]
 
-from nexus.institutions.api.views import AuthLoginView, AuthMeView, AuthLogoutView, AuthVerifyOtpView, AuthResendOtpView, InstitutionRegistrationView, PlatformAdminOverviewView, AdminInstitutionDetailView, AdminInstitutionStatusView
+from nexus.institutions.api.views import AuthLoginView, AuthMeView, AuthLogoutView, AuthVerifyOtpView, AuthResendOtpView, ForgotPasswordView, ResetPasswordView, InstitutionRegistrationView, PlatformAdminOverviewView, AdminInstitutionDetailView, AdminInstitutionStatusView
 
 # API URLS
 urlpatterns += [
@@ -36,6 +36,8 @@ urlpatterns += [
     path("api/auth/login/", AuthLoginView.as_view(), name="auth-login"),
     path("api/auth/verify-otp/", AuthVerifyOtpView.as_view(), name="auth-verify-otp"),
     path("api/auth/resend-otp/", AuthResendOtpView.as_view(), name="auth-resend-otp"),
+    path("api/auth/forgot-password/", ForgotPasswordView.as_view(), name="auth-forgot-password"),
+    path("api/auth/reset-password/", ResetPasswordView.as_view(), name="auth-reset-password"),
     path("api/auth/me/", AuthMeView.as_view(), name="auth-me"),
     path("api/auth/logout/", AuthLogoutView.as_view(), name="auth-logout"),
     path("api/admin/overview/", PlatformAdminOverviewView.as_view(), name="admin-overview"),

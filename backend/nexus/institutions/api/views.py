@@ -129,6 +129,8 @@ from .serializers import (
     StudentDossierSerializer,
     AuthLoginSerializer,
     AuthUserSerializer,
+    ForgotPasswordSerializer,
+    ResetPasswordSerializer,
     CompanyBankDetailSerializer,
     PricingPlanSerializer,
     InstitutionInvoiceSerializer,
@@ -1069,6 +1071,65 @@ class AuthResendOtpView(APIView):
             "resend_after": resend_after,
             "expires_in": OTP_LIFETIME_SECONDS,
         })
+
+
+class ForgotPasswordView(APIView):
+    """Sends a one-time code to the account email for password reset."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].lower().strip()
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            # Do not reveal whether an account exists for this email.
+            return Response({
+                "requires_otp": True,
+                "email": mask_email(email),
+                "resend_after": 30,
+                "expires_in": OTP_LIFETIME_SECONDS,
+            })
+
+        otp = issue_login_otp(user)
+        if otp is None:
+            return Response(
+                {"error": "We couldn't email your reset code. Please try again."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response({
+            "requires_otp": True,
+            "email": mask_email(email),
+            "resend_after": 30,
+            "expires_in": OTP_LIFETIME_SECONDS,
+        })
+
+
+class ResetPasswordView(APIView):
+    """Verifies the emailed one-time code and sets a new password."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].lower().strip()
+        code = serializer.validated_data["code"].strip()
+        new_password = serializer.validated_data["new_password"]
+
+        otp, error = verify_login_otp(email, code)
+        if error:
+            return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = otp.user
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+        # Invalidate existing tokens so the new password is enforced.
+        Token.objects.filter(user=user).delete()
+        return Response({"status": "ok", "message": "Password updated successfully."})
 
 
 class AuthMeView(APIView):

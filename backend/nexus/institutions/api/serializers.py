@@ -489,6 +489,21 @@ class AuthLoginSerializer(serializers.Serializer):
     password = serializers.CharField(required=True, write_only=True)
 
 
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    code = serializers.CharField(required=True, write_only=True)
+    new_password = serializers.CharField(
+        required=True,
+        write_only=True,
+        min_length=8,
+        error_messages={"min_length": "Password must be at least 8 characters."},
+    )
+
+
 class AuthUserSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     email = serializers.EmailField()
