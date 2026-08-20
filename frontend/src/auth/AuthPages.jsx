@@ -20,9 +20,7 @@ import {
   ArrowForward as ArrowForwardIcon,
   CheckCircle as CheckCircleIcon,
   Person as PersonIcon,
-  SupportAgent as SupportAgentIcon,
   ManageAccounts as ManageAccountsIcon,
-  Work as WorkIcon,
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material'
 
@@ -272,15 +270,13 @@ function LoginPage() {
 -------------------------------------------------------------------------- */
 
 const Roles = [
-  { key: 'student', label: 'Student', icon: PersonIcon },
-  { key: 'counsellor', label: 'Counsellor', icon: SupportAgentIcon },
+  { key: 'employee', label: 'Employee', icon: PersonIcon },
   { key: 'institution', label: 'Institution', icon: ManageAccountsIcon },
-  { key: 'employer', label: 'Employer', icon: WorkIcon },
 ]
 
 function RegisterPage() {
   const navigate = useNavigate()
-  const [role, setRole] = useState('student')
+  const [role, setRole] = useState('employee')
   const [form, setForm] = useState({
     name: '',
     email: '',
